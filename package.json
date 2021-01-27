@@ -1,0 +1,40 @@
+{
+  "name": "redirect-server",
+  "version": "1.0.0",
+  "description": "Express redirect server",
+  "main": "index.js",
+  "scripts": {
+    "dev": "DEBUG=app:* nodemon src/index",
+    "start": "NODE_ENV=production node src/index",
+    "pretest": "./node_modules/.bin/eslint --ignore-path .gitignore . --fix",
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hyfi06/redirect-server.git"
+  },
+  "keywords": [
+    "express",
+    "redirect"
+  ],
+  "author": "Héctor Olvera Vital",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/hyfi06/redirect-server/issues"
+  },
+  "homepage": "https://github.com/hyfi06/redirect-server#readme",
+  "dependencies": {
+    "@google-cloud/firestore": "^4.9.1",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "helmet": "^4.4.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.18.0",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "nodemon": "^2.0.7",
+    "prettier": "^2.2.1"
+  }
+}
