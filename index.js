@@ -1,12 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const config = require('../config');
+const config = require('./config');
 
-const notFoundHandler = require('../middleware/notFoundHandler');
-const { wrapErrors, errorHandler } = require('../middleware/errorHandler');
+const notFoundHandler = require('./middleware/notFoundHandler');
+const { wrapErrors, errorHandler } = require('./middleware/errorHandler');
 
-const redirectorApi = require('../routes/redirector');
+const redirectorApi = require('./routes/redirector');
 
 const app = express();
 app.use(cors());
@@ -25,5 +25,7 @@ app.use(errorHandler);
 app.listen(config.port, function () {
   if (config.dev) {
     console.log(`Listening http://localhost:${config.port}/`);
+  } else {
+    console.log(`Server listening on port ${config.port}`);
   }
 });
