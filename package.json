@@ -25,6 +25,7 @@
   "homepage": "https://github.com/hyfi06/redirect-server#readme",
   "dependencies": {
     "@google-cloud/firestore": "^4.9.1",
+    "@hapi/boom": "^9.1.1",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
