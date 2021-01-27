@@ -2,10 +2,10 @@
   "name": "redirect-server",
   "version": "1.0.0",
   "description": "Express redirect server",
-  "main": "index.js",
+  "main": "api/index.js",
   "scripts": {
-    "dev": "DEBUG=app:* nodemon src/index",
-    "start": "NODE_ENV=production node src/index",
+    "dev": "DEBUG=app:* nodemon api/index.js",
+    "start": "NODE_ENV=production node api/index.js",
     "pretest": "./node_modules/.bin/eslint --ignore-path .gitignore . --fix",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
