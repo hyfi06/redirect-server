@@ -2,5 +2,5 @@
   "name": "redirect-server",
   "version": 2,
   "builds": [{ "src": "api/index.js", "use": "@now/node" }],
-  "routes": [{ "src": "/(.*)", "dest": "/" }]
+  "routes": [{ "src": "/(.*)", "dest": "api/index.js" }]
 }
