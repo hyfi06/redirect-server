@@ -1,5 +1,6 @@
 const express = require('express');
 const RedirectorService = require('../services/redirector');
+const cacheResponse = require('../utils/cacheResponse');
 
 const redirectorService = new RedirectorService();
 
@@ -10,6 +11,7 @@ function redirectorApi(app) {
     const urn = req.params.urn;
     try {
       const url = await redirectorService.getUrl(urn);
+      cacheResponse(res, 5 * 60);
       res.redirect(url);
     } catch (err) {
       next(err);

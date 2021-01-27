@@ -8,11 +8,7 @@ const boom = require('@hapi/boom');
  */
 // eslint-disable-next-line no-unused-vars
 function notFoundHandler(req, res, next) {
-  const {
-    output: { statusCode, payload },
-  } = boom.notFound();
-
-  res.status(statusCode).json(payload);
+  next(boom.notFound('Route not found'));
 }
 
 module.exports = notFoundHandler;

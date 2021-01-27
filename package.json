@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "DEBUG=app:* nodemon index.js",
     "start": "NODE_ENV=production node index.js",
-    "pretest": "./node_modules/.bin/eslint --ignore-path .gitignore . --fix",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
   "repository": {

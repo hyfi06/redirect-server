@@ -1,2 +1,9 @@
 runtime: nodejs12
-
+handlers:
+  - url: /favicon\.ico
+    static_files: public/favicon.ico
+    upload: favicon\.ico
+  - url: /.*
+    secure: always
+    redirect_http_response_code: 301
+    script: auto

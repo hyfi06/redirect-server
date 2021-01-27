@@ -1,5 +1,6 @@
 const boom = require('@hapi/boom');
 const config = require('../config');
+const path = require('path');
 
 /**
  * and a stack of error in develop environment
@@ -26,7 +27,11 @@ function errorHandler(err, req, res, next) {
   const {
     output: { statusCode, payload },
   } = err;
-  res.status(statusCode).json(withErrorStack(payload, err.stack));
+  if (statusCode == 404) {
+    res.sendFile(path.join(__dirname, '../views/NotFound.html'));
+  } else {
+    res.status(statusCode).json(withErrorStack(payload, err.stack));
+  }
 }
 
 module.exports = {
