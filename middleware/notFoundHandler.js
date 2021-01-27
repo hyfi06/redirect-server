@@ -4,8 +4,10 @@ const boom = require('@hapi/boom');
  * Generate a response 404
  * @param {*} req request
  * @param {*} res response
+ * @param {*} next response
  */
-function notFoundHandler(req, res) {
+// eslint-disable-next-line no-unused-vars
+function notFoundHandler(req, res, next) {
   const {
     output: { statusCode, payload },
   } = boom.notFound();
