@@ -1,10 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const config = require('./config');
+const config = require('../config');
 
-const notFoundHandler = require('./middleware/notFoundHandler');
-const { wrapErrors, errorHandler } = require('./middleware/errorHandler');
+const notFoundHandler = require('../middleware/notFoundHandler');
+const { wrapErrors, errorHandler } = require('../middleware/errorHandler');
 
 const redirectorApi = require('./routes/redirector');
 

@@ -2,10 +2,10 @@
   "name": "redirect-server",
   "version": "1.0.0",
   "description": "Express redirect server",
-  "main": "api/index.js",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "DEBUG=app:* nodemon index.js",
-    "start": "NODE_ENV=production node index.js",
+    "dev": "DEBUG=app:* nodemon src/index.js",
+    "start": "NODE_ENV=production node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
   "repository": {
@@ -23,18 +23,18 @@
   },
   "homepage": "https://github.com/hyfi06/redirect-server#readme",
   "dependencies": {
-    "@google-cloud/firestore": "^4.9.1",
-    "@hapi/boom": "^9.1.1",
+    "@google-cloud/firestore": "^6.6.1",
+    "@hapi/boom": "^10.0.1",
     "cors": "^2.8.5",
-    "dotenv": "^8.2.0",
-    "express": "^4.17.1",
-    "helmet": "^4.4.1"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.0.0"
   },
   "devDependencies": {
-    "eslint": "^7.18.0",
-    "eslint-config-prettier": "^7.2.0",
-    "eslint-plugin-prettier": "^3.3.1",
-    "nodemon": "^2.0.7",
-    "prettier": "^2.2.1"
+    "eslint": "^8.43.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "nodemon": "^2.0.22",
+    "prettier": "^2.8.8"
   }
 }
