@@ -1,5 +1,5 @@
 const boom = require('@hapi/boom');
-const config = require('../config');
+const config = require('../../config');
 const path = require('path');
 
 /**

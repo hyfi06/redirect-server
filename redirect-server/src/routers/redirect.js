@@ -4,7 +4,7 @@ const cacheResponse = require('../../utils/cacheResponse');
 
 const redirectorService = new RedirectorService();
 
-function redirectorApi(app) {
+function redirectRouter(app) {
   const router = express.Router();
   app.use('/', router);
   router.get('/:urn', async function (req, res, next) {
@@ -19,4 +19,4 @@ function redirectorApi(app) {
   });
 }
 
-module.exports = redirectorApi;
+module.exports = redirectRouter;

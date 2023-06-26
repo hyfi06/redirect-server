@@ -2,10 +2,10 @@
   "name": "redirect-server",
   "version": "1.0.0",
   "description": "Express redirect server",
-  "main": "src/server.js",
+  "main": "src/app.js",
   "scripts": {
-    "dev": "DEBUG=app:* nodemon src/index.js",
-    "start": "NODE_ENV=production node src/index.js",
+    "dev": "DEBUG=app:* nodemon src/app.js",
+    "start": "NODE_ENV=production node src/app.js",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
   "repository": {
@@ -22,6 +22,9 @@
     "url": "https://github.com/hyfi06/redirect-server/issues"
   },
   "homepage": "https://github.com/hyfi06/redirect-server#readme",
+  "engines": {
+    "node": "18.x.x"
+  },
   "dependencies": {
     "@google-cloud/firestore": "^6.6.1",
     "@hapi/boom": "^10.0.1",

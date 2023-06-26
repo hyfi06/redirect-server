@@ -1,6 +1,7 @@
 const config = require('../config');
 const FirestoreLib = require('../lib/firestore');
 
+
 class RedirectorService {
   constructor() {
     this.collection = config.dbCollection;

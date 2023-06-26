@@ -1,4 +1,8 @@
-runtime: nodejs12
+runtime: nodejs18
+
+service: redirect-server
+entrypoint: node src/app.js
+
 handlers:
   - url: /favicon\.ico
     static_files: public/favicon.ico
