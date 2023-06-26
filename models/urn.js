@@ -1,4 +1,5 @@
 const { OWNER_SCOPES, Scope } = require('./scope');
+
 class Urn {
   /**
    * Create a Urn object
@@ -11,7 +12,6 @@ class Urn {
    * @param {string[]} data.categories
    * @param {Date} data.created
    * @param {Date} data.updated
-   *
    */
   constructor(data) {
     const { id, urn, url, owner, scopes, categories, created, updated } = data;
@@ -43,3 +43,5 @@ class Urn {
     this.urn_ = urn;
   }
 }
+
+module.exports = Urn;

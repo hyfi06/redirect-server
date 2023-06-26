@@ -1,12 +1,11 @@
-
 class User {
   /**
    * User model
    * @param {Object} data
    * @param {string} data.email
    * @param {string} data.firstName
-   * @param {lastName} data.lastName
-   * @param {string[]} data.groups
+   * @param {string} data.lastName
+   * @param {FirebaseFirestore.DocumentReference[]} data.groups
    * @param {Date} data.created
    * @param {Date} data.updated
    */
@@ -36,3 +35,5 @@ class User {
       .trim();
   }
 }
+
+module.exports = User;
