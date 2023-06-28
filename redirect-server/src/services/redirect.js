@@ -1,51 +1,33 @@
 const config = require('../../config');
 const UrnModel = require('../../../models/urn');
 const boom = require('@hapi/boom');
-
 const FireStoreAdapter = require('../../../lib/firestore');
-
-const fireStoreAdapter = new FireStoreAdapter(config.firestore.collections.urn);
-
-class RedirectorService {
-  constructor() {
-    this.collection = config.dbCollection;
-    this.db = new FirestoreLib();
-  }
-
-  async getUrl(urn) {
-    const data = await this.db.get(this.collection, urn);
-    return data.url;
-  }
-}
 
 class RedirectService {
   constructor() {
-    this.db = new Firestore({
-      projectId: config.firestore.projectId,
-      credentials: config.firestore.credentials,
-    });
-    this.collection = this.db.collection(config.firestore.collections.urn);
+    this.db = new FireStoreAdapter(config.firestore.collections.urn);
   }
 
+  /**
+   * Get by urn
+   * @param {string} urn
+   * @returns {UrnModel}
+   */
   async getByUrn(urn) {
-    const urnModel = new UrnModel({
-      urn,
-    });
-    const docRef = this.collection.doc(urnModel.id);
-    const doc = docRef.get();
-    if (!doc.exists) {
-      throw boom.notFound('Resource not found');
-    }
+    const input = new UrnModel({ urn });
+    const doc = await this.db.getById(input.id);
     return new UrnModel(doc);
   }
+
   /**
-   *
-   * @param {Urn} data
+   * Create urn
+   * @param {UrnModel} data
+   * @returns {string}
    */
   async create(data) {
-    const newDoc = await this.collection.doc(data.id).create(data);
-    return newDoc ? newDoc.id : undefined;
+    const newDocId = await this.db.create(data.id, data);
+    return newDocId;
   }
 }
 
-module.exports = RedirectorService;
+module.exports = RedirectService;
