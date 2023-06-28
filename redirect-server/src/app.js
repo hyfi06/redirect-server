@@ -6,7 +6,7 @@ const config = require('../config');
 const notFoundHandler = require('../middleware/notFoundHandler');
 const { wrapErrors, errorHandler } = require('../middleware/errorHandler');
 
-const redirectRouter = require('./routers/redirect');
+const redirectRouter = require('./routes/redirect');
 
 const app = express();
 app.use(cors());

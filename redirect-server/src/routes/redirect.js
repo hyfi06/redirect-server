@@ -1,18 +1,20 @@
 const express = require('express');
-const RedirectorService = require('../../services/redirector');
+const RedirectService = require('../services/redirect');
 const cacheResponse = require('../../utils/cacheResponse');
 
-const redirectorService = new RedirectorService();
+const redirectService = new RedirectService();
 
 function redirectRouter(app) {
   const router = express.Router();
+
   app.use('/', router);
+
   router.get('/:urn', async function (req, res, next) {
     const urn = req.params.urn;
     try {
-      const url = await redirectorService.getUrl(urn);
+      const redirectData = await redirectService.getByUrn(urn);
       cacheResponse(res, 5 * 60);
-      res.redirect(url);
+      res.redirect(redirectData.url);
     } catch (err) {
       next(err);
     }
