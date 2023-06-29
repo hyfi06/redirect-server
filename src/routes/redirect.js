@@ -1,6 +1,6 @@
 const express = require('express');
 const RedirectService = require('../services/redirect');
-const cacheResponse = require('../../utils/cacheResponse');
+const cacheResponse = require('../utils/cacheResponse');
 
 const redirectService = new RedirectService();
 

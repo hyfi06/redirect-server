@@ -1,7 +1,6 @@
-const config = require('../../config');
-const UrnModel = require('../../../models/urn');
-const boom = require('@hapi/boom');
-const FireStoreAdapter = require('../../../lib/firestore');
+const config = require('../config');
+const UrnModel = require('../models/urn');
+const FireStoreAdapter = require('../lib/firestore');
 
 class RedirectService {
   constructor() {

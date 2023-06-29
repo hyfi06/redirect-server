@@ -1,5 +1,5 @@
 const boom = require('@hapi/boom');
-const config = require('../../config');
+const config = require('../config');
 const path = require('path');
 
 /**
@@ -28,7 +28,7 @@ function errorHandler(err, req, res, next) {
     output: { statusCode, payload },
   } = err;
   if (statusCode == 404) {
-    res.sendFile(path.join(__dirname, '../views/NotFound.html'));
+    res.sendFile(path.join(__dirname, '../views/NoFound/NotFound.html'));
   } else {
     res.status(statusCode).json(withErrorStack(payload, err.stack));
   }

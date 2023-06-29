@@ -1,11 +1,10 @@
 runtime: nodejs18
 
-service: redirect-server
-entrypoint: node src/app.js
+entrypoint: NODE_ENV=production node src/app.js
 
 handlers:
   - url: /favicon\.ico
-    static_files: public/favicon.ico
+    static_files: src/public/favicon.ico
     upload: favicon\.ico
   - url: /.*
     secure: always

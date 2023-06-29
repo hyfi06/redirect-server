@@ -1,5 +1,5 @@
-const Firestore = require('@google-cloud/firestore');
-const config = require('../redirect-server/config');
+const { Firestore } = require('@google-cloud/firestore');
+const config = require('../config');
 const boom = require('@hapi/boom');
 
 class FireStoreAdapter {
@@ -9,7 +9,6 @@ class FireStoreAdapter {
   constructor(collection) {
     this.db = new Firestore({
       projectId: config.projectId,
-      credentials: config.credentials,
     });
     this.collection = this.db.collection(collection);
   }
