@@ -1,31 +1,31 @@
 const config = require('../config');
-const UrnModel = require('../models/urn');
+const Redirect = require('../models/redirect');
 const FireStoreAdapter = require('../lib/firestore');
 
 class RedirectService {
   constructor() {
-    this.db = new FireStoreAdapter(config.firestore.collections.urn);
+    this.db = new FireStoreAdapter(config.firestore.collections.redirects);
   }
 
   /**
-   * Get by urn
-   * @param {string} urn
-   * @returns {UrnModel}
+   * Get by path
+   * @param {string} path
+   * @returns {Redirect}
    */
-  async getByUrn(urn) {
-    const input = new UrnModel({ urn });
-    const doc = await this.db.getById(input.id);
-    return new UrnModel(doc);
+  async getByPath(path) {
+    const redirect = new Redirect({ path });
+    const doc = await this.db.getById(redirect.id);
+    return new Redirect(doc.data());
   }
 
   /**
    * Create urn
-   * @param {UrnModel} data
+   * @param {Redirect} data
    * @returns {string}
    */
   async create(data) {
-    const newDocId = await this.db.create(data.id, data);
-    return newDocId;
+    const newDoc = await this.db.create(data.id, data);
+    return newDoc.id;
   }
 }
 

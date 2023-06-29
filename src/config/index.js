@@ -6,13 +6,8 @@ module.exports = {
   cors: process.env.CORS,
   version: process.env.npm_package_version,
   firestore: {
-    projectId: process.env.GOOGLE_PROJECT_ID,
-    credentials: {
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY,
-    },
     collections: {
-      urn: 'urn',
+      redirects: 'redirects',
       users: 'users',
       groups: 'groups'
     },

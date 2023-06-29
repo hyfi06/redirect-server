@@ -13,13 +13,13 @@ class Scope {
    */
   constructor(data) {
     const { group, permissions } = data;
-    this.group = group || 'groups/owner';
+    this.group = group || '/groups/owner';
     this.permissions = permissions || [];
   }
 }
 
 const OWNER_SCOPES = new Scope({
-  group: 'groups/owner',
+  group: '/groups/owner',
   permissions: PERMISSIONS.all,
 });
 

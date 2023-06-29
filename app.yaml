@@ -3,10 +3,14 @@ runtime: nodejs18
 entrypoint: NODE_ENV=production node src/app.js
 
 handlers:
-  - url: /favicon\.ico
-    static_files: src/public/favicon.ico
-    upload: favicon\.ico
   - url: /.*
     secure: always
     redirect_http_response_code: 301
     script: auto
+
+automatic_scaling:
+  target_cpu_utilization: 0.75
+  min_instances: 0
+  max_instances: 3
+  min_pending_latency: 30ms
+  max_pending_latency: automatic

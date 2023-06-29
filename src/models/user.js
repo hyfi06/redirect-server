@@ -6,8 +6,8 @@ class User {
    * @param {string} data.firstName
    * @param {string} data.lastName
    * @param {FirebaseFirestore.DocumentReference[]} data.groups
-   * @param {Date} data.created
-   * @param {Date} data.updated
+   * @param {Date|FirebaseFirestore.Timestamp} data.created
+   * @param {Date|FirebaseFirestore.Timestamp} data.updated
    */
   constructor(data) {
     const { email, firstName, lastName, groups, created, updated } = data;
@@ -15,8 +15,8 @@ class User {
     this.firstName = firstName?.trim() || '';
     this.lastName = lastName?.trim() || '';
     this.groups = groups || [];
-    if (created) this.created = created;
-    this.updated = updated || new Date();
+    if (created) this.created = created.toDate?.() || created;
+    this.updated = updated?.toDate?.() || updated || new Date();
   }
 
   get fullNameByName() {

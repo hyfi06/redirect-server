@@ -9,10 +9,10 @@ function redirectRouter(app) {
 
   app.use('/', router);
 
-  router.get('/:urn', async function (req, res, next) {
-    const urn = req.params.urn;
+  router.get('/*', async function (req, res, next) {
+    const path = req.params[0];
     try {
-      const redirectData = await redirectService.getByUrn(urn);
+      const redirectData = await redirectService.getByPath(path);
       cacheResponse(res, 5 * 60);
       res.redirect(redirectData.url);
     } catch (err) {
