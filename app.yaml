@@ -1,6 +1,9 @@
 runtime: nodejs18
 
-entrypoint: NODE_ENV=production node src/app.js
+entrypoint: node src/app.js
+
+env_variables:
+  NODE_ENV: "production"
 
 handlers:
   - url: /.*
