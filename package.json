@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "DEBUG=app:* nodemon src/app.js",
     "start": "NODE_ENV=production node src/app.js",
-    "test": "npx jest",
-    "test:watch": "npx jest --watch"
+    "test": "NODE_ENV=test npx jest",
+    "test:watch": "NODE_ENV=test npx jest --watch"
   },
   "repository": {
     "type": "git",
