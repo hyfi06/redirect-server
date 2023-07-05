@@ -21,3 +21,4 @@ node_modules/
 README.md
 .eslintrc
 .prettierrc.json
+coverage
