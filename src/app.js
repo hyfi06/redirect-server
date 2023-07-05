@@ -6,14 +6,22 @@ const config = require('./config');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const { wrapErrors, errorHandler } = require('./middleware/errorHandler');
 
-const redirectorApi = require('./routes/redirector');
+const redirectRouter = require('./routes/redirect');
+const rootRouter = require('./routes/root');
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: config.cors.split(','),
+  })
+);
+
 app.use(helmet());
 app.use(express.json());
 
-redirectorApi(app);
+/* Routers */
+rootRouter(app);
+redirectRouter(app);
 
 // Catch 404
 app.use(notFoundHandler);
