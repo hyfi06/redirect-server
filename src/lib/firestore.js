@@ -1,5 +1,4 @@
 const Firestore = require('@google-cloud/firestore');
-const config = require('../config');
 const boom = require('@hapi/boom');
 
 class FireStoreAdapter {
