@@ -19,7 +19,7 @@ function redirectParser(docSnap) {
 }
 
 /**
- *
+ * Parser Redirect to create doc object
  * @param {Redirect} redirect
  * @returns {Object}
  */
@@ -32,8 +32,22 @@ function createRedirectParser(redirect) {
     categories: redirect.categories || [],
   };
 }
+/**
+ *
+ * @param {Redirect} redirect
+ * @returns
+ */
+function updateRedirectParser(redirect) {
+  const docData = { ...redirect };
+  delete docData.id;
+  delete docData.owner;
+  delete docData.created;
+  delete docData.updated;
+  return docData;
+}
 
 module.exports = {
   redirectParser,
   createRedirectParser,
+  updateRedirectParser,
 };

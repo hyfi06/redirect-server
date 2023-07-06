@@ -17,11 +17,11 @@ class FireStoreAdapter {
    */
   async get(id) {
     const docRef = this.collection.doc(id);
-    const doc = await docRef.get();
-    if (!doc.exists) {
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
       throw boom.notFound('Resource not found');
     } else {
-      return doc;
+      return docSnap;
     }
   }
 
@@ -52,6 +52,9 @@ class FireStoreAdapter {
    */
   async update(id, data) {
     const docRef = await this.collection.doc(id);
+    if ((await docRef.get()).exists) {
+      throw boom.notFound('Resource not found');
+    }
     await docRef.set({
       updated: Firestore.Timestamp.fromMillis(Date.now()),
       ...data,
