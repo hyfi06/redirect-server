@@ -119,6 +119,8 @@ typings/
 # dotenv environment variables file
 .env
 .env.test
+.env.development
+.env.production
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -193,3 +195,5 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/node,visualstudiocode,macos,windows,linux
+
+loadData.js

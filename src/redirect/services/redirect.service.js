@@ -1,6 +1,11 @@
 const config = require('../../config');
 const Redirect = require('../models/redirect.model');
+const {
+  redirectParser,
+  createRedirectParser,
+} = require('../parsers/redirect.parser');
 const FireStoreAdapter = require('../../lib/firestore');
+const boom = require('@hapi/boom');
 
 class RedirectService {
   constructor() {
@@ -13,19 +18,22 @@ class RedirectService {
    * @returns {Redirect}
    */
   async getByPath(path) {
-    const redirect = new Redirect({ path });
-    const doc = await this.db.getById(redirect.id);
-    return new Redirect(doc.data());
+    const query = await this.db.collection.where('path', '==', path);
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      throw boom.notFound('Resource not found');
+    }
+    return redirectParser(snapshot.docs[0]);
   }
 
   /**
    * Create urn
    * @param {Redirect} data
-   * @returns {string}
+   * @returns {Redirect}
    */
   async create(data) {
-    const newDoc = await this.db.create(data.id, data);
-    return newDoc.id;
+    const newDoc = await this.db.create(createRedirectParser(data));
+    return redirectParser(newDoc);
   }
 }
 

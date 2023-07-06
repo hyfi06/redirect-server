@@ -5,12 +5,11 @@ const { FIVE_MINUTES_IN_SECONDS } = require('../../utils/timeConst');
 
 const redirectService = new RedirectService();
 
-const redirectRouter = express.Router();
+const redirectRouter = express.Router({ caseSensitive: true });
 
 redirectRouter.get('/*', async function (req, res, next) {
-  const path = req.params[0];
+  const path = req.path;
   let url;
-
   try {
     if (nodeCache.has(path)) {
       url = nodeCache.get(path);

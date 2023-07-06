@@ -15,7 +15,7 @@ class FireStoreAdapter {
    * @param {string} id
    * @returns {Firestore.DocumentSnapshot}
    */
-  async getById(id) {
+  async get(id) {
     const docRef = this.collection.doc(id);
     const doc = await docRef.get();
     if (!doc.exists) {
@@ -31,18 +31,17 @@ class FireStoreAdapter {
    * @param {Object} data
    * @returns {Firestore.DocumentSnapshot}
    */
-  async create(id, data) {
-    const docRef = await this.collection.doc(id);
+  async create(data) {
     try {
-      await docRef.create({
+      const docRef = await this.collection.add({
         created: Firestore.Timestamp.fromMillis(Date.now()),
         updated: Firestore.Timestamp.fromMillis(Date.now()),
         ...data,
       });
+      return await docRef.get();
     } catch (err) {
-      throw boom.conflict(`Document already created with id ${id}`, err);
+      throw boom.badRequest('Error in data', err);
     }
-    return await docRef.get();
   }
 
   /**
