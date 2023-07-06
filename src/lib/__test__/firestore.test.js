@@ -8,6 +8,7 @@ describe('FireStoreAdapter', () => {
   let firestoreAdapter;
   const mockCollection = {
     doc: jest.fn(),
+    add: jest.fn(),
   };
   const mockDb = {
     collection: jest.fn().mockReturnValue(mockCollection),
@@ -37,7 +38,7 @@ describe('FireStoreAdapter', () => {
     };
     mockCollection.doc.mockReturnValue(mockDocRef);
 
-    const doc = await firestoreAdapter.getById('testId');
+    const doc = await firestoreAdapter.get('testId');
 
     expect(doc).toEqual(mockDoc);
     expect(mockCollection.doc).toHaveBeenCalledWith('testId');
@@ -53,7 +54,7 @@ describe('FireStoreAdapter', () => {
     };
     mockCollection.doc.mockReturnValue(mockDocRef);
 
-    await expect(firestoreAdapter.getById('testId')).rejects.toThrow(
+    await expect(firestoreAdapter.get('testId')).rejects.toThrow(
       boom.notFound('Resource not found')
     );
 
@@ -64,41 +65,36 @@ describe('FireStoreAdapter', () => {
   it('should create a new document', async () => {
     const mockData = { field: 'value' };
     const mockDoc = {
-      exists: false,
       id: 'testId',
       data: jest.fn().mockReturnValue(mockData),
     };
     const mockDocRef = {
       get: jest.fn().mockResolvedValue(mockDoc),
-      create: jest.fn().mockResolvedValue(mockData),
     };
-    mockCollection.doc.mockReturnValue(mockDocRef);
+    mockCollection.add.mockReturnValue(mockDocRef);
 
-    const doc = await firestoreAdapter.create('testId', mockData);
+    const doc = await firestoreAdapter.create(mockData);
 
     expect(doc.data()).toEqual(mockData);
-    expect(mockCollection.doc).toHaveBeenCalledWith('testId');
-    expect(mockDocRef.create).toHaveBeenCalledWith({
+    expect(mockCollection.add).toHaveBeenCalledWith({
       created: mockTimestamp,
       updated: mockTimestamp,
       ...mockData,
     });
   });
 
-  it('should throw error when document already exists', async () => {
+  it('should throw error when add reject data', async () => {
     const mockData = { field: 'value' };
     const mockDocRef = {
       get: jest.fn(),
-      create: jest.fn().mockRejectedValue(new Error()),
     };
-    mockCollection.doc.mockReturnValue(mockDocRef);
+    mockCollection.add.mockRejectedValue(new Error());
 
-    await expect(firestoreAdapter.create('testId', mockData)).rejects.toThrow(
-      boom.conflict('Document already created with id testId')
+    await expect(firestoreAdapter.create(mockData)).rejects.toThrow(
+      boom.badRequest('Error in data')
     );
 
-    expect(mockCollection.doc).toHaveBeenCalledWith('testId');
-    expect(mockDocRef.create).toHaveBeenCalledWith({
+    expect(mockCollection.add).toHaveBeenCalledWith({
       created: mockTimestamp,
       updated: mockTimestamp,
       ...mockData,
