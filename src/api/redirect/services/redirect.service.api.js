@@ -1,14 +1,23 @@
-const Redirect = require('../../../redirect/models/redirect.model');
+const Redirect = require('../models/redirect.models.api');
 const {
+  createRedirectParser,
   redirectParser,
   updateRedirectParser,
-} = require('../../../redirect/parsers/redirect.parser');
-const RedirectService = require('../../../redirect/services/redirect.service');
-const boom = require('@hapi/boom');
+} = require('../parsers/redirect.parsers.api');
 
-class RedirectServiceApi extends RedirectService {
+class RedirectServiceApi {
   constructor() {
     super();
+  }
+
+  /**
+   * Create redirect doc
+   * @param {Redirect} redirect
+   * @returns {Redirect}
+   */
+  async create(redirect) {
+    const newDoc = await this.db.create(createRedirectParser(redirect));
+    return redirectParser(newDoc);
   }
 
   /**

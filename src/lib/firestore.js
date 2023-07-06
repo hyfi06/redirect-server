@@ -52,7 +52,7 @@ class FireStoreAdapter {
    */
   async update(id, data) {
     const docRef = await this.collection.doc(id);
-    if ((await docRef.get()).exists) {
+    if (!(await docRef.get()).exists) {
       throw boom.notFound('Resource not found');
     }
     await docRef.set({

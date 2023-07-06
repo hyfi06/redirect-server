@@ -1,5 +1,5 @@
 const FireStore = require('@google-cloud/firestore');
-const Redirect = require('../models/redirect.model');
+const Redirect = require('../models/redirect.models.api');
 
 /**
  * Parser DocumentSnapshot to Redirect

@@ -1,15 +1,14 @@
-const RedirectService = require('../services/redirect.service');
-const FireStoreAdapter = require('../../lib/firestore');
-const Redirect = require('../models/redirect.model');
+const RedirectService = require('../redirect.service');
+const FireStoreAdapter = require('../../../lib/firestore');
+const Redirect = require('../../models/redirect.model');
 const boom = require('@hapi/boom');
 const {
   redirectParser,
-  createRedirectParser,
-} = require('../parsers/redirect.parser');
+} = require('../../parsers/redirect.parsers');
 
-jest.mock('../../lib/firestore');
-jest.mock('../models/redirect.model');
-jest.mock('../parsers/redirect.parser.js');
+jest.mock('../../../lib/firestore');
+jest.mock('../../models/redirect.model');
+jest.mock('../../parsers/redirect.parsers');
 
 describe('RedirectService', () => {
   let redirectService;
@@ -66,22 +65,5 @@ describe('RedirectService', () => {
       mockPath
     );
     expect(mockQuery.get).toHaveBeenCalled();
-  });
-
-  it('should create a new redirect', async () => {
-    const mockPath = '/test-path';
-    const mockUrl = 'https://www.example.com';
-    const mockData = new Redirect({
-      path: mockPath,
-      url: mockUrl,
-    });
-    const mockDoc = { id: 'mockId', ...mockData };
-    mockDb.create.mockResolvedValue(mockDoc);
-
-    await redirectService.create(mockData);
-
-    expect(createRedirectParser).toHaveBeenCalledWith(mockData);
-    expect(mockDb.create).toHaveBeenCalledWith(createRedirectParser(mockData));
-    expect(redirectParser).toHaveBeenCalledWith(mockDoc);
   });
 });
