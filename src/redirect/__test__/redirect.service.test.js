@@ -1,8 +1,8 @@
-const RedirectService = require('../redirect');
-const FireStoreAdapter = require('../../lib/firestore.js');
-const Redirect = require('../../models/redirect');
+const RedirectService = require('../services/redirect.service');
+const FireStoreAdapter = require('../../lib/firestore');
+const Redirect = require('../models/redirect.model');
 
-jest.mock('../../lib/firestore.js');
+jest.mock('../../lib/firestore');
 
 describe('RedirectService', () => {
   let redirectService;

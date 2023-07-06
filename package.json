@@ -4,7 +4,7 @@
   "description": "Express redirect server",
   "main": "src/app.js",
   "scripts": {
-    "dev": "DEBUG=app:* nodemon src/app.js",
+    "dev": "DEBUG=app:* npx nodemon src/app.js",
     "start": "NODE_ENV=production node src/app.js",
     "test": "NODE_ENV=test npx jest",
     "test:watch": "NODE_ENV=test npx jest --watch"

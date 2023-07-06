@@ -1,6 +1,6 @@
-const config = require('../config');
-const Redirect = require('../models/redirect');
-const FireStoreAdapter = require('../lib/firestore');
+const config = require('../../config');
+const Redirect = require('../models/redirect.model');
+const FireStoreAdapter = require('../../lib/firestore');
 
 class RedirectService {
   constructor() {

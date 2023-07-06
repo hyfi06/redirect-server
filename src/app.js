@@ -6,7 +6,7 @@ const config = require('./config');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const { wrapErrors, errorHandler } = require('./middleware/errorHandler');
 
-const redirectRouter = require('./routes/redirect');
+const redirectRoute = require('./redirect/routes');
 const rootRouter = require('./routes/root');
 
 const app = express();
@@ -21,7 +21,7 @@ app.use(express.json());
 
 /* Routers */
 rootRouter(app);
-redirectRouter(app);
+redirectRoute(app);
 
 // Catch 404
 app.use(notFoundHandler);

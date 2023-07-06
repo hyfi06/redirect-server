@@ -1,4 +1,4 @@
-const { OWNER_SCOPES, Scope } = require('./scope');
+const { OWNER_SCOPES, Scope } = require('./scope.model');
 
 class Redirect {
   /**
