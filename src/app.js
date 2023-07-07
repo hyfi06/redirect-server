@@ -8,6 +8,7 @@ const { wrapErrors, errorHandler } = require('./middleware/errorHandler');
 
 const redirectRoute = require('./redirect/routes');
 const rootRouter = require('./routes/root');
+const { apiV1 } = require('./api');
 
 const app = express();
 app.use(
@@ -21,6 +22,7 @@ app.use(express.json());
 
 /* Routers */
 rootRouter(app);
+apiV1(app);
 redirectRoute(app);
 
 // Catch 404

@@ -1,13 +1,15 @@
+const config = require('../../../config');
+const FireStoreAdapter = require('../../../lib/firestore');
 const Redirect = require('../models/redirect.models.api');
 const {
   createRedirectParser,
   redirectParser,
   updateRedirectParser,
-} = require('../parsers/redirect.parsers.api');
+} = require('../parsers/redirect.parser.api');
 
 class RedirectServiceApi {
   constructor() {
-    super();
+    this.db = new FireStoreAdapter(config.firestore.collections.redirects);
   }
 
   /**
