@@ -78,7 +78,7 @@ redirectRouterApi.delete('/:id', async (req, res, next) => {
     const deletedId = await redirectServicieApi.delete(id);
     res.status(200).json({
       message: 'redirect deleted',
-      data: id,
+      data: deletedId,
     });
   } catch (error) {
     next(error);
