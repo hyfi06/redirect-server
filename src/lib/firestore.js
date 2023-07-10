@@ -55,7 +55,7 @@ class FireStoreAdapter {
     if (!(await docRef.get()).exists) {
       throw boom.notFound('Resource not found');
     }
-    await docRef.set({
+    await docRef.update({
       updated: Firestore.Timestamp.fromMillis(Date.now()),
       ...data,
     });

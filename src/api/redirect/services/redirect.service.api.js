@@ -6,10 +6,25 @@ const {
   redirectParser,
   updateRedirectParser,
 } = require('../parsers/redirect.parser.api');
+const boom = require('@hapi/boom');
 
 class RedirectServiceApi {
   constructor() {
     this.db = new FireStoreAdapter(config.firestore.collections.redirects);
+  }
+
+  /**
+   * Get by path
+   * @param {string} path
+   * @returns {Redirect}
+   */
+  async getByPath(path) {
+    const query = await this.db.collection.where('path', '==', path);
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      throw boom.notFound('Resource not found');
+    }
+    return redirectParser(snapshot.docs[0]);
   }
 
   /**
@@ -18,8 +33,13 @@ class RedirectServiceApi {
    * @returns {Redirect}
    */
   async create(redirect) {
-    const newDoc = await this.db.create(createRedirectParser(redirect));
-    return redirectParser(newDoc);
+    try {
+      await this.getByPath(redirect.path);
+    } catch (error) {
+      const newDoc = await this.db.create(createRedirectParser(redirect));
+      return redirectParser(newDoc);
+    }
+    throw boom.badRequest('Path already taken');
   }
 
   /**
@@ -76,7 +96,7 @@ class RedirectServiceApi {
 
   /**
    * Delete redirect doc
-   * @param {string} id 
+   * @param {string} id
    * @returns {string}
    */
   async delete(id) {

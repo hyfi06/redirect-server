@@ -7,10 +7,22 @@ const path = Joi.string().uri({
 });
 const url = Joi.string().uri();
 const owner = Joi.string().email();
-const scopes = Joi.array().items(Joi.string());
+const permission = Joi.array().items(Joi.string());
 const categories = Joi.array().items(Joi.string());
 const created = Joi.date();
 const updated = Joi.date();
+const group = Joi.string();
+const orderBy = Joi.string();
+const offset = Joi.number().integer().min(1);
+const limit = Joi.number().integer().min(1);
+
+const getRedirectQuerySchema = Joi.object({
+  owner: owner.required(),
+  group: group.required(),
+  orderBy: orderBy,
+  offset: offset,
+  limit: limit,
+});
 
 const getRedirectSchema = Joi.object({
   id: id.required(),
@@ -24,7 +36,7 @@ const createRedirectSchema = Joi.object({
   path: path.required(),
   url: url.required(),
   owner: owner.required(),
-  scopes: scopes,
+  permission: permission,
   categories: categories,
 });
 
@@ -32,7 +44,7 @@ const updateRedirectSchema = Joi.object({
   path: path,
   url: url,
   owner: owner,
-  scopes: scopes,
+  permission: permission,
   categories: categories,
 });
 
@@ -41,6 +53,7 @@ const deleteRedirectSchema = Joi.object({
 });
 
 module.exports = {
+  getRedirectQuerySchema,
   getRedirectSchema,
   getByPathRedirectSchema,
   createRedirectSchema,

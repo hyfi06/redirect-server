@@ -44,6 +44,15 @@ function updateRedirectParser(redirect) {
   delete docData.owner;
   delete docData.created;
   delete docData.updated;
+  Object.entries(docData)
+    .filter((entry) => {
+      const [_, value] = entry;
+      return value === undefined;
+    })
+    .forEach((entry) => {
+      const [key, _] = entry;
+      delete docData[key];
+    });
   return docData;
 }
 

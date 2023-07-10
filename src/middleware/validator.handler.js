@@ -1,21 +1,21 @@
-const Joi = require("joi");
-const boom = require("@hapi/boom");
+const Joi = require('joi');
+const boom = require('@hapi/boom');
 
 /**
- * 
- * @param {Joi.object} schema 
- * @param {string} prop 
- * @returns 
+ * Validate data form given property and schema
+ * @param {Joi.ObjectSchema} schema
+ * @param {string} property
+ * @returns
  */
 function validatorHandler(schema, property) {
-    return async (req, res, next) => {
-        const data = req[property];
-        const { error } = schema.validate(data, { abortEarly: false });
-        if (error) {
-            next(boom.badRequest(error))
-        }
-        next();
+  return async (req, res, next) => {
+    const data = req[property];
+    const { error } = schema.validate(data, { abortEarly: false });
+    if (error) {
+      next(boom.badRequest(error));
     }
+    next();
+  };
 }
 
 module.exports = validatorHandler;
