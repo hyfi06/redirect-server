@@ -1,11 +1,11 @@
 const boom = require('@hapi/boom');
 const config = require('../../config');
-const { errorHandler, wrapErrors } = require('../errorHandler');
+const { errorHandler, wrapErrors } = require('../error.handler');
 
 jest.mock('@hapi/boom');
 jest.mock('../../config');
 
-describe('errorHandler', () => {
+describe('error.handler', () => {
   const mockReq = {};
   const mockRes = {
     status: jest.fn().mockReturnThis(),

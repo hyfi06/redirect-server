@@ -74,6 +74,11 @@ class RedirectServiceApi {
     return redirectParser(docSnap);
   }
 
+  /**
+   * Delete redirect doc
+   * @param {string} id 
+   * @returns {string}
+   */
   async delete(id) {
     const deletedId = await this.db.delete(id);
     return deletedId;

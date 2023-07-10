@@ -3,8 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const config = require('./config');
 
-const notFoundHandler = require('./middleware/notFoundHandler');
-const { wrapErrors, errorHandler } = require('./middleware/errorHandler');
+const notFoundHandler = require('./middleware/notFound.handler');
+const { wrapErrors, errorHandler } = require('./middleware/error.handler');
 
 const redirectRoute = require('./redirect/routes');
 const rootRouter = require('./routes/root');

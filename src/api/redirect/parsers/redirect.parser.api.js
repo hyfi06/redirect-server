@@ -32,10 +32,11 @@ function createRedirectParser(redirect) {
     categories: redirect.categories || [],
   };
 }
+
 /**
- *
+ * Parser redirect to update doc object
  * @param {Redirect} redirect
- * @returns
+ * @returns {Object}
  */
 function updateRedirectParser(redirect) {
   const docData = { ...redirect };

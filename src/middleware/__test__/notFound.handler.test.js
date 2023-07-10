@@ -1,9 +1,9 @@
 const boom = require('@hapi/boom');
-const notFoundHandler = require('../notFoundHandler');
+const notFoundHandler = require('../notFound.handler');
 
 jest.mock('@hapi/boom');
 
-describe('notFoundHandler', () => {
+describe('notFound.handler', () => {
   const mockReq = {};
   const mockRes = {};
   const mockNext = jest.fn();
