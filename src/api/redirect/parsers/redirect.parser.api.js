@@ -25,7 +25,7 @@ function redirectParser(docSnap) {
  */
 function createRedirectParser(redirect) {
   return {
-    path: redirect.path,
+    path: redirect.path.replace(/\/$/,''),
     url: redirect.url,
     owner: redirect.owner,
     permission: redirect.permission || [],
