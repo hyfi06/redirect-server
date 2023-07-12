@@ -1,5 +1,9 @@
 const FireStore = require('@google-cloud/firestore');
 const Redirect = require('../models/redirect.models.api');
+const {
+  cleanDocObject,
+  deleteRegData,
+} = require('../../../utils/clean.data.utils');
 
 /**
  * Parser DocumentSnapshot to Redirect
@@ -40,19 +44,9 @@ function createRedirectParser(redirect) {
  */
 function updateRedirectParser(redirect) {
   const docData = { ...redirect };
-  delete docData.id;
+  deleteRegData(docData);
   delete docData.owner;
-  delete docData.created;
-  delete docData.updated;
-  Object.entries(docData)
-    .filter((entry) => {
-      const [_, value] = entry;
-      return value === undefined;
-    })
-    .forEach((entry) => {
-      const [key, _] = entry;
-      delete docData[key];
-    });
+  cleanDocObject(docData);
   return docData;
 }
 

@@ -22,7 +22,7 @@ app.use(express.json());
 
 /* Routers */
 rootRouter(app);
-apiV1(app);
+// apiV1(app);
 redirectRoute(app);
 
 // Catch 404

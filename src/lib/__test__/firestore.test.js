@@ -110,7 +110,7 @@ describe('FireStoreAdapter', () => {
     };
     const mockDocRef = {
       get: jest.fn().mockResolvedValue(mockDoc),
-      set: jest.fn().mockResolvedValue(mockData),
+      update: jest.fn().mockResolvedValue(mockData),
     };
     mockCollection.doc.mockReturnValue(mockDocRef);
 
@@ -118,7 +118,7 @@ describe('FireStoreAdapter', () => {
 
     expect(doc.data()).toEqual(mockData);
     expect(mockCollection.doc).toHaveBeenCalledWith('testId');
-    expect(mockDocRef.set).toHaveBeenCalledWith({
+    expect(mockDocRef.update).toHaveBeenCalledWith({
       updated: mockTimestamp,
       ...mockData,
     });
