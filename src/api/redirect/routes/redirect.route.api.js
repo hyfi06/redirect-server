@@ -25,14 +25,14 @@ redirectRouterApi.get(
         [
           Filter.or(
             Filter.where('owner', '==', owner),
-            Filter.where('permission', 'array-contains', `read:${group}`)
+            Filter.where('permission', 'array-contains', `read:${group}`),
           ),
         ],
         {
           orderBy: orderBy,
           offset: parseInt(offset),
           limit: parseInt(limit),
-        }
+        },
       );
       res.status(200).json({
         message: 'redirects retrieved',
@@ -41,7 +41,7 @@ redirectRouterApi.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 redirectRouterApi.get(
@@ -58,7 +58,7 @@ redirectRouterApi.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 redirectRouterApi.post(
@@ -75,7 +75,7 @@ redirectRouterApi.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 redirectRouterApi.patch(
@@ -94,7 +94,7 @@ redirectRouterApi.patch(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 redirectRouterApi.delete(
@@ -111,7 +111,7 @@ redirectRouterApi.delete(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 module.exports = { redirectRouterApi };
