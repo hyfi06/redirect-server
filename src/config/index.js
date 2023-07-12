@@ -12,4 +12,9 @@ module.exports = {
       groups: 'groups',
     },
   },
+  oauthGoogle: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    oauthRedirect: process.env.GOOGLE_OAUTH_REDIRECT,
+  },
 };
