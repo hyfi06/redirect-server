@@ -51,7 +51,7 @@ class FireStoreAdapter {
    * @returns {Firestore.DocumentSnapshot}
    */
   async update(id, data) {
-    const docRef = await this.collection.doc(id);
+    const docRef = this.collection.doc(id);
     if (!(await docRef.get()).exists) {
       throw boom.notFound('Resource not found');
     }
@@ -68,7 +68,7 @@ class FireStoreAdapter {
    * @returns {string}
    */
   async delete(id) {
-    const docRef = await this.collection.doc(id);
+    const docRef = this.collection.doc(id);
     await docRef.delete();
     return id;
   }

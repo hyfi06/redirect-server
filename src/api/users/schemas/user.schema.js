@@ -19,7 +19,7 @@ const createUserSchema = Joi.object({
   firstName: name,
   lastName: name,
   groups: groups,
-  role: role.required(),
+  role: role,
   auth: auth,
 });
 
@@ -27,7 +27,15 @@ const idSchema = Joi.object({
   id: id.required(),
 });
 
+const updateUserSchema = Joi.object({
+  firstName: name,
+  lastName: name,
+  groups: groups,
+  auth: auth,
+});
+
 module.exports = {
   idSchema,
   createUserSchema,
+  updateUserSchema,
 };

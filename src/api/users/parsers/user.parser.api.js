@@ -33,7 +33,7 @@ function createUserParser(user) {
     lastName: user.lastName,
     groups: user.groups,
     role: user.role,
-    auth: user.auth,
+    auth: cleanDocObject(user.auth),
   };
 }
 

@@ -16,6 +16,7 @@ class User {
    */
   constructor(data) {
     const {
+      id,
       email,
       firstName,
       lastName,
@@ -28,13 +29,14 @@ class User {
       created,
       updated,
     } = data;
+    this.id = id || null;
     this.email = email.toLowerCase().trim();
     this.firstName = firstName?.trim() || '';
     this.lastName = lastName?.trim() || '';
     this.groups = groups || [];
     this.role = role || 'user';
     this.auth = {
-      googleToken,
+      googleToken:googleToken,
       googleRefreshToken,
       refreshToken,
       apiToken,

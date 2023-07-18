@@ -26,6 +26,30 @@ class CrudService {
     return this.docParser(newDoc);
   }
 
+  async getAll(options) {
+    const { orderBy, offset, limit } = options;
+    const fsCollection = await this.db.collection;
+    let fsFilter;
+    if (orderBy) {
+      fsFilter = /^-/.test(orderBy)
+        ? fsCollection.orderBy(orderBy.replace(/^-/, ''), 'desc')
+        : fsCollection.orderBy(orderBy);
+    } else {
+      fsFilter = fsCollection.orderBy('updated', 'desc');
+    }
+    if (offset) {
+      fsFilter = fsFilter.offset(offset);
+    }
+    if (limit) {
+      fsFilter = fsFilter.limit(limit);
+    }
+    const querySnap = await fsFilter.get();
+    if (querySnap.empty) {
+      return [];
+    }
+    return querySnap.docs.map((doc) => this.docParser(doc));
+  }
+
   /**
    * find docs by query
    * @template T
@@ -37,10 +61,17 @@ class CrudService {
    */
   async find(query, options) {
     const { orderBy, offset, limit } = options;
-    const fsQuery = await this.db.collection.where(...query);
+    let fsQuery = this.db.collection;
+    if (query) {
+      fsQuery = fsQuery.where(...query);
+    } else if (!orderBy) {
+      fsQuery = fsQuery.orderBy('updated', 'desc');
+    }
     let fsFilter = fsQuery;
     if (orderBy) {
-      fsFilter = fsFilter.orderBy(orderBy);
+      fsFilter = /^-/.test(orderBy)
+        ? fsFilter.orderBy(orderBy.replace(/^-/, ''), 'desc')
+        : fsFilter.orderBy(orderBy, 'asc');
     }
     if (offset) {
       fsFilter = fsFilter.offset(offset);

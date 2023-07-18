@@ -53,7 +53,7 @@ redirectRouterApi.get(
       const data = await redirectServicieApi.findOne(id);
       res.status(200).json({
         message: 'redirect retrieved',
-        data: data,
+        data,
       });
     } catch (error) {
       next(error);
@@ -67,10 +67,10 @@ redirectRouterApi.post(
   async (req, res, next) => {
     const redirect = new Redirect({ ...req.body });
     try {
-      const doc = await redirectServicieApi.create(redirect);
+      const data = await redirectServicieApi.create(redirect);
       res.status(201).json({
         message: 'redirect created',
-        data: doc,
+        data,
       });
     } catch (error) {
       next(error);
