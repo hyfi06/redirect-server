@@ -25,10 +25,10 @@
   },
   "homepage": "https://github.com/hyfi06/redirect-server#readme",
   "engines": {
-    "node": "18.x.x"
+    "node": "22.x.x"
   },
   "dependencies": {
-    "@google-cloud/firestore": "^6.6.1",
+    "@google-cloud/firestore": "^7.11.1",
     "@hapi/boom": "^10.0.1",
     "accesscontrol": "^2.2.1",
     "cors": "^2.8.5",
