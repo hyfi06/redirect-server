@@ -9,6 +9,13 @@ npm install
 ```
 
 ## Run
+```bash
+gcloud auth login
+```
+
+```bash
+gcloud auth application-default login
+```
 
 ```bash
 npm start
@@ -27,3 +34,5 @@ npm run dev
 ```bash
 gcloud app deploy app.yaml
 ```
+
+
