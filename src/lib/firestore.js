@@ -69,6 +69,9 @@ class FireStoreAdapter {
    */
   async delete(id) {
     const docRef = this.collection.doc(id);
+    if (!(await docRef.get()).exists) {
+      throw boom.notFound('Resource not found');
+    }
     await docRef.delete();
     return id;
   }
