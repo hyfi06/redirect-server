@@ -1,6 +1,5 @@
 const Firestore = require('@google-cloud/firestore');
 const FireStoreAdapter = require('../firestore');
-const boom = require('@hapi/boom');
 
 jest.mock('@google-cloud/firestore');
 
@@ -27,113 +26,184 @@ describe('FireStoreAdapter', () => {
     jest.clearAllMocks();
   });
 
-  it('should get document by id', async () => {
-    const mockDoc = {
-      exists: true,
-      id: 'testId',
-      data: jest.fn(),
-    };
-    const mockDocRef = {
-      get: jest.fn().mockResolvedValue(mockDoc),
-    };
-    mockCollection.doc.mockReturnValue(mockDocRef);
+  // ---------------------------------------------------------------------------
+  // get()
+  // ---------------------------------------------------------------------------
 
-    const doc = await firestoreAdapter.get('testId');
+  describe('get()', () => {
+    it('returns the DocumentSnapshot when the document exists', async () => {
+      const mockDoc = { exists: true, id: 'testId', data: jest.fn() };
+      const mockDocRef = { get: jest.fn().mockResolvedValue(mockDoc) };
+      mockCollection.doc.mockReturnValue(mockDocRef);
 
-    expect(doc).toEqual(mockDoc);
-    expect(mockCollection.doc).toHaveBeenCalledWith('testId');
-    expect(mockDocRef.get).toHaveBeenCalled();
-  });
+      const doc = await firestoreAdapter.get('testId');
 
-  it('should throw error when document not found', async () => {
-    const mockDoc = {
-      exists: false,
-    };
-    const mockDocRef = {
-      get: jest.fn().mockResolvedValue(mockDoc),
-    };
-    mockCollection.doc.mockReturnValue(mockDocRef);
+      expect(doc).toEqual(mockDoc);
+      expect(mockCollection.doc).toHaveBeenCalledWith('testId');
+      expect(mockDocRef.get).toHaveBeenCalled();
+    });
 
-    await expect(firestoreAdapter.get('testId')).rejects.toThrow(
-      boom.notFound('Resource not found')
-    );
+    it('throws a boom.notFound error when the document does not exist', async () => {
+      const mockDoc = { exists: false };
+      const mockDocRef = { get: jest.fn().mockResolvedValue(mockDoc) };
+      mockCollection.doc.mockReturnValue(mockDocRef);
 
-    expect(mockCollection.doc).toHaveBeenCalledWith('testId');
-    expect(mockDocRef.get).toHaveBeenCalled();
-  });
+      await expect(firestoreAdapter.get('testId')).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 404 },
+        message: 'Resource not found',
+      });
 
-  it('should create a new document', async () => {
-    const mockData = { field: 'value' };
-    const mockDoc = {
-      id: 'testId',
-      data: jest.fn().mockReturnValue(mockData),
-    };
-    const mockDocRef = {
-      get: jest.fn().mockResolvedValue(mockDoc),
-    };
-    mockCollection.add.mockReturnValue(mockDocRef);
-
-    const doc = await firestoreAdapter.create(mockData);
-
-    expect(doc.data()).toEqual(mockData);
-    expect(mockCollection.add).toHaveBeenCalledWith({
-      created: mockTimestamp,
-      updated: mockTimestamp,
-      ...mockData,
+      expect(mockCollection.doc).toHaveBeenCalledWith('testId');
     });
   });
 
-  it('should throw error when add reject data', async () => {
-    const mockData = { field: 'value' };
-    const mockDocRef = {
-      get: jest.fn(),
-    };
-    mockCollection.add.mockRejectedValue(new Error());
+  // ---------------------------------------------------------------------------
+  // create()
+  // ---------------------------------------------------------------------------
 
-    await expect(firestoreAdapter.create(mockData)).rejects.toThrow(
-      boom.badRequest('Error in data')
-    );
+  describe('create()', () => {
+    it('returns the DocumentSnapshot after creating the document with timestamps', async () => {
+      const mockData = { field: 'value' };
+      const mockDoc = {
+        id: 'testId',
+        data: jest.fn().mockReturnValue(mockData),
+      };
+      const mockDocRef = { get: jest.fn().mockResolvedValue(mockDoc) };
+      mockCollection.add.mockResolvedValue(mockDocRef);
 
-    expect(mockCollection.add).toHaveBeenCalledWith({
-      created: mockTimestamp,
-      updated: mockTimestamp,
-      ...mockData,
+      const doc = await firestoreAdapter.create(mockData);
+
+      expect(doc.data()).toEqual(mockData);
+      expect(mockCollection.add).toHaveBeenCalledWith({
+        created: mockTimestamp,
+        updated: mockTimestamp,
+        ...mockData,
+      });
+    });
+
+    it('throws a boom.badRequest error when Firestore rejects the write', async () => {
+      const mockData = { field: 'value' };
+      mockCollection.add.mockRejectedValue(new Error('write failed'));
+
+      await expect(firestoreAdapter.create(mockData)).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 400 },
+        message: 'Error in data',
+      });
+
+      expect(mockCollection.add).toHaveBeenCalledWith({
+        created: mockTimestamp,
+        updated: mockTimestamp,
+        ...mockData,
+      });
     });
   });
 
-  it('should update a document', async () => {
-    const mockData = { field: 'value' };
-    const mockDoc = {
-      exists: true,
-      id: 'testId',
-      data: jest.fn().mockReturnValue(mockData),
-    };
-    const mockDocRef = {
-      get: jest.fn().mockResolvedValue(mockDoc),
-      update: jest.fn().mockResolvedValue(mockData),
-    };
-    mockCollection.doc.mockReturnValue(mockDocRef);
+  // ---------------------------------------------------------------------------
+  // update()
+  // ---------------------------------------------------------------------------
 
-    const doc = await firestoreAdapter.update('testId', mockData);
+  describe('update()', () => {
+    it('returns the updated DocumentSnapshot when the document exists', async () => {
+      const mockData = { field: 'value' };
+      const mockDoc = {
+        exists: true,
+        id: 'testId',
+        data: jest.fn().mockReturnValue(mockData),
+      };
+      const mockDocRef = {
+        get: jest.fn().mockResolvedValue(mockDoc),
+        update: jest.fn().mockResolvedValue(undefined),
+      };
+      mockCollection.doc.mockReturnValue(mockDocRef);
 
-    expect(doc.data()).toEqual(mockData);
-    expect(mockCollection.doc).toHaveBeenCalledWith('testId');
-    expect(mockDocRef.update).toHaveBeenCalledWith({
-      updated: mockTimestamp,
-      ...mockData,
+      const doc = await firestoreAdapter.update('testId', mockData);
+
+      expect(doc.data()).toEqual(mockData);
+      expect(mockCollection.doc).toHaveBeenCalledWith('testId');
+      expect(mockDocRef.update).toHaveBeenCalledWith({
+        updated: mockTimestamp,
+        ...mockData,
+      });
+    });
+
+    it('throws a boom.notFound error when the document does not exist', async () => {
+      const mockDoc = { exists: false };
+      const mockDocRef = {
+        get: jest.fn().mockResolvedValue(mockDoc),
+        update: jest.fn(),
+      };
+      mockCollection.doc.mockReturnValue(mockDocRef);
+
+      await expect(firestoreAdapter.update('testId', {})).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 404 },
+        message: 'Resource not found',
+      });
+
+      expect(mockDocRef.update).not.toHaveBeenCalled();
     });
   });
 
-  it('should delete a document', async () => {
-    const mockDocRef = {
-      delete: jest.fn().mockResolvedValue(),
-    };
-    mockCollection.doc.mockReturnValue(mockDocRef);
+  // ---------------------------------------------------------------------------
+  // delete()
+  // ---------------------------------------------------------------------------
 
-    const id = await firestoreAdapter.delete('testId');
+  describe('delete()', () => {
+    it('deletes the document and returns the id when the document exists', async () => {
+      const mockDoc = { exists: true };
+      const mockDocRef = {
+        get: jest.fn().mockResolvedValue(mockDoc),
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
+      mockCollection.doc.mockReturnValue(mockDocRef);
 
-    expect(id).toEqual('testId');
-    expect(mockCollection.doc).toHaveBeenCalledWith('testId');
-    expect(mockDocRef.delete).toHaveBeenCalled();
+      const id = await firestoreAdapter.delete('testId');
+
+      expect(id).toEqual('testId');
+      expect(mockCollection.doc).toHaveBeenCalledWith('testId');
+      expect(mockDocRef.delete).toHaveBeenCalled();
+    });
+
+    it('throws a boom.notFound error when the document does not exist', async () => {
+      const mockDoc = { exists: false };
+      const mockDocRef = {
+        get: jest.fn().mockResolvedValue(mockDoc),
+        delete: jest.fn(),
+      };
+      mockCollection.doc.mockReturnValue(mockDocRef);
+
+      await expect(firestoreAdapter.delete('testId')).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 404 },
+        message: 'Resource not found',
+      });
+
+      expect(mockDocRef.delete).not.toHaveBeenCalled();
+    });
+
+    it('uses the same error message as get() and update() when the document does not exist', async () => {
+      // Verify consistency of the not-found message across all three methods.
+      const missingDoc = { exists: false };
+      const makeDocRef = () => ({
+        get: jest.fn().mockResolvedValue(missingDoc),
+        update: jest.fn(),
+        delete: jest.fn(),
+      });
+
+      mockCollection.doc.mockReturnValue(makeDocRef());
+      const getError = await firestoreAdapter.get('x').catch((e) => e);
+
+      mockCollection.doc.mockReturnValue(makeDocRef());
+      const updateError = await firestoreAdapter.update('x', {}).catch((e) => e);
+
+      mockCollection.doc.mockReturnValue(makeDocRef());
+      const deleteError = await firestoreAdapter.delete('x').catch((e) => e);
+
+      expect(getError.message).toBe('Resource not found');
+      expect(updateError.message).toBe(getError.message);
+      expect(deleteError.message).toBe(getError.message);
+    });
   });
 });
