@@ -12,7 +12,7 @@ function validatorHandler(schema, property) {
     const data = req[property];
     const { error } = schema.validate(data, { abortEarly: false });
     if (error) {
-      next(boom.badRequest(error));
+      return next(boom.badRequest(error));
     }
     next();
   };
