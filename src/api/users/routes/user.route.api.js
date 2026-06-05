@@ -16,10 +16,12 @@ userRouterApi.get('/', async (req, res, next) => {
   const { offset, limit } = req.query;
   try {
     const data = await userService.find(null, { offset, limit });
-    res.status(200).json({
-      message: 'users retrieved',
-      data,
-    });
+    res
+      .status(200)
+      .json({
+        message: 'users retrieved',
+        data: data.map((u) => u.toPublic()),
+      });
   } catch (error) {
     next(error);
   }
@@ -32,10 +34,9 @@ userRouterApi.get(
     const { id } = req.params;
     try {
       const data = await userService.findOne(id);
-      res.status(200).json({
-        message: 'user retrieved',
-        data,
-      });
+      res
+        .status(200)
+        .json({ message: 'user retrieved', data: data.toPublic() });
     } catch (error) {
       next(error);
     }
@@ -49,10 +50,7 @@ userRouterApi.post(
     const user = new User(req.body);
     try {
       const data = await userService.create(user);
-      res.status(201).json({
-        message: 'user created',
-        data,
-      });
+      res.status(201).json({ message: 'user created', data: data.toPublic() });
     } catch (error) {
       next(error);
     }
@@ -65,16 +63,10 @@ userRouterApi.patch(
   validatorHandler(updateUserSchema, 'body'),
   async (req, res, next) => {
     const { id } = req.params;
-    const user = new User({
-      id,
-      ...req.body,
-    });
+    const user = new User({ id, ...req.body });
     try {
       const data = await userService.update(user);
-      res.status(200).json({
-        message: 'user updated',
-        data,
-      });
+      res.status(200).json({ message: 'user updated', data: data.toPublic() });
     } catch (error) {
       next(error);
     }
@@ -88,14 +80,11 @@ userRouterApi.delete(
     const { id } = req.params;
     try {
       const data = await userService.delete(id);
-      res.status(200).json({
-        message: 'user deleted',
-        data,
-      });
+      res.status(200).json({ message: 'user deleted', data });
     } catch (error) {
       next(error);
     }
   },
 );
 
-module.exports = {userRouterApi};
+module.exports = { userRouterApi };

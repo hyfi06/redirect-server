@@ -36,7 +36,7 @@ class User {
     this.groups = groups || [];
     this.role = role || 'user';
     this.auth = {
-      googleToken:googleToken,
+      googleToken: googleToken,
       googleRefreshToken,
       refreshToken,
       apiToken,
@@ -59,6 +59,22 @@ class User {
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+  /**
+   * Returns a plain object safe for JSON responses (no auth tokens).
+   * @returns {Object}
+   */
+  toPublic() {
+    return {
+      id: this.id,
+      email: this.email,
+      firstName: this.firstName,
+      lastName: this.lastName,
+      groups: this.groups,
+      role: this.role,
+      created: this.created,
+      updated: this.updated,
+    };
   }
 }
 
