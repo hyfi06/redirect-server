@@ -24,12 +24,12 @@ class UserServices extends CrudService {
    * @returns {User}
    */
   async getByEmail(email) {
-    const query = await this.db.collection.where('email', '==', email);
+    const query = this.db.collection.where('email', '==', email);
     const userSnap = await query.get();
     if (userSnap.empty) {
       throw boom.notFound('User not found');
     }
-    return userSnap.docs[0];
+    return this.docParser(userSnap.docs[0]);
   }
 
   /**
