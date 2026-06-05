@@ -7,7 +7,13 @@ function cleanDocObject(data) {
   Object.entries(data)
     .filter((entry) => {
       const [_, value] = entry;
-      return value === undefined || value === {};
+      return (
+        value === undefined ||
+        (value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value) &&
+          Object.keys(value).length === 0)
+      );
     })
     .forEach((entry) => {
       const [key, _] = entry;
@@ -23,7 +29,4 @@ function deleteRegData(data) {
   return data;
 }
 
-module.exports = {
-  deleteRegData,
-  cleanDocObject,
-};
+module.exports = { deleteRegData, cleanDocObject };
