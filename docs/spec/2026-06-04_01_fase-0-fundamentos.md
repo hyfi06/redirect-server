@@ -633,6 +633,42 @@ Archivo: `src/__test__/app.cors.test.js` (o integrado en el test de la app)
 | Lista de orígenes | `https://a.com,https://b.com` | `https://a.com` | header `Access-Control-Allow-Origin: https://a.com` |
 | Lista de orígenes | `https://a.com,https://b.com` | `https://c.com` | sin header CORS (origen denegado) |
 
+### Solución implementada
+
+**Opción elegida:** Opción 2 — centralizar parseo en `config/index.js`.
+
+**Estado:** implementado.
+
+**Código resultante:**
+
+```js
+// src/config/index.js
+cors: process.env.CORS ? process.env.CORS.split(',') : '*',
+
+// src/app.js
+app.use(cors({ origin: config.cors }));
+```
+
+`config.cors` produce `'*'` (string) cuando la variable de entorno está ausente, o un array de strings cuando está definida. `app.js` pasa el valor directamente a la librería `cors` sin procesamiento adicional.
+
+### Edge case no resuelto: `CORS=*` en `.env`
+
+El archivo `.env` de desarrollo contiene `CORS=*`. Con la implementación actual:
+
+```
+process.env.CORS = '*'   →   '*' ? '*'.split(',') : '*'   →   ['*']
+```
+
+El valor literal `'*'` es truthy, por lo que la rama `.split(',')` se ejecuta y produce `['*']` — el array roto que deshabilita CORS. El test `produces ["*"] when CORS env var is literally the string "*"` documenta este comportamiento.
+
+**Impacto real:** en desarrollo local el frontend y el servidor normalmente corren en orígenes distintos (e.g. `localhost:5173` → `localhost:3000`), por lo que `['*']` bloqueará las peticiones del navegador.
+
+**Corrección pendiente:** actualizar `.env` (y `.env.example`) eliminando `CORS=*` para que el valor por defecto del código (`'*'` string) tome efecto, o extender la condición:
+
+```js
+cors: (!process.env.CORS || process.env.CORS === '*') ? '*' : process.env.CORS.split(','),
+```
+
 ---
 
 ## Orden de implementación
