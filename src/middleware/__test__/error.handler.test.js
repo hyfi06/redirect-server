@@ -51,15 +51,14 @@ describe('error.handler', () => {
     expect(mockNext).toHaveBeenCalledWith(mockErr);
   });
 
-  it('should respond with status code and payload', () => {
+  it('should serve the HTML error page for 500 errors in production', () => {
     config.dev = false;
     const mockErr = boom.badImplementation();
     errorHandler(mockErr, mockReq, mockRes, mockNext);
 
-    expect(mockRes.status).toHaveBeenCalledWith(500);
-    expect(mockRes.json).toHaveBeenCalledWith({
-      ...mockErr.output.payload,
-    });
+    expect(mockRes.sendFile).toHaveBeenCalled();
+    expect(mockRes.status).not.toHaveBeenCalled();
+    expect(mockRes.json).not.toHaveBeenCalled();
   });
 
   it('should respond with status code and payload with stack in dev mode', () => {
