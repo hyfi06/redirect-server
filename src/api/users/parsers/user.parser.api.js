@@ -46,13 +46,14 @@ function updateUserParser(user) {
   const data = { ...user };
   deleteRegData(data);
   delete data.email;
-  if (user.auth) cleanDocObject(user.auth);
-  cleanDocObject(user);
+  if (data.auth) {
+    cleanDocObject(data.auth);
+    if (Object.keys(data.auth).length === 0) {
+      delete data.auth;
+    }
+  }
+  cleanDocObject(data);
   return data;
 }
 
-module.exports = {
-  userParser,
-  createUserParser,
-  updateUserParser,
-};
+module.exports = { userParser, createUserParser, updateUserParser };
