@@ -13,7 +13,7 @@ const { apiV1 } = require('./api');
 const app = express();
 app.use(
   cors({
-    origin: config.cors.split(','),
+    origin: config.cors,
   })
 );
 
