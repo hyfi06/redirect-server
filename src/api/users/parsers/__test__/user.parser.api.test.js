@@ -166,6 +166,21 @@ describe('updateUserParser', () => {
     expect(user.id).toBe('some-id');
     expect(user.email).toBe('test@example.com');
   });
+
+  it('mutates user.auth in place because the shallow copy shares the same reference', () => {
+    // The shallow spread `{ ...user }` does not deep-clone auth.
+    // cleanDocObject(data.auth) therefore also modifies user.auth.
+    // This test documents that known side-effect so callers are aware.
+    const user = makeUserWithNoTokens();
+    const originalAuthRef = user.auth;
+
+    updateUserParser(user);
+
+    // The reference is still the same object, but undefined keys were removed.
+    expect(user.auth).toBe(originalAuthRef);
+    expect(user.auth).not.toHaveProperty('googleToken');
+    expect(user.auth).not.toHaveProperty('apiToken');
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
