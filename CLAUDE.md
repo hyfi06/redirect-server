@@ -214,6 +214,7 @@ Serves static files from `src/public/` and the home HTML. Sets `Cache-Control: 3
 ### Surface 2 — REST API (`src/api/`)
 
 ```
+/api/v1/auth        →  src/api/auth/routes/auth.route.api.js
 /api/v1/redirects   →  src/api/redirect/routes/redirect.route.api.js
 /api/v1/users       →  src/api/users/routes/user.route.api.js
 ```
@@ -315,14 +316,15 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 
 ---
 
-### Auth — partially implemented
+### Auth — routes implemented, not yet applied to protected endpoints
 
 - **JWT**: `src/utils/auth/jwt.js` — `sign()` and `verify()` implemented. Config: `config.jwt.jwtSecret` / `config.jwt.jwtTtl`.
-- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email, updates tokens, calls `done(null, user)`. Returns 401 if email not in Firestore.
+- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email, updates tokens, calls `done(null, savedUser)`. Returns 401 if email not in Firestore.
 - **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — verifies Bearer JWT, sets `req.user` to decoded payload.
 - **`authorize` middleware**: `src/middleware/authorize.middleware.js` — factory `authorize(...roles)` that checks `req.user.role`.
-- **Auth routes**: not yet implemented (`/api/v1/auth/`).
-- **No auth middleware is applied to any route yet.** The API is currently unprotected.
+- **Auth routes**: `src/api/auth/routes/auth.route.api.js` — mounted at `/api/v1/auth/`. Two routes: `GET /google` (initiates OAuth2 flow) and `GET /google/callback` (exchanges code, returns JWT). Auth routes are under `/api/v1/auth/` and never at root level — the catch-all `GET /*` would intercept them otherwise (D4).
+- **`passport.initialize()`** mounted in `src/app.js` before `apiV1`.
+- **No auth middleware is applied to redirect/user routes yet.** Those APIs are currently unprotected.
 
 ---
 

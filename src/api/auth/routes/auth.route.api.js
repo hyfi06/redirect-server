@@ -14,6 +14,7 @@ authRouterApi.get(
 
 authRouterApi.get(
   '/google/callback',
+  // session: false — JWT is stateless; failureRedirect: false — we return JSON 401, not a redirect (D4)
   passport.authenticate('google', { failureRedirect: false, session: false }),
   (req, res, next) => {
     if (!req.user) {
