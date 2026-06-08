@@ -32,6 +32,7 @@ function createUserParser(user) {
     firstName: user.firstName,
     lastName: user.lastName,
     groups: user.groups,
+    // Default lives here, not in the constructor — D20: constructors never default optional fields
     role: user.role || 'user',
     auth: cleanDocObject(user.auth),
   };
