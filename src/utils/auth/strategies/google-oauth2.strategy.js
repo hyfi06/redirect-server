@@ -1,6 +1,10 @@
 const passport = require('passport');
 const config = require('../../../config');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth2');
+const UserServices = require('../../../api/users/services/user.service.api');
+const User = require('../../../api/users/models/user');
+
+const userService = new UserServices();
 
 passport.use(
   new GoogleStrategy(
@@ -10,8 +14,29 @@ passport.use(
       callbackURL: config.oauthGoogle.oauthRedirect,
       passReqToCallback: true,
     },
-    (request, accessToken, refreshToken, profile, done) => {
-      
+    async (request, accessToken, refreshToken, profile, done) => {
+      try {
+        const email = profile.emails[0].value;
+        let user;
+        try {
+          user = await userService.getByEmail(email);
+        } catch (error) {
+          if (error.output?.statusCode === 404) {
+            return done(null, false, { message: 'User not registered' });
+          }
+          throw error;
+        }
+        const updatedUser = new User({
+          ...user,
+          ...user.auth,
+          googleToken: accessToken,
+          googleRefreshToken: refreshToken,
+        });
+        const saved = await userService.update(updatedUser);
+        return done(null, saved);
+      } catch (error) {
+        return done(error);
+      }
     },
   ),
 );
