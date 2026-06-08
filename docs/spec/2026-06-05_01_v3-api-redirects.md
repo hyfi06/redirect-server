@@ -20,6 +20,11 @@
 | D9 | `authorize(roles)` como middleware factory — encapsula la lógica de rol (patrón equivalente a `validatorHandler`). |
 | D10 | GET /redirects usa `array-contains-any` para soportar usuarios en múltiples grupos. Si el SDK no soporta `array-contains-any` dentro de `Filter.or`, fallback: filtrar por primer grupo solamente (documentado como limitación). |
 | D11 | El campo `path` en POST recibe el sub-segmento sin `/` inicial (`"seminar"`, `"eventos/2026"`). El servidor construye el `fullPath` con el `/` y el prefijo de grupo. Si el cliente envía `/seminar` → 400 Bad Request. Schema: `Joi.string().pattern(/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/)`. Normalización silenciosa descartada: fallar con 400 explícito es preferible a silenciar inconsistencias (recomendación software-architect). |
+| D16 | **`GET /users` es admin-only.** Acceso restringido a `authorize('admin')`. Razón: el endpoint expone emails, roles y membresía de grupos completa. No hay caso de uso legítimo para un usuario regular en v3. Una apertura futura requiere un endpoint dedicado con proyección reducida (sin `role` ni `groups`). |
+| D17 | **`GET /users/:id` es admin-only; usuarios regulares usan `GET /me`.** No se implementa ownership check en `/:id` — la separación de responsabilidades es más limpia: `/:id` es exclusivo de admins, `/me` es el endpoint del usuario autenticado. |
+| D18 | **`PATCH /users/:id`: validación inline con `selectUpdateSchema(role)`.** El schema de update varía por rol en tiempo de ejecución, por lo que `validatorHandler` (schema fijo) no aplica. La función `selectUpdateSchema(role)` se define en `user.schema.js` para que la lógica de selección de schema viva junto a los schemas. La validación se ejecuta inline en el handler. |
+| D19 | **`GET /me` hace lookup por `userId`.** `req.user.userId` → `userService.findOne(userId)`. Lookup por clave primaria (O(1)). Más eficiente y robusto ante futuros cambios de email que un lookup por `email`. |
+| D20 | **Los constructores de `*.model.api.js` no aplican defaults a campos opcionales.** Los defaults pertenecen exclusivamente a los parsers de creación (`createXxxParser`). Aplicado en `Group` (Bloque 3) y en `User` (Bloque 4, fix de `role || 'user'`). Patrón establecido para futuros modelos. |
 
 ---
 
