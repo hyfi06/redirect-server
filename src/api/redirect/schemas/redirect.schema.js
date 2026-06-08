@@ -1,23 +1,16 @@
 const Joi = require('joi');
 
 const id = Joi.string();
-const path = Joi.string().uri({
-  allowRelative: true,
-  relativeOnly: true,
-});
+const slugPath = Joi.string().pattern(/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/);
 const url = Joi.string().uri();
-const owner = Joi.string().email();
 const permission = Joi.array().items(Joi.string());
 const categories = Joi.array().items(Joi.string());
-const date = Joi.date();
-const group = Joi.string();
+const group = Joi.string().lowercase().pattern(/^[a-z0-9-]+$/);
 const orderBy = Joi.string();
 const offset = Joi.number().integer().min(1);
 const limit = Joi.number().integer().min(1);
 
 const getRedirectQuerySchema = Joi.object({
-  owner: owner.required(),
-  group: group.required(),
   orderBy: orderBy,
   offset: offset,
   limit: limit,
@@ -28,21 +21,20 @@ const getRedirectSchema = Joi.object({
 });
 
 const getByPathRedirectSchema = Joi.object({
-  path: path.required(),
+  path: slugPath.required(),
 });
 
 const createRedirectSchema = Joi.object({
-  path: path.required(),
+  path: slugPath.required(),
   url: url.required(),
-  owner: owner.required(),
+  group: group,
   permission: permission,
   categories: categories,
 });
 
 const updateRedirectSchema = Joi.object({
-  path: path,
+  path: slugPath,
   url: url,
-  owner: owner,
   permission: permission,
   categories: categories,
 });
