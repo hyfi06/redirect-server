@@ -303,6 +303,17 @@ if (req.user.role !== 'admin' && existing.owner !== req.user.email) {
 
 ---
 
+## Bloque 3 — Decisiones de diseño
+
+| # | Decisión |
+|---|----------|
+| D12 | **Inyección de `UserServices` en `GroupService` por constructor.** El router instancia `new GroupService(userService)`. Hace explícito el acoplamiento de dominio y facilita el refactor a `MembershipService` en v4 cambiando solo el sitio de composición. |
+| D13 | **GET `/groups` filtra por rol.** Admin: `getAll()`. Usuario con grupos: `find(['slug', 'in', groups])`. Usuario sin grupos: `[]` directo — la query `where('slug', 'in', [])` lanza error del SDK antes de hacer ninguna llamada de red. Guard: `Array.isArray(req.user.groups) && req.user.groups.length > 0`. |
+| D14 | **`slug` inmutable — verificación en handler PATCH antes de Joi.** `updateParser` elimina `slug`. Handler PATCH: `authorize('admin')` va antes del check de `slug`; un no-admin con `slug` en el body recibe 403, no 400. Si el admin envía `slug` en el body → `boom.badRequest('slug is immutable')` antes de la validación Joi inline. |
+| D15 | **Sync `Group.users` ↔ `User.groups` no es atómico en v3.** Estrategia fetch-first: antes de cualquier write se hace fetch de todos los usuarios del diff (`added` y `removed`); si alguno lanza `boom.notFound` → 400 (`"User not found: email"`) y nada se escribe. Writes secuenciales con `await` (fail-fast). `super.update(group)` se ejecuta al final del sync. Batch writes se difieren a v4 — requieren refactor de `FireStoreAdapter` a singleton compartido (`new Firestore.Firestore()` se crea actualmente por colección). |
+
+---
+
 ## Bloque 3 — CRUD de grupos
 
 ### Estructura de archivos nuevos
@@ -324,15 +335,15 @@ class Group {
     const { id, name, slug, users, created, updated } = data;
     this.id = id || null;
     this.name = name;
-    this.slug = slug;           // URL-safe, inmutable tras creación
-    this.users = users || [];   // array de emails de usuarios en el grupo
+    this.slug = slug;                                        // URL-safe, inmutable tras creación
+    this.users = users !== undefined ? users : undefined;   // undefined → cleanDocObject lo omite en PATCH; [] vacía el grupo
     if (created) this.created = created;
     if (updated) this.updated = updated;
   }
 }
 ```
 
-> `Group.users` es la fuente de autoridad de membresía. `User.groups` es la lista denormalizada en el usuario (slugs). Cuando un admin modifica `Group.users`, debe actualizar también `User.groups` en los usuarios afectados. Para v3, estas dos escrituras se realizan secuencialmente en `GroupService` — la atomicidad vía Firestore batch se difiere a v4.
+> `Group.users` es la fuente de autoridad de membresía. `User.groups` es la lista denormalizada en el usuario (slugs). Cuando un admin modifica `Group.users`, debe actualizar también `User.groups` en los usuarios afectados. Para v3, estas dos escrituras se realizan secuencialmente en `GroupService` — la atomicidad vía Firestore batch se difiere a v4 (D15). El campo `users` en el constructor preserva `undefined` cuando el body del PATCH no lo incluye, evitando borrar miembros accidentalmente (R6).
 
 ### Schemas Joi
 
