@@ -80,23 +80,28 @@ jwtTtl: process.env.JWT_TTL || '2h',
 **Estado actual:** `done()` vacío.
 
 **Cambio — lógica del callback:**
+
+> `passReqToCallback: true` está activo — la firma del callback incluye `request` como primer argumento.
+
 ```js
-async function verify(accessToken, refreshToken, profile, done) {
+// 404 tratado en el try interno para no capturar errores de update
+async (request, accessToken, refreshToken, profile, done) => {
   try {
     const email = profile.emails[0].value;
-    const user = await userService.getByEmail(email);
-    // actualizar tokens en Firestore (no bloquea el login si falla)
-    await userService.update(new User({
-      ...user,
-      googleToken: accessToken,
-      googleRefreshToken: refreshToken,
-    }));
-    done(null, user);
-  } catch (error) {
-    if (error.isBoom && error.output.statusCode === 404) {
-      return done(null, false, { message: 'User not registered' });
+    let user;
+    try {
+      user = await userService.getByEmail(email);
+    } catch (error) {
+      if (error.output?.statusCode === 404) {
+        return done(null, false, { message: 'User not registered' });
+      }
+      throw error;
     }
-    done(error);
+    const updatedUser = new User({ ...user, ...user.auth, googleToken: accessToken, googleRefreshToken: refreshToken });
+    const saved = await userService.update(updatedUser);
+    return done(null, saved);
+  } catch (error) {
+    return done(error);
   }
 }
 ```

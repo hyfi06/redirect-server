@@ -12,6 +12,7 @@ passport.use(
       clientID: config.oauthGoogle.clientId,
       clientSecret: config.oauthGoogle.clientSecret,
       callbackURL: config.oauthGoogle.oauthRedirect,
+      // passReqToCallback: true shifts the callback signature — first arg is req, not accessToken
       passReqToCallback: true,
     },
     async (request, accessToken, refreshToken, profile, done) => {
