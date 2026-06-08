@@ -17,4 +17,8 @@ module.exports = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     oauthRedirect: process.env.GOOGLE_OAUTH_REDIRECT,
   },
+  jwt: {
+    jwtSecret: process.env.JWT_SECRET,
+    jwtTtl: process.env.JWT_TTL || '2h',
+  }
 };
