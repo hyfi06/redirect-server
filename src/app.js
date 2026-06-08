@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const passport = require('passport');
 const config = require('./config');
 
 const notFoundHandler = require('./middleware/notFound.handler');
@@ -22,6 +23,7 @@ app.use(express.json());
 
 /* Routers */
 rootRouter(app);
+app.use(passport.initialize());
 apiV1(app);
 redirectRoute(app);
 
