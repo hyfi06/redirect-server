@@ -382,10 +382,10 @@ async create(group) {
   throw boom.badRequest('Slug already taken');
 }
 
-async update(group) {
-  // obtener grupo actual para sync de User.groups
-  // si users cambia: calcular diff, actualizar User.groups en afectados
-  // ...
+async update(id, group) {
+  // fetch-first: si group.users está presente, obtiene el grupo actual y calcula el diff
+  // (added, removed); verifica que todos los emails del diff existen antes de escribir
+  // actualiza User.groups secuencialmente (fail-fast); luego llama super.update(group)
 }
 ```
 

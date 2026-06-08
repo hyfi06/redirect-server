@@ -25,6 +25,8 @@ function createGroupParser(group) {
   return {
     name: group.name,
     slug: group.slug,
+    // Default [] on create: a new group always has an explicit users array in Firestore.
+    // Distinct from the model, which preserves undefined so cleanDocObject skips the field in PATCH.
     users: group.users !== undefined ? group.users : [],
   };
 }
@@ -36,7 +38,7 @@ function createGroupParser(group) {
 function updateGroupParser(group) {
   const data = { ...group };
   deleteRegData(data);
-  delete data.slug;
+  delete data.slug; // slug is immutable after creation (D14); strip before write
   cleanDocObject(data);
   return data;
 }

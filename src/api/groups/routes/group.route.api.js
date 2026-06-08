@@ -84,6 +84,7 @@ groupRouterApi.patch(
   validatorHandler(idParamSchema, 'params'),
   authorize('admin'),
   async (req, res, next) => {
+    // slug is immutable (D14): check here, not in Joi, to return an explicit message
     if (req.body.slug !== undefined) {
       return next(boom.badRequest('slug is immutable'));
     }

@@ -56,7 +56,7 @@ Only the owner (or an admin) can edit or delete a redirect.
 ### Branch strategy
 
 - `main` — production. Only the public redirect catch-all is live. No API, no auth.
-- `dev` — active development. API v1 (`/api/v1/redirects`, `/api/v1/users`) + auth scaffolding. Not yet merged to main.
+- `dev` — active development. API v1 (`/api/v1/redirects`, `/api/v1/users`, `/api/v1/groups`) + auth complete. Not yet merged to main.
 
 ---
 
@@ -219,6 +219,7 @@ Serves static files from `src/public/` and the home HTML. Sets `Cache-Control: 3
 /api/v1/auth        →  src/api/auth/routes/auth.route.api.js
 /api/v1/redirects   →  src/api/redirect/routes/redirect.route.api.js
 /api/v1/users       →  src/api/users/routes/user.route.api.js
+/api/v1/groups      →  src/api/groups/routes/group.route.api.js
 ```
 
 Every endpoint is validated by `validatorHandler` (Joi) before the handler runs. Pattern:
@@ -284,6 +285,14 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.api.js
 UserServices              src/api/users/services/user.service.api.js
   • .getByEmail(email) — Firestore where('email', '==', email)
   • .create()          — enforces email uniqueness before insert
+
+GroupService              src/api/groups/services/group.service.api.js
+  • .getBySlug(slug)   — Firestore where('slug', '==', slug)
+  • .create()          — enforces slug uniqueness before insert
+  • .update(id, group) — fetch-first diff of users array; syncs User.groups
+                         for added/removed members before calling super.update()
+  Receives UserServices via constructor injection (D12).
+  If UserServices ever needs GroupService, extract sync to a MembershipService.
 ```
 
 ---
