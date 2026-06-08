@@ -13,7 +13,7 @@
 | D2 | JWT TTL = 2h. Refresh token en `User.auth.refreshToken`. |
 | D3 | Cambios de grupo toman efecto al expirar el token (próximo login). Efecto inmediato diferido a v4. |
 | D4 | Rutas auth bajo `/api/v1/auth/` — nunca en root (el catch-all `GET /*` las interceptaría). |
-| D5 | POST redirect recibe `group` + `path` separados; el servidor construye `fullPath = group ? \`${group}/${path}\` : path`. Se almacena `fullPath` en el campo `path` de Firestore. No cambia el schema de Firestore ni `getByPath`. |
+| D5 | POST redirect recibe `group` + `path` separados; el servidor construye `fullPath = group ? \`/${group}/${path}\` : \`/${path}\``. El `fullPath` siempre lleva `/` inicial porque el catch-all usa `req.path` que Express siempre entrega con `/`. Se almacena `fullPath` en el campo `path` de Firestore. No cambia el schema de Firestore ni `getByPath`. |
 | D6 | Validación de namespace en el handler, no en Joi (el `role` viene de `req.user`, no del body). |
 | D7 | `slug` de grupo es inmutable tras la creación — ningún `PATCH` puede modificarlo. |
 | D8 | `PATCH /api/v1/users/:id` tiene dos schemas según rol: admin puede cambiar `groups` y `role`; el propio usuario solo puede cambiar `firstName` y `lastName`. |
@@ -255,7 +255,7 @@ redirectRouterApi.post('/', validatorHandler(createRedirectSchema, 'body'), asyn
     if (!req.user.groups.includes(group)) return next(boom.forbidden('User does not belong to this group'));
   }
 
-  const fullPath = group ? `${group}/${path}` : path;
+  const fullPath = group ? `/${group}/${path}` : `/${path}`;
   const redirect = new Redirect({ path: fullPath, url, permission, categories, owner: req.user.email });
 
   try {

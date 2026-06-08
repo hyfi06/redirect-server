@@ -304,13 +304,16 @@ Parsers live alongside their resource: `src/api/{resource}/parsers/`.
 
 ### Permission model
 
-`Redirect.permission` is a `string[]` with entries in the format `"read:{group}"`. The list API filters with:
+`Redirect.permission` is a `string[]` with entries in the format `"read:{group}"`. The list API filters with `array-contains-any` to support users in multiple groups:
 
 ```js
+// When user has at least one group:
 Filter.or(
-  Filter.where('owner', '==', owner),
-  Filter.where('permission', 'array-contains', `read:${group}`)
+  Filter.where('owner', '==', email),
+  Filter.where('permission', 'array-contains-any', ['read:fc', 'read:cs', ...])
 )
+// When user has no groups:
+Filter.where('owner', '==', email)
 ```
 
 Groups are Firestore documents (collection `groups`) with a `users: string[]` array.
@@ -318,15 +321,15 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 
 ---
 
-### Auth — routes implemented, not yet applied to protected endpoints
+### Auth — JWT, OAuth2, and redirect routes protected
 
 - **JWT**: `src/utils/auth/jwt.js` — `sign()` and `verify()` implemented. Config: `config.jwt.jwtSecret` / `config.jwt.jwtTtl`.
 - **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email, updates tokens, calls `done(null, savedUser)`. Returns 401 if email not in Firestore.
-- **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — verifies Bearer JWT, sets `req.user` to decoded payload.
+- **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — verifies Bearer JWT, sets `req.user` to decoded payload `{ userId, email, role, groups }`.
 - **`authorize` middleware**: `src/middleware/authorize.middleware.js` — factory `authorize(...roles)` that checks `req.user.role`.
 - **Auth routes**: `src/api/auth/routes/auth.route.api.js` — mounted at `/api/v1/auth/`. Two routes: `GET /google` (initiates OAuth2 flow) and `GET /google/callback` (exchanges code, returns JWT). Auth routes are under `/api/v1/auth/` and never at root level — the catch-all `GET /*` would intercept them otherwise (D4).
 - **`passport.initialize()`** mounted in `src/app.js` before `apiV1`.
-- **No auth middleware is applied to redirect/user routes yet.** Those APIs are currently unprotected.
+- **`/api/v1/redirects` is fully protected**: `authenticate` is applied at router level (`redirectRouterApi.use(authenticate)`). All five routes require a valid JWT. User routes (`/api/v1/users`) are not yet protected.
 
 ---
 

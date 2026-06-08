@@ -16,6 +16,8 @@ const {
 const redirectServicieApi = new RedirectServiceApi();
 const redirectRouterApi = express.Router();
 
+// All redirect routes require a valid JWT — owner and group membership are derived
+// from req.user; they are never trusted from the request body or query string.
 redirectRouterApi.use(authenticate);
 
 redirectRouterApi.get(
@@ -73,12 +75,16 @@ redirectRouterApi.post(
   async (req, res, next) => {
     const { group, path, url, permission, categories } = req.body;
 
+    // Namespace validation must live here, not in Joi — role and group membership
+    // come from req.user (the verified JWT), not from the request body (D6).
     if (req.user.role !== 'admin') {
       if (!group) return next(boom.forbidden('group is required for non-admin users'));
       if (!req.user.groups.includes(group))
         return next(boom.forbidden('User does not belong to this group'));
     }
 
+    // Leading "/" is required: the catch-all redirect handler uses req.path which
+    // Express always delivers with a leading slash, so stored paths must match that form.
     const fullPath = group ? `/${group}/${path}` : `/${path}`;
     const redirect = new Redirect({ path: fullPath, url, permission, categories, owner: req.user.email });
 
@@ -102,6 +108,8 @@ redirectRouterApi.patch(
     const { id } = req.params;
     try {
       const existing = await redirectServicieApi.findOne(id);
+      // Only the owner or an admin may modify a redirect — enforced here because
+      // ownership is on the stored document, not derivable from the request alone.
       if (req.user.role !== 'admin' && existing.owner !== req.user.email) {
         return next(boom.forbidden('Only the owner or an admin can modify this redirect'));
       }
@@ -124,6 +132,7 @@ redirectRouterApi.delete(
     const { id } = req.params;
     try {
       const existing = await redirectServicieApi.findOne(id);
+      // Same ownership rule as PATCH — must fetch the document to verify owner.
       if (req.user.role !== 'admin' && existing.owner !== req.user.email) {
         return next(boom.forbidden('Only the owner or an admin can modify this redirect'));
       }
