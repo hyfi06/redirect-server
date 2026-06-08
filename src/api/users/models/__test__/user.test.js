@@ -44,12 +44,17 @@ describe('User model', () => {
       expect(user.groups).toEqual(['admins', 'editors']);
     });
 
-    it('defaults role to "user" when not provided', () => {
+    it('leaves role undefined when not provided', () => {
       const user = new User({ email: 'a@example.com' });
+      expect(user.role).toBeUndefined();
+    });
+
+    it('sets role to "user" when provided explicitly', () => {
+      const user = new User({ email: 'a@example.com', role: 'user' });
       expect(user.role).toBe('user');
     });
 
-    it('sets role from data when provided', () => {
+    it('sets role to "admin" when provided explicitly', () => {
       const user = new User({ email: 'a@example.com', role: 'admin' });
       expect(user.role).toBe('admin');
     });

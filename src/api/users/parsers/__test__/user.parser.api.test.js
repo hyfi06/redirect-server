@@ -125,12 +125,20 @@ describe('updateUserParser', () => {
     expect(data.lastName).toBe('Lopez');
   });
 
-  it('preserves role in the returned object', () => {
+  it('preserves role "admin" when provided explicitly', () => {
     const user = makeUserWithNoTokens({ role: 'admin' });
 
     const data = updateUserParser(user);
 
     expect(data.role).toBe('admin');
+  });
+
+  it('omits role when user.role is undefined (cleanDocObject strips it)', () => {
+    const user = makeUserWithNoTokens({ role: undefined });
+
+    const data = updateUserParser(user);
+
+    expect(data).not.toHaveProperty('role');
   });
 
   it('preserves groups in the returned object', () => {
@@ -204,7 +212,23 @@ describe('createUserParser', () => {
     expect(data.firstName).toBe('Ana');
   });
 
-  it('includes role in the returned object', () => {
+  it('defaults role to "user" when user.role is undefined', () => {
+    const user = makeUserWithNoTokens({ role: undefined });
+
+    const data = createUserParser(user);
+
+    expect(data.role).toBe('user');
+  });
+
+  it('preserves role "user" when user.role is explicitly "user"', () => {
+    const user = makeUserWithNoTokens({ role: 'user' });
+
+    const data = createUserParser(user);
+
+    expect(data.role).toBe('user');
+  });
+
+  it('preserves role "admin" when user.role is explicitly "admin"', () => {
     const user = makeUserWithNoTokens({ role: 'admin' });
 
     const data = createUserParser(user);
