@@ -34,7 +34,7 @@ class User {
     this.firstName = firstName?.trim() || '';
     this.lastName = lastName?.trim() || '';
     this.groups = groups || [];
-    this.role = role || 'user';
+    this.role = role;
     this.auth = {
       googleToken: googleToken,
       googleRefreshToken,

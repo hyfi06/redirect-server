@@ -32,7 +32,7 @@ function createUserParser(user) {
     firstName: user.firstName,
     lastName: user.lastName,
     groups: user.groups,
-    role: user.role,
+    role: user.role || 'user',
     auth: cleanDocObject(user.auth),
   };
 }
