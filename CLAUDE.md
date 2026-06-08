@@ -184,6 +184,8 @@ Copy `.env.example` to `.env`:
 | `GOOGLE_CLIENT_ID` | Google OAuth2 |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth2 |
 | `GOOGLE_OAUTH_REDIRECT` | OAuth2 callback URL |
+| `JWT_SECRET` | Secret for signing and verifying JWTs |
+| `JWT_TTL` | JWT expiry duration, default `'2h'` |
 
 ## Deployment
 

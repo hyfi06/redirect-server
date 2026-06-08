@@ -47,11 +47,11 @@ const jwt = require('jsonwebtoken');
 const config = require('../../config');
 
 function sign(payload) {
-  return jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtTtl });
+  return jwt.sign(payload, config.jwt.jwtSecret, { expiresIn: config.jwt.jwtTtl });
 }
 
 function verify(token) {
-  return jwt.verify(token, config.jwtSecret); // throws JsonWebTokenError si inválido
+  return jwt.verify(token, config.jwt.jwtSecret); // throws JsonWebTokenError si inválido
 }
 
 module.exports = { sign, verify };
@@ -171,7 +171,7 @@ GET  /api/v1/auth/google/callback  → passport.authenticate, luego sign JWT y r
 }
 ```
 
-Si el usuario no está en Firestore → redirigir con `401` o responder:
+Si el usuario no está en Firestore → responder JSON (nunca redirigir — D4 previene rutas auth en root):
 ```json
 { "statusCode": 401, "error": "Unauthorized", "message": "User not registered" }
 ```
