@@ -19,6 +19,7 @@
 | D8 | `PATCH /api/v1/users/:id` tiene dos schemas según rol: admin puede cambiar `groups` y `role`; el propio usuario solo puede cambiar `firstName` y `lastName`. |
 | D9 | `authorize(roles)` como middleware factory — encapsula la lógica de rol (patrón equivalente a `validatorHandler`). |
 | D10 | GET /redirects usa `array-contains-any` para soportar usuarios en múltiples grupos. Si el SDK no soporta `array-contains-any` dentro de `Filter.or`, fallback: filtrar por primer grupo solamente (documentado como limitación). |
+| D11 | El campo `path` en POST recibe el sub-segmento sin `/` inicial (`"seminar"`, `"eventos/2026"`). El servidor construye el `fullPath` con el `/` y el prefijo de grupo. Si el cliente envía `/seminar` → 400 Bad Request. Schema: `Joi.string().pattern(/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/)`. Normalización silenciosa descartada: fallar con 400 explícito es preferible a silenciar inconsistencias (recomendación software-architect). |
 
 ---
 
@@ -208,10 +209,10 @@ Antes del primer `redirectRouterApi.get(...)`.
 
 ```js
 // group: slug del grupo bajo el cual se registra el path (requerido para no-admins)
-// path: segmento(s) del path sin el prefijo del grupo
+// path: segmento(s) del path sin el prefijo del grupo (D11: sin "/" inicial — 400 explícito si lo tiene)
 const createRedirectSchema = Joi.object({
   group: Joi.string().lowercase().pattern(/^[a-z0-9-]+$/),  // opcional en schema; requerido en handler para no-admins
-  path: Joi.string().uri({ allowRelative: true, relativeOnly: true }).required(),
+  path: Joi.string().pattern(/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/).required(),
   url: url.required(),
   permission: permission,
   categories: categories,
