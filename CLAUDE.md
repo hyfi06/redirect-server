@@ -338,7 +338,8 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 - **`authorize` middleware**: `src/middleware/authorize.middleware.js` — factory `authorize(...roles)` that checks `req.user.role`.
 - **Auth routes**: `src/api/auth/routes/auth.route.api.js` — mounted at `/api/v1/auth/`. Two routes: `GET /google` (initiates OAuth2 flow) and `GET /google/callback` (exchanges code, returns JWT). Auth routes are under `/api/v1/auth/` and never at root level — the catch-all `GET /*` would intercept them otherwise (D4).
 - **`passport.initialize()`** mounted in `src/app.js` before `apiV1`.
-- **`/api/v1/redirects` is fully protected**: `authenticate` is applied at router level (`redirectRouterApi.use(authenticate)`). All five routes require a valid JWT. User routes (`/api/v1/users`) are not yet protected.
+- **`/api/v1/redirects` is fully protected**: `authenticate` is applied at router level (`redirectRouterApi.use(authenticate)`). All five routes require a valid JWT.
+- **`/api/v1/users` is fully protected**: `authenticate` is applied at router level. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated user. `PATCH /:id` is accessible to admins (any user) or to the user editing their own profile.
 
 ---
 

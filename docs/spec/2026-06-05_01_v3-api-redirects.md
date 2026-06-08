@@ -465,13 +465,14 @@ const updateUserSelfSchema = Joi.object({
 userRouterApi.patch('/:id', validatorHandler(idSchema, 'params'), async (req, res, next) => {
   const { id } = req.params;
   const isAdmin = req.user.role === 'admin';
-  const schema = isAdmin ? updateUserByAdminSchema : updateUserSelfSchema;
 
-  const { error, value } = schema.validate(req.body, { abortEarly: false });
-  if (error) return next(boom.badRequest(error));
+  // Admins may edit any user; regular users may only edit their own profile
+  if (!isAdmin && req.user.userId !== id) return next(boom.forbidden('Cannot update another user'));
 
-  // no-admins solo pueden editar su propio perfil
-  if (!isAdmin && req.user.userId !== id) return next(boom.forbidden());
+  // Admin can change role and groups; regular users can only change their own name
+  const schema = selectUpdateSchema(req.user.role);
+  const { error, value } = schema.validate(req.body, { abortEarly: false, allowUnknown: false });
+  if (error) return next(boom.badRequest(error.message));
 
   const user = new User({ id, ...value });
   try {

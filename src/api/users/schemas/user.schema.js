@@ -27,6 +27,7 @@ const idSchema = Joi.object({
   id: id.required(),
 });
 
+// Retained for export compatibility — no active consumers after the schema split (R4)
 const updateUserSchema = Joi.object({
   firstName: name,
   lastName: name,
