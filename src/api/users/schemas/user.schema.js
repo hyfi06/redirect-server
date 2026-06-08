@@ -34,8 +34,33 @@ const updateUserSchema = Joi.object({
   auth: auth,
 });
 
+// Admin can change role and groups; regular users can only change their own name (D-B4-3)
+const updateUserByAdminSchema = Joi.object({
+  firstName: name,
+  lastName: name,
+  groups: groups,
+  role: Joi.string().valid('user', 'admin'),
+});
+
+const updateUserSelfSchema = Joi.object({
+  firstName: name,
+  lastName: name,
+});
+
+/**
+ * Returns the appropriate update schema based on the requesting user's role.
+ * @param {string} role
+ * @returns {import('joi').ObjectSchema}
+ */
+function selectUpdateSchema(role) {
+  return role === 'admin' ? updateUserByAdminSchema : updateUserSelfSchema;
+}
+
 module.exports = {
   idSchema,
   createUserSchema,
   updateUserSchema,
+  updateUserByAdminSchema,
+  updateUserSelfSchema,
+  selectUpdateSchema,
 };
