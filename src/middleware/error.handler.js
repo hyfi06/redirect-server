@@ -17,7 +17,7 @@ function withErrorStack(err, stack) {
 
 function wrapErrors(err, req, res, next) {
   if (!err.isBoom) {
-    next(boom.badImplementation(err));
+    return next(boom.badImplementation(err));
   }
   next(err);
 }
