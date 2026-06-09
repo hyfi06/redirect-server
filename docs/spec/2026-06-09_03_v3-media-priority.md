@@ -10,8 +10,8 @@
 
 | ID | Descripción | Estado |
 |---|---|---|
-| SEC-2 | Especificar `algorithm: 'HS256'` explícitamente en `jwt.sign()` y `jwt.verify()` | [ ] |
-| GAP-3 | Añadir `getUsersQuerySchema` con validación Joi de `offset` y `limit` en `GET /api/v1/users` | [ ] |
+| SEC-2 | Especificar `algorithm: 'HS256'` explícitamente en `jwt.sign()` y `jwt.verify()` | [x] |
+| GAP-3 | Añadir `getUsersQuerySchema` con validación Joi de `offset` y `limit` en `GET /api/v1/users` | [x] |
 | ROB-2 | Reemplazar `console.log`/`console.error` por logging estructurado JSON compatible con Cloud Logging | [ ] |
 | ROB-4 | Añadir `GET /_ah/health` con verificación de conectividad Firestore | [ ] |
 
