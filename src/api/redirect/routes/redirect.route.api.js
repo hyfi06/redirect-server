@@ -26,6 +26,16 @@ redirectRouterApi.get(
   async (req, res, next) => {
     const { orderBy, offset, limit } = req.query;
     const { email, groups } = req.user;
+    const options = { orderBy, offset: parseInt(offset), limit: parseInt(limit) };
+
+    if (req.user.role === 'admin') {
+      try {
+        const redirectArray = await redirectServicieApi.getAll(options);
+        return res.status(200).json({ message: 'redirects retrieved', data: redirectArray });
+      } catch (error) {
+        return next(error);
+      }
+    }
 
     const readPermissions = groups.map(g => `read:${g}`);
     const filter =
@@ -37,11 +47,7 @@ redirectRouterApi.get(
         : Filter.where('owner', '==', email);
 
     try {
-      const redirectArray = await redirectServicieApi.find([filter], {
-        orderBy,
-        offset: parseInt(offset),
-        limit: parseInt(limit),
-      });
+      const redirectArray = await redirectServicieApi.find([filter], options);
       res.status(200).json({
         message: 'redirects retrieved',
         data: redirectArray,
