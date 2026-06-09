@@ -247,6 +247,47 @@ describe('GET /api/v1/users', () => {
 
     expect(res.status).toBe(500);
   });
+
+  // GAP-3: query parameter validation via getUsersQuerySchema
+  describe('query parameter validation (GAP-3)', () => {
+    it('returns 200 when no query params are provided', async () => {
+      UserService.prototype.find.mockResolvedValue([]);
+
+      const res = await request(app)
+        .get('/api/v1/users')
+        .set('x-test-user', userHeader(ADMIN_USER));
+
+      expect(res.status).toBe(200);
+    });
+
+    it('returns 200 with valid offset and limit params', async () => {
+      UserService.prototype.find.mockResolvedValue([]);
+
+      const res = await request(app)
+        .get('/api/v1/users?offset=2&limit=10')
+        .set('x-test-user', userHeader(ADMIN_USER));
+
+      expect(res.status).toBe(200);
+    });
+
+    it('returns 400 when offset is not a number', async () => {
+      const res = await request(app)
+        .get('/api/v1/users?offset=abc')
+        .set('x-test-user', userHeader(ADMIN_USER));
+
+      expect(res.status).toBe(400);
+      expect(UserService.prototype.find).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when limit is zero', async () => {
+      const res = await request(app)
+        .get('/api/v1/users?limit=0')
+        .set('x-test-user', userHeader(ADMIN_USER));
+
+      expect(res.status).toBe(400);
+      expect(UserService.prototype.find).not.toHaveBeenCalled();
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
