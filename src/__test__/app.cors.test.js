@@ -90,7 +90,7 @@ describe('config.cors parsing from CORS env var', () => {
     }
   });
 
-  it('returns the string "*" when CORS env var is absent', () => {
+  it('returns true when CORS env var is absent', () => {
     delete process.env.CORS;
     let result;
     jest.isolateModules(() => {
@@ -98,7 +98,7 @@ describe('config.cors parsing from CORS env var', () => {
       jest.mock('dotenv', () => ({ config: jest.fn() }));
       result = require('../config').cors;
     });
-    expect(result).toBe('*');
+    expect(result).toBe(true);
   });
 
   it('returns a single-element array for one origin', () => {
@@ -119,14 +119,12 @@ describe('config.cors parsing from CORS env var', () => {
     expect(result).toEqual(['https://app.example.com', 'https://admin.example.com']);
   });
 
-  // Edge case: if .env contains CORS=*, the truthy check still routes to
-  // split(), producing ['*']. This is the unhandled case documented in the spec.
-  it('produces ["*"] when CORS env var is literally the string "*" — known limitation', () => {
+  it('returns true when CORS env var is the string "*"', () => {
     process.env.CORS = '*';
     let result;
     jest.isolateModules(() => {
       result = require('../config').cors;
     });
-    expect(result).toEqual(['*']);
+    expect(result).toBe(true);
   });
 });
