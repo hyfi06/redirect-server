@@ -16,6 +16,7 @@ const express = require('express');
 // ---- Shared method bag exposed to test bodies ----
 const mockMethods = {
   find: jest.fn(),
+  getAll: jest.fn(),
   findOne: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
@@ -120,14 +121,16 @@ describe('§2.1 — authenticate applied to all routes', () => {
 // ---------------------------------------------------------------------------
 
 describe('GET /redirects — filter construction', () => {
-  it('returns 200 with data array when service resolves', async () => {
-    mockMethods.find.mockResolvedValue([SAMPLE_REDIRECT]);
+  it('returns 200 with data array when service resolves (admin calls getAll)', async () => {
+    mockMethods.getAll.mockResolvedValue([SAMPLE_REDIRECT]);
     const res = await request(app)
       .get('/redirects')
       .set('x-test-user', userHeader(ADMIN_USER));
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('redirects retrieved');
     expect(res.body.data).toEqual([SAMPLE_REDIRECT]);
+    expect(mockMethods.getAll).toHaveBeenCalledTimes(1);
+    expect(mockMethods.find).not.toHaveBeenCalled();
   });
 
   it('uses an owner-only Filter when user has no groups', async () => {
@@ -177,8 +180,8 @@ describe('GET /redirects — filter construction', () => {
     expect(permFilter.value).toEqual(expect.arrayContaining(['read:fc', 'read:cs']));
   });
 
-  it('forwards service errors to the error handler', async () => {
-    mockMethods.find.mockRejectedValue(new Error('Firestore down'));
+  it('forwards service errors to the error handler (admin getAll failure)', async () => {
+    mockMethods.getAll.mockRejectedValue(new Error('Firestore down'));
     const res = await request(app)
       .get('/redirects')
       .set('x-test-user', userHeader(ADMIN_USER));
