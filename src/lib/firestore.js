@@ -27,7 +27,6 @@ class FireStoreAdapter {
 
   /**
    * Create new document
-   * @param {string} id
    * @param {Object} data
    * @returns {Firestore.DocumentSnapshot}
    */
