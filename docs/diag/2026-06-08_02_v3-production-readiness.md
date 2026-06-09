@@ -8,15 +8,17 @@
 
 ## 1. Resumen ejecutivo
 
+**Actualización 2026-06-09:** Los ítems bloqueantes y de alta prioridad han sido implementados (specs `2026-06-09_01` y `2026-06-09_02`). Los ítems de media prioridad siguen pendientes de spec.
+
 | Dimensión | Estado | Veredicto |
 |---|---|---|
-| Gaps funcionales | Amarillo | 2 gaps de seguridad funcional sin implementar del spec |
-| Seguridad | Amarillo | Sin vulnerabilidades críticas en la implementación actual; hay 4 ítems de severidad media a corregir antes de producción |
-| Robustez / Observabilidad | Amarillo | Sin timeouts en Firestore; sin logging estructurado; getAll() con await innecesario |
-| Configuración de producción | Rojo | app.yaml no incluye vars de entorno secretas; sin validación de env al startup; sin índices Firestore para las queries compuestas |
-| Deuda técnica relevante | Amarillo | Sync no-atómico Group/User documentado; dead code; CORS edge case |
+| Gaps funcionales | Verde | GAP-1 y GAP-2 implementados; GAP-3 (query param validation) pendiente |
+| Seguridad | Verde | SEC-3 y SEC-4 implementados; SEC-2 (algoritmo JWT explícito) pendiente |
+| Robustez / Observabilidad | Amarillo | Sin timeouts en Firestore (ROB-1); sin logging estructurado (ROB-2); sin health check (ROB-4); await innecesario eliminado (ROB-3 resuelto) |
+| Configuración de producción | Verde | Validación de env al startup implementada (CFG-1); firestore.indexes.json creado (CFG-2); engines.node corregido (CFG-4); CFG-3 (min_instances) pendiente de evaluación |
+| Deuda técnica relevante | Verde | Dead code eliminado (DT-2, DT-3, DT-5); runbook de sync creado (DT-1); sync no-atómico Group/User documentado y aceptado para v3 |
 
-**Veredicto general: NO LISTO para producción.** Los gaps de configuración (app.yaml, Firestore indexes, startup validation) son bloqueantes. Los gaps de seguridad funcional (`GET /redirects/:id` sin control de acceso, permission strings sin validación de formato) son de alta prioridad. Todo lo demás es deuda menor.
+**Veredicto general: CONDICIONAL.** Los bloqueantes y gaps de alta prioridad están resueltos. Quedan 5 ítems de media prioridad sin spec (SEC-2, GAP-3, ROB-2, ROB-4, CFG-3) y 1 ítem de alta robustez sin spec (ROB-1 — timeouts Firestore). El sistema puede desplegarse en producción con tráfico controlado; los ítems pendientes deben resolverse en el primer sprint post-lanzamiento.
 
 ---
 
@@ -432,17 +434,17 @@ Exportado con comentario "Retained for export compatibility — no active consum
 
 ### Bloqueantes (deben resolverse antes del despliegue)
 
-- [ ] **CFG-1:** Configurar variables de entorno en producción (fuera de `app.yaml` para secretos; usar Secret Manager o variables de entorno de GAE configuradas por consola/CLI)
-- [ ] **CFG-1:** Validar al startup que `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT` están definidas; salir con `process.exit(1)` si faltan
-- [ ] **CFG-2:** Crear índices Firestore para `redirects` (Filter.or con owner/permission + orderBy) antes del primer despliegue con API activa
-- [ ] **CFG-2:** Verificar en staging que `GET /api/v1/redirects` con usuario multi-grupo no lanza `FAILED_PRECONDITION`
+- [x] **CFG-1:** Configurar variables de entorno en producción (fuera de `app.yaml` para secretos; usar Secret Manager o variables de entorno de GAE configuradas por consola/CLI)
+- [x] **CFG-1:** Validar al startup que `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT` están definidas; salir con `process.exit(1)` si faltan
+- [x] **CFG-2:** Crear índices Firestore para `redirects` (Filter.or con owner/permission + orderBy) antes del primer despliegue con API activa
+- [x] **CFG-2:** Verificar en staging que `GET /api/v1/redirects` con usuario multi-grupo no lanza `FAILED_PRECONDITION`
 
 ### Alta prioridad (resolver antes de exponer a usuarios)
 
-- [ ] **GAP-1:** Implementar verificación de ownership/permission en `GET /api/v1/redirects/:id`
-- [ ] **GAP-2:** Añadir validación de formato `^(read|edit|delete):[a-z0-9-]+$` al campo `permission` en `createRedirectSchema` y `updateRedirectSchema`
-- [ ] **SEC-3:** Validar `JWT_SECRET` al startup con mensaje de error claro
-- [ ] **SEC-4:** Corregir lógica CORS para que `CORS=*` en env var resulte en `origin: true`, no `origin: ['*']`
+- [x] **GAP-1:** Implementar verificación de ownership/permission en `GET /api/v1/redirects/:id`
+- [x] **GAP-2:** Añadir validación de formato `^(read|edit|delete):[a-z0-9-]+$` al campo `permission` en `createRedirectSchema` y `updateRedirectSchema`
+- [x] **SEC-3:** Validar `JWT_SECRET` al startup con mensaje de error claro — implementado como parte de CFG-1
+- [x] **SEC-4:** Corregir lógica CORS para que `CORS=*` en env var resulte en `origin: true`, no `origin: ['*']`
 
 ### Media prioridad (resolver en el primer sprint post-lanzamiento)
 
@@ -454,12 +456,12 @@ Exportado con comentario "Retained for export compatibility — no active consum
 
 ### Baja prioridad (cleanup técnico)
 
-- [ ] **ROB-3:** Eliminar `await` innecesario sobre `CollectionReference` en `CrudService.getAll()`, línea 38
-- [ ] **DT-2:** Eliminar `src/models/scope.model.js` y `src/models/groups.js` (dead code)
-- [ ] **DT-3:** Eliminar `accesscontrol` de `package.json`
-- [ ] **DT-5:** Eliminar `updateUserSchema` legacy de `user.schema.js`
-- [ ] **CFG-4:** Corregir `engines.node` en `package.json` de `"24.x.x"` a `">=24.0.0"`
-- [ ] **DT-1:** Documentar en runbook el procedimiento de verificación de consistencia `Group.users ↔ User.groups` post-fallo
+- [x] **ROB-3:** Eliminar `await` innecesario sobre `CollectionReference` en `CrudService.getAll()`, línea 38
+- [x] **DT-2:** Eliminar `src/models/scope.model.js` y `src/models/groups.js` (dead code)
+- [x] **DT-3:** Eliminar `accesscontrol` de `package.json`
+- [x] **DT-5:** Eliminar `updateUserSchema` legacy de `user.schema.js`
+- [x] **CFG-4:** Corregir `engines.node` en `package.json` de `"24.x.x"` a `">=24.0.0"`
+- [x] **DT-1:** Documentar en runbook el procedimiento de verificación de consistencia `Group.users ↔ User.groups` post-fallo
 
 ---
 
