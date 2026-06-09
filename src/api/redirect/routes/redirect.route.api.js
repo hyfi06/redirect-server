@@ -59,10 +59,13 @@ redirectRouterApi.get(
     const { id } = req.params;
     try {
       const data = await redirectServicieApi.findOne(id);
-      res.status(200).json({
-        message: 'redirect retrieved',
-        data,
-      });
+      const readPermissions = req.user.groups.map(g => `read:${g}`);
+      const canRead =
+        req.user.role === 'admin' ||
+        data.owner === req.user.email ||
+        (data.permission || []).some(p => readPermissions.includes(p));
+      if (!canRead) return next(boom.forbidden('Insufficient permissions'));
+      res.status(200).json({ message: 'redirect retrieved', data });
     } catch (error) {
       next(error);
     }
