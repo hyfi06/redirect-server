@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const passport = require('passport');
 const config = require('./config');
 
+const { log } = require('./utils/logger');
 const notFoundHandler = require('./middleware/notFound.handler');
 const { wrapErrors, errorHandler } = require('./middleware/error.handler');
 
@@ -35,9 +36,5 @@ app.use(wrapErrors);
 app.use(errorHandler);
 
 app.listen(config.port, function () {
-  if (config.dev) {
-    console.log(`Listening http://localhost:${config.port}/`);
-  } else {
-    console.log(`Server listening on port ${config.port}`);
-  }
+  log('INFO', `Server listening on port ${config.port}`);
 });

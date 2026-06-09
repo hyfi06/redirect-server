@@ -1,4 +1,5 @@
 const boom = require('@hapi/boom');
+const { log } = require('../../../utils/logger');
 const CrudService = require('../../../utils/crud.service');
 const config = require('../../../config');
 const User = require('../../users/models/user');
@@ -79,7 +80,7 @@ class GroupService extends CrudService {
         try {
           await this.userService.update(new User({ ...user, groups: [...user.groups, current.slug] }));
         } catch (e) {
-          console.error(`Failed to add group ${current.slug} to user ${email}:`, e);
+          log('ERROR', `Failed to add group ${current.slug} to user ${email}`, { error: e.message });
           throw e;
         }
       }
@@ -90,7 +91,7 @@ class GroupService extends CrudService {
         try {
           await this.userService.update(new User({ ...user, groups: user.groups.filter((g) => g !== current.slug) }));
         } catch (e) {
-          console.error(`Failed to remove group ${current.slug} from user ${email}:`, e);
+          log('ERROR', `Failed to remove group ${current.slug} from user ${email}`, { error: e.message });
           throw e;
         }
       }
