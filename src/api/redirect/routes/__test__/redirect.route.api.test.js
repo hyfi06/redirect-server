@@ -220,6 +220,70 @@ describe('GET /redirects/:id', () => {
       .set('x-test-user', userHeader(ADMIN_USER));
     expect(res.status).toBe(404);
   });
+
+  it('admin can read a redirect they do not own and have no permission entry for', async () => {
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'someone-else@test.com', permission: [] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(ADMIN_USER));
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('redirect retrieved');
+    expect(res.body.data).toEqual(redirect);
+  });
+
+  it('owner can read their own redirect regardless of permission list', async () => {
+    const redirect = { ...SAMPLE_REDIRECT, owner: REGULAR_USER.email, permission: [] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(REGULAR_USER));
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('redirect retrieved');
+  });
+
+  it('user with a matching group read-permission can read a redirect they do not own', async () => {
+    const groupUser = { userId: 'user-4', email: 'other@test.com', role: 'user', groups: ['fc'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['read:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(groupUser));
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('redirect retrieved');
+  });
+
+  it('returns 403 when user belongs to a different group than the permission list', async () => {
+    const stranger = { userId: 'user-5', email: 'stranger@test.com', role: 'user', groups: ['cs'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['read:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(stranger));
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 403 when user has no groups and is not the owner', async () => {
+    const stranger = { userId: 'user-6', email: 'stranger@test.com', role: 'user', groups: [] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: [] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(stranger));
+    expect(res.status).toBe(403);
+  });
+
+  it('does not throw when redirect has no permission field — treats it as empty', async () => {
+    const stranger = { userId: 'user-7', email: 'stranger@test.com', role: 'user', groups: ['fc'] };
+    // Deliberately omit the permission field to exercise the (data.permission || []) guard
+    const redirect = { id: 'redirect-1', path: '/fc/seminar', url: 'https://example.com', owner: 'owner@test.com' };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(stranger));
+    // The user has no ownership and no matching permission — expect 403, not a 500 crash
+    expect(res.status).toBe(403);
+  });
 });
 
 // ---------------------------------------------------------------------------
