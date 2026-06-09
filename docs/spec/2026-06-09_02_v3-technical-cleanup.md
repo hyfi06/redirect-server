@@ -4,18 +4,18 @@
 **Rama:** `v3-beta`  
 **Objetivo:** Resolver los ítems clasificados como Baja prioridad en el diagnóstico `2026-06-08_02_v3-production-readiness.md`. Son cambios sin impacto en comportamiento externo: eliminación de dead code, corrección de notación, y documentación de un runbook operativo.
 
-**Estado:** Pendiente de implementación.
+**Estado:** Implementación completa — todos los ítems en `[x]`.
 
 **Ítems cubiertos:**
 
 | ID | Descripción | Estado |
 |---|---|---|
-| ROB-3 | Eliminar `await` innecesario sobre `CollectionReference` en `CrudService.getAll()` | [ ] |
-| DT-2 | Eliminar `src/models/scope.model.js` y `src/models/groups.js` (dead code) | [ ] |
-| DT-3 | Eliminar paquete `accesscontrol` (instalado pero sin uso) | [ ] |
-| DT-5 | Eliminar `updateUserSchema` legacy de `src/api/users/schemas/user.schema.js` | [ ] |
-| CFG-4 | Corregir `engines.node` en `package.json` de `"24.x.x"` a `">=24.0.0"` | [ ] |
-| DT-1 | Documentar runbook de verificación de consistencia `Group.users ↔ User.groups` | [ ] |
+| ROB-3 | Eliminar `await` innecesario sobre `CollectionReference` en `CrudService.getAll()` | [x] |
+| DT-2 | Eliminar `src/models/scope.model.js` y `src/models/groups.js` (dead code) | [x] |
+| DT-3 | Eliminar paquete `accesscontrol` (instalado pero sin uso) | [x] |
+| DT-5 | Eliminar `updateUserSchema` legacy de `src/api/users/schemas/user.schema.js` | [x] |
+| CFG-4 | Corregir `engines.node` en `package.json` de `"24.x.x"` a `">=24.0.0"` | [x] |
+| DT-1 | Documentar runbook de verificación de consistencia `Group.users ↔ User.groups` | [x] |
 
 ---
 
