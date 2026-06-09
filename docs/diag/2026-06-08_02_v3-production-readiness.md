@@ -8,17 +8,17 @@
 
 ## 1. Resumen ejecutivo
 
-**Actualización 2026-06-09:** Los ítems bloqueantes y de alta prioridad han sido implementados (specs `2026-06-09_01` y `2026-06-09_02`). Los ítems de media prioridad siguen pendientes de spec.
+**Actualización 2026-06-09:** Los ítems bloqueantes y de alta prioridad han sido implementados (specs `2026-06-09_01` y `2026-06-09_02`). Los ítems de media prioridad han sido implementados (spec `2026-06-09_03`). Solo ROB-1 (timeouts Firestore) y CFG-3 (`min_instances: 1`) siguen pendientes, ambos diferidos a v4 por decisión explícita.
 
 | Dimensión | Estado | Veredicto |
 |---|---|---|
-| Gaps funcionales | Verde | GAP-1 y GAP-2 implementados; GAP-3 (query param validation) pendiente |
-| Seguridad | Verde | SEC-3 y SEC-4 implementados; SEC-2 (algoritmo JWT explícito) pendiente |
-| Robustez / Observabilidad | Amarillo | Sin timeouts en Firestore (ROB-1); sin logging estructurado (ROB-2); sin health check (ROB-4); await innecesario eliminado (ROB-3 resuelto) |
-| Configuración de producción | Verde | Validación de env al startup implementada (CFG-1); firestore.indexes.json creado (CFG-2); engines.node corregido (CFG-4); CFG-3 (min_instances) pendiente de evaluación |
+| Gaps funcionales | Verde | GAP-1, GAP-2, GAP-3, GAP-4 implementados |
+| Seguridad | Verde | SEC-2, SEC-3, SEC-4 implementados |
+| Robustez / Observabilidad | Amarillo | ROB-1 (timeouts Firestore) diferido a v4; ROB-2, ROB-3, ROB-4 resueltos |
+| Configuración de producción | Verde | CFG-1, CFG-2, CFG-4 implementados; CFG-3 (`min_instances`) diferido a v4 |
 | Deuda técnica relevante | Verde | Dead code eliminado (DT-2, DT-3, DT-5); runbook de sync creado (DT-1); sync no-atómico Group/User documentado y aceptado para v3 |
 
-**Veredicto general: CONDICIONAL.** Los bloqueantes y gaps de alta prioridad están resueltos. Quedan 5 ítems de media prioridad sin spec (SEC-2, GAP-3, ROB-2, ROB-4, CFG-3) y 1 ítem de alta robustez sin spec (ROB-1 — timeouts Firestore). El sistema puede desplegarse en producción con tráfico controlado; los ítems pendientes deben resolverse en el primer sprint post-lanzamiento.
+**Veredicto general: LISTO para producción.** Todos los ítems bloqueantes, de alta prioridad, y de media prioridad están resueltos. ROB-1 (timeouts Firestore) y CFG-3 (`min_instances: 1`) están diferidos a v4 por decisión explícita — no bloquean el despliegue.
 
 ---
 
@@ -448,11 +448,12 @@ Exportado con comentario "Retained for export compatibility — no active consum
 
 ### Media prioridad (resolver en el primer sprint post-lanzamiento)
 
-- [ ] **SEC-2:** Especificar `algorithm: 'HS256'` explícitamente en `jwt.sign()` y `algorithms: ['HS256']` en `jwt.verify()`
-- [ ] **GAP-3:** Añadir `getUsersQuerySchema` con validación Joi de `offset` y `limit` en `GET /api/v1/users`
-- [ ] **ROB-2:** Reemplazar `console.error` por logging estructurado (JSON) compatible con Cloud Logging
-- [ ] **ROB-4:** Añadir `GET /_ah/health` con verificación de conectividad Firestore
-- [ ] **CFG-3:** Evaluar `min_instances: 1` en `app.yaml` para eliminar cold starts en la ruta del redirect
+- [x] **SEC-2:** Especificar `algorithm: 'HS256'` explícitamente en `jwt.sign()` y `algorithms: ['HS256']` en `jwt.verify()` — implementado en spec `2026-06-09_03` §1
+- [x] **GAP-3:** Añadir `getUsersQuerySchema` con validación Joi de `offset` y `limit` en `GET /api/v1/users` — implementado en spec `2026-06-09_03` §2
+- [x] **GAP-4:** Añadir validación Joi de `offset` y `limit` en `GET /api/v1/groups` — descubierto en security review `2026-06-09_03`; implementado en spec `2026-06-09_03` §2
+- [x] **ROB-2:** Reemplazar `console.error` por logging estructurado (JSON) compatible con Cloud Logging — implementado en spec `2026-06-09_03` §3
+- [x] **ROB-4:** Añadir `GET /_ah/health` con verificación de conectividad Firestore — implementado en spec `2026-06-09_03` §4
+- [ ] **CFG-3:** Evaluar `min_instances: 1` en `app.yaml` para eliminar cold starts en la ruta del redirect — diferido a v4 por decisión explícita del usuario
 
 ### Baja prioridad (cleanup técnico)
 
