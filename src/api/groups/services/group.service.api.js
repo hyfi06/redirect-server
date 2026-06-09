@@ -47,6 +47,7 @@ class GroupService extends CrudService {
    * @param {string} id
    * @param {import('../models/group.model.api')} group
    * @returns {Promise<import('../models/group.model.api')>}
+   * @throws {import('@hapi/boom').Boom} 400 if any user in the membership diff does not exist
    */
   async update(id, group) {
     if (group.users !== undefined) {
