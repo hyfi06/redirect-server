@@ -8,10 +8,9 @@
  *   mockDb object that test bodies configure per-test.
  * - boom is NOT mocked — RedirectServiceApi throws real boom objects; tests
  *   inspect e.output.statusCode to verify error semantics.
- * - Known bug documented: create() uses a bare try/catch around getByPath(),
- *   which means ANY error from getByPath (including non-404s like a Firestore
- *   failure) causes create() to proceed with db.create instead of rethrowing.
- *   Tests verify this CURRENT behavior, not the ideal behavior.
+ * - create() rethrows any non-404 error from getByPath (the guard at line 44
+ *   of the source: `if (e.output?.statusCode !== 404) throw e`), so a raw
+ *   Firestore error surfaces to the caller rather than being swallowed.
  */
 
 jest.mock('@google-cloud/firestore');
@@ -197,23 +196,22 @@ describe('RedirectServiceApi.create()', () => {
     expect(mockDb.collection.where).toHaveBeenCalledWith('path', '==', '/fc/new');
   });
 
-  // NOTE: This test documents the CURRENT buggy behavior of create().
-  // The bare try/catch around getByPath() catches ALL errors, including
-  // Firestore failures (5xx). When getByPath throws any non-404 error,
-  // create() still proceeds to call db.create instead of rethrowing.
-  it('proceeds to call db.create even when getByPath throws a non-404 Firestore error (current behavior)', async () => {
-    // Simulate a Firestore-level failure (e.g., network error) during the lookup
+  it('rethrows a non-404 Firestore error from getByPath without calling db.create', async () => {
+    // Simulate a Firestore-level failure (e.g., network error) during the lookup.
+    // The guard `if (e.output?.statusCode !== 404) throw e` ensures non-404
+    // errors are rethrown. A plain Error has no .output, so it is always rethrown.
     const firestoreError = new Error('Firestore connection refused');
     mockDb.collection.get.mockRejectedValue(firestoreError);
 
-    const createdSnap = makeDocSnap({ id: 'new-r', path: '/fc/new' });
-    mockDb.create.mockResolvedValue(createdSnap);
-
     const service = new RedirectServiceApi();
-    const result = await service.create({ path: '/fc/new', url: 'https://example.com', owner: 'a@test.com' });
+    let err;
+    try {
+      await service.create({ path: '/fc/new', url: 'https://example.com', owner: 'a@test.com' });
+    } catch (e) {
+      err = e;
+    }
 
-    // The error was swallowed and db.create was still called
-    expect(mockDb.create).toHaveBeenCalledTimes(1);
-    expect(result).toMatchObject({ id: 'new-r' });
+    expect(err).toBe(firestoreError);
+    expect(mockDb.create).not.toHaveBeenCalled();
   });
 });
