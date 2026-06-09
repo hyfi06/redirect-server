@@ -12,7 +12,7 @@ function sign(payload) {
 
 
 /**
-  * Verify a JWT token and return the decoded payload
+  * @description Verifies a JWT and returns the decoded payload.
   * @param {String} token - The JWT token to verify
   * @returns {Object} The decoded payload
   */

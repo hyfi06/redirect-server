@@ -1,5 +1,5 @@
 /**
- *
+ * Removes undefined values and empty plain objects from data in-place.
  * @param {Object} data
  * @returns {Object}
  */
@@ -22,6 +22,11 @@ function cleanDocObject(data) {
   return data;
 }
 
+/**
+ * Removes id, created, and updated fields from data in-place.
+ * @param {object} data
+ * @returns {object}
+ */
 function deleteRegData(data) {
   delete data.id;
   delete data.created;
