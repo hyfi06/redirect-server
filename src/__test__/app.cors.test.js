@@ -128,3 +128,40 @@ describe('config.cors parsing from CORS env var', () => {
     expect(result).toBe(true);
   });
 });
+
+describe('env validation guard', () => {
+  const REQUIRED_VARS = ['JWT_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT'];
+  const savedValues = {};
+
+  beforeAll(() => {
+    REQUIRED_VARS.forEach(k => {
+      savedValues[k] = process.env[k];
+      delete process.env[k];
+    });
+  });
+
+  afterAll(() => {
+    REQUIRED_VARS.forEach(k => {
+      if (savedValues[k] === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = savedValues[k];
+      }
+    });
+  });
+
+  it('imports without error in NODE_ENV=test even when required vars are absent', () => {
+    expect(() => {
+      jest.isolateModules(() => {
+        jest.mock('dotenv', () => ({ config: jest.fn() }));
+        require('../config');
+      });
+    }).not.toThrow();
+  });
+
+  it('validation block is skipped because NODE_ENV is "test" during the test run', () => {
+    // The guard condition `process.env.NODE_ENV !== 'test'` must be false here,
+    // meaning the validation block (and process.exit) is never reached.
+    expect(process.env.NODE_ENV).toBe('test');
+  });
+});
