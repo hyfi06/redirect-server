@@ -27,14 +27,6 @@ const idSchema = Joi.object({
   id: id.required(),
 });
 
-// Retained for export compatibility — no active consumers after the schema split (R4)
-const updateUserSchema = Joi.object({
-  firstName: name,
-  lastName: name,
-  groups: groups,
-  auth: auth,
-});
-
 // Admin can change role and groups; regular users can only change their own name (D-B4-3)
 const updateUserByAdminSchema = Joi.object({
   firstName: name,
@@ -60,7 +52,6 @@ function selectUpdateSchema(role) {
 module.exports = {
   idSchema,
   createUserSchema,
-  updateUserSchema,
   updateUserByAdminSchema,
   updateUserSelfSchema,
   selectUpdateSchema,
