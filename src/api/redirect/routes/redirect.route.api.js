@@ -59,6 +59,8 @@ redirectRouterApi.get(
     const { id } = req.params;
     try {
       const data = await redirectServicieApi.findOne(id);
+      // Access check mirrors the filter used in GET / but applied to a single doc.
+      // Inline following the same pattern as PATCH and DELETE (D3).
       const readPermissions = req.user.groups.map(g => `read:${g}`);
       const canRead =
         req.user.role === 'admin' ||

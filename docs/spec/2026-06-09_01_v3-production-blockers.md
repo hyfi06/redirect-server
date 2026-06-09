@@ -4,15 +4,17 @@
 **Rama:** `v3-beta`
 **Objetivo:** Resolver los ítems clasificados como Bloqueantes y Alta prioridad en el diagnóstico `2026-06-08_02_v3-production-readiness.md` antes de exponer la API a usuarios reales.
 
+**Estado:** Implementación completa — todos los ítems en `[x]`.
+
 **Ítems cubiertos:**
 
-| ID | Descripción |
-|---|---|
-| CFG-1 | Validar variables de entorno requeridas al startup |
-| CFG-2 | Crear `firestore.indexes.json` con los índices necesarios |
-| GAP-1 | Verificación de ownership/permission en `GET /api/v1/redirects/:id` |
-| GAP-2 | Validación de formato en el campo `permission` |
-| SEC-4 | Corrección del bug CORS con `CORS=*` en variable de entorno |
+| ID | Descripción | Estado |
+|---|---|---|
+| CFG-1 | Validar variables de entorno requeridas al startup | [x] |
+| CFG-2 | Crear `firestore.indexes.json` con los índices necesarios | [x] |
+| GAP-1 | Verificación de ownership/permission en `GET /api/v1/redirects/:id` | [x] |
+| GAP-2 | Validación de formato en el campo `permission` | [x] |
+| SEC-4 | Corrección del bug CORS con `CORS=*` en variable de entorno | [x] |
 
 ---
 

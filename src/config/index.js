@@ -1,5 +1,8 @@
 require('dotenv').config();
 
+// Skipped in test: production secrets (JWT_SECRET, OAuth credentials) are not
+// present in the CI/test environment. The guard ensures App Engine's health-check
+// fails before the server accepts traffic when a required variable is missing.
 if (process.env.NODE_ENV !== 'test') {
   const REQUIRED = ['JWT_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT'];
   const missing = REQUIRED.filter(k => !process.env[k]);
