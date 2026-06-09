@@ -45,6 +45,14 @@ describe('jwt utility', () => {
     });
   });
 
+  describe('sign() — algorithm', () => {
+    it('produces a token with alg: HS256 in the header', () => {
+      const token = jwtUtil.sign(TEST_PAYLOAD);
+      const decoded = jsonwebtoken.decode(token, { complete: true });
+      expect(decoded.header.alg).toBe('HS256');
+    });
+  });
+
   describe('verify()', () => {
     it('decodes a token produced by sign() and returns the original payload fields', () => {
       const token = jwtUtil.sign(TEST_PAYLOAD);
@@ -70,6 +78,17 @@ describe('jwt utility', () => {
       // Sign with expiresIn: -1 to produce a token that is already past its TTL
       const expiredToken = jsonwebtoken.sign(TEST_PAYLOAD, 'test-secret-for-jwt-tests', { expiresIn: -1 });
       expect(() => jwtUtil.verify(expiredToken)).toThrow('jwt expired');
+    });
+
+    it('rejects a token whose header declares alg: none', () => {
+      // Manually construct an unsigned JWT: header.payload. (empty signature)
+      const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' }))
+        .toString('base64url');
+      const payload = Buffer.from(JSON.stringify(TEST_PAYLOAD))
+        .toString('base64url');
+      const noneToken = `${header}.${payload}.`;
+
+      expect(() => jwtUtil.verify(noneToken)).toThrow();
     });
   });
 });
