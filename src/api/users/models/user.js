@@ -46,6 +46,9 @@ class User {
     if (updated) this.updated = updated;
   }
 
+  /**
+   * @returns {string}
+   */
   get fullNameByName() {
     return [this.firstName, this.lastName]
       .filter((str) => str)
@@ -54,6 +57,9 @@ class User {
       .trim();
   }
 
+  /**
+   * @returns {string}
+   */
   get fullNameByLastName() {
     return [this.lastName, this.firstName]
       .filter((str) => str)

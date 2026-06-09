@@ -19,9 +19,8 @@ class UserServices extends CrudService {
   }
 
   /**
-   *
-   * @param {String} email
-   * @returns {User}
+   * @param {string} email - The user's email address
+   * @returns {Promise<User>}
    */
   async getByEmail(email) {
     const query = this.db.collection.where('email', '==', email);
@@ -33,8 +32,9 @@ class UserServices extends CrudService {
   }
 
   /**
+   * Creates a new user, enforcing email uniqueness.
    * @param {User} user
-   * @param {User}
+   * @returns {Promise<User>}
    */
   async create(user) {
     try {
