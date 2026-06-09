@@ -18,6 +18,11 @@ function withErrorStack(err, stack) {
 /**
  * Normalizes non-Boom errors to boom.badImplementation (500) before passing to errorHandler.
  * Returns after calling next() so the fallthrough next(err) is never reached for non-Boom errors.
+ * @param {Error} err
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ * @returns {void}
  */
 function wrapErrors(err, req, res, next) {
   if (!err.isBoom) {
@@ -26,6 +31,13 @@ function wrapErrors(err, req, res, next) {
   next(err);
 }
 
+/**
+ * @param {import('@hapi/boom').Boom} err
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ * @returns {void}
+ */
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
   const {

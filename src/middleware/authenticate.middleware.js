@@ -4,6 +4,10 @@ const { verify } = require('../utils/auth/jwt');
 /**
  * Verifies the Bearer JWT in the Authorization header and sets req.user to the decoded payload.
  * Must be applied before any middleware that reads req.user (e.g. authorize).
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ * @returns {void}
  */
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;

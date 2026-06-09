@@ -2,9 +2,9 @@ const boom = require('@hapi/boom');
 
 /**
  * Generate a response 404
- * @param {*} req request
- * @param {*} res response
- * @param {*} next response
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
 // eslint-disable-next-line no-unused-vars
 function notFoundHandler(req, res, next) {
