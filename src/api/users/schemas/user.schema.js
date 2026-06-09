@@ -14,6 +14,11 @@ const auth = Joi.object({
   apiToken: token,
 });
 
+const getUsersQuerySchema = Joi.object({
+  offset: Joi.number().integer().min(1),
+  limit: Joi.number().integer().min(1),
+});
+
 const createUserSchema = Joi.object({
   email: email.required(),
   firstName: name,
@@ -51,6 +56,7 @@ function selectUpdateSchema(role) {
 
 module.exports = {
   idSchema,
+  getUsersQuerySchema,
   createUserSchema,
   updateUserByAdminSchema,
   updateUserSelfSchema,
