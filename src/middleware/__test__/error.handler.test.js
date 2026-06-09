@@ -73,6 +73,20 @@ describe('error.handler', () => {
     });
   });
 
+  it('returns JSON status and payload without stack for non-500/404 errors in production', () => {
+    config.dev = false;
+    const mockErr = {
+      isBoom: true,
+      output: { statusCode: 400, payload: { error: 'Bad Request', message: 'invalid' } },
+      stack: 'Error: invalid\n    at ...',
+    };
+    errorHandler(mockErr, mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith({ error: 'Bad Request', message: 'invalid' });
+    expect(mockRes.sendFile).not.toHaveBeenCalled();
+  });
+
   it('should respond with not found page for 404 status code', () => {
     const mockErr = boom.notFound();
     errorHandler(mockErr, mockReq, mockRes, mockNext);
