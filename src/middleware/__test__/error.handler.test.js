@@ -42,6 +42,7 @@ describe('error.handler', () => {
 
     expect(boom.badImplementation).toHaveBeenCalledWith(mockErr);
     expect(mockNext).toHaveBeenCalledWith(boom.badImplementation());
+    expect(mockNext).toHaveBeenCalledTimes(1);
   });
 
   it('should pass through boom errors', () => {
