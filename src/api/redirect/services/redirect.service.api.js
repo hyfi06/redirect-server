@@ -41,6 +41,7 @@ class RedirectServiceApi extends CrudService {
     try {
       await this.getByPath(redirect.path.replace(/\/$/, ''));
     } catch (e) {
+      // Only a 404 means the path is free; rethrow anything else (network, quota, etc.)
       if (e.output?.statusCode !== 404) throw e;
       const newDoc = await this.db.create(this.createParser(redirect));
       return this.docParser(newDoc);
