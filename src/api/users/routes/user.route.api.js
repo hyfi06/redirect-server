@@ -7,6 +7,7 @@ const User = require('../models/user');
 const UserService = require('../services/user.service.api');
 const {
   idSchema,
+  getUsersQuerySchema,
   createUserSchema,
   selectUpdateSchema,
 } = require('../schemas/user.schema');
@@ -32,10 +33,14 @@ userRouterApi.get('/me', async (req, res, next) => {
 userRouterApi.get(
   '/',
   authorize('admin'),
+  validatorHandler(getUsersQuerySchema, 'query'),
   async (req, res, next) => {
     const { offset, limit } = req.query;
     try {
-      const data = await userService.find(null, { offset, limit });
+      const data = await userService.find(null, {
+        offset: parseInt(offset),
+        limit: parseInt(limit),
+      });
       res.status(200).json({
         message: 'users retrieved',
         data: data.map((u) => u.toPublic()),

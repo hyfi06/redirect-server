@@ -7,17 +7,20 @@ const config = require('../../config');
   * @returns {String} The signed JWT token
   */
 function sign(payload) {
-  return jwt.sign(payload, config.jwt.jwtSecret, { expiresIn: config.jwt.jwtTtl });
+  return jwt.sign(payload, config.jwt.jwtSecret, {
+    expiresIn: config.jwt.jwtTtl,
+    algorithm: 'HS256',
+  });
 }
 
 
 /**
-  * Verify a JWT token and return the decoded payload
+  * @description Verifies a JWT and returns the decoded payload.
   * @param {String} token - The JWT token to verify
   * @returns {Object} The decoded payload
   */
 function verify(token) {
-  return jwt.verify(token, config.jwt.jwtSecret);
+  return jwt.verify(token, config.jwt.jwtSecret, { algorithms: ['HS256'] });
 }
 
 module.exports = { sign, verify };

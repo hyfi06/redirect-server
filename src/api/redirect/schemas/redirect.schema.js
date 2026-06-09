@@ -7,7 +7,11 @@ const id = Joi.string();
 // client inconsistencies (software-architect recommendation).
 const slugPath = Joi.string().pattern(/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/);
 const url = Joi.string().uri();
-const permission = Joi.array().items(Joi.string());
+// Format is enforced here so malformed entries never reach Firestore — queries
+// rely on exact string matching (array-contains-any) against 'read:{slug}' entries.
+const permission = Joi.array().items(
+  Joi.string().pattern(/^(read|edit|delete):[a-z0-9-]+$/)
+);
 const categories = Joi.array().items(Joi.string());
 // group uses the same slug character set so validation is shared
 const group = Joi.string().lowercase().pattern(/^[a-z0-9-]+$/);

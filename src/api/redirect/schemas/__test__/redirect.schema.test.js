@@ -147,6 +147,36 @@ describe('createRedirectSchema', () => {
       expect(error).toBeUndefined();
     });
   });
+
+  // ── permission pattern ────────────────────────────────────────────────────
+  describe('permission', () => {
+    const base = { path: 'seminar', url: 'https://example.com' };
+
+    it('accepts a single read entry', () => {
+      const { error } = validate(createRedirectSchema, { ...base, permission: ['read:fc'] });
+      expect(error).toBeUndefined();
+    });
+
+    it('accepts multiple entries with different scopes', () => {
+      const { error } = validate(createRedirectSchema, { ...base, permission: ['read:fc', 'edit:cs'] });
+      expect(error).toBeUndefined();
+    });
+
+    it('rejects an entry without the scope:group format', () => {
+      const { error } = validate(createRedirectSchema, { ...base, permission: ['foo'] });
+      expect(error).toBeDefined();
+    });
+
+    it('rejects an entry with a valid scope but no slug after the colon', () => {
+      const { error } = validate(createRedirectSchema, { ...base, permission: ['read:'] });
+      expect(error).toBeDefined();
+    });
+
+    it('rejects an entry with uppercase letters in the slug', () => {
+      const { error } = validate(createRedirectSchema, { ...base, permission: ['read:FC'] });
+      expect(error).toBeDefined();
+    });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,6 +215,19 @@ describe('updateRedirectSchema', () => {
     const { error } = validate(updateRedirectSchema, { owner: 'user@example.com' });
     expect(error).toBeDefined();
     expect(error.details[0].message).toMatch(/owner/);
+  });
+
+  // ── permission pattern ────────────────────────────────────────────────────
+  describe('permission', () => {
+    it('accepts a delete scope entry', () => {
+      const { error } = validate(updateRedirectSchema, { permission: ['delete:admins'] });
+      expect(error).toBeUndefined();
+    });
+
+    it('rejects an entry that does not match the scope:group pattern', () => {
+      const { error } = validate(updateRedirectSchema, { permission: ['invalid-format'] });
+      expect(error).toBeDefined();
+    });
   });
 });
 

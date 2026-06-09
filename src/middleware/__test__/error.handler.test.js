@@ -42,6 +42,7 @@ describe('error.handler', () => {
 
     expect(boom.badImplementation).toHaveBeenCalledWith(mockErr);
     expect(mockNext).toHaveBeenCalledWith(boom.badImplementation());
+    expect(mockNext).toHaveBeenCalledTimes(1);
   });
 
   it('should pass through boom errors', () => {
@@ -71,6 +72,20 @@ describe('error.handler', () => {
       ...mockErr.output.payload,
       stack: mockErr.stack,
     });
+  });
+
+  it('returns JSON status and payload without stack for non-500/404 errors in production', () => {
+    config.dev = false;
+    const mockErr = {
+      isBoom: true,
+      output: { statusCode: 400, payload: { error: 'Bad Request', message: 'invalid' } },
+      stack: 'Error: invalid\n    at ...',
+    };
+    errorHandler(mockErr, mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith({ error: 'Bad Request', message: 'invalid' });
+    expect(mockRes.sendFile).not.toHaveBeenCalled();
   });
 
   it('should respond with not found page for 404 status code', () => {

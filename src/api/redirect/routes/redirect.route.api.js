@@ -26,6 +26,16 @@ redirectRouterApi.get(
   async (req, res, next) => {
     const { orderBy, offset, limit } = req.query;
     const { email, groups } = req.user;
+    const options = { orderBy, offset: parseInt(offset), limit: parseInt(limit) };
+
+    if (req.user.role === 'admin') {
+      try {
+        const redirectArray = await redirectServicieApi.getAll(options);
+        return res.status(200).json({ message: 'redirects retrieved', data: redirectArray });
+      } catch (error) {
+        return next(error);
+      }
+    }
 
     const readPermissions = groups.map(g => `read:${g}`);
     const filter =
@@ -37,11 +47,7 @@ redirectRouterApi.get(
         : Filter.where('owner', '==', email);
 
     try {
-      const redirectArray = await redirectServicieApi.find([filter], {
-        orderBy,
-        offset: parseInt(offset),
-        limit: parseInt(limit),
-      });
+      const redirectArray = await redirectServicieApi.find([filter], options);
       res.status(200).json({
         message: 'redirects retrieved',
         data: redirectArray,
@@ -59,10 +65,15 @@ redirectRouterApi.get(
     const { id } = req.params;
     try {
       const data = await redirectServicieApi.findOne(id);
-      res.status(200).json({
-        message: 'redirect retrieved',
-        data,
-      });
+      // Access check mirrors the filter used in GET / but applied to a single doc.
+      // Inline following the same pattern as PATCH and DELETE (D3).
+      const readPermissions = req.user.groups.map(g => `read:${g}`);
+      const canRead =
+        req.user.role === 'admin' ||
+        data.owner === req.user.email ||
+        (data.permission || []).some(p => readPermissions.includes(p));
+      if (!canRead) return next(boom.forbidden('Insufficient permissions'));
+      res.status(200).json({ message: 'redirect retrieved', data });
     } catch (error) {
       next(error);
     }

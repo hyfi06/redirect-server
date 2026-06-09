@@ -6,7 +6,7 @@ const {
 } = require('../../../utils/clean.data.utils');
 
 /**
- * Parser DocumentSnapshot to Redirect
+ * Parses a Firestore DocumentSnapshot into a Redirect instance.
  * @param {FireStore.DocumentSnapshot} docSnap
  * @returns {Redirect}
  */
@@ -23,7 +23,7 @@ function redirectParser(docSnap) {
 }
 
 /**
- * Parser Redirect to create doc object
+ * Prepares a Redirect for Firestore creation.
  * @param {Redirect} redirect
  * @returns {Object}
  */
@@ -38,7 +38,7 @@ function createRedirectParser(redirect) {
 }
 
 /**
- * Parser redirect to update doc object
+ * Prepares a Redirect for Firestore update — strips id, owner, created, updated and removes undefined keys.
  * @param {Redirect} redirect
  * @returns {Object}
  */

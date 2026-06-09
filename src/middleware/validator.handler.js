@@ -5,7 +5,7 @@ const boom = require('@hapi/boom');
  * Validate data form given property and schema
  * @param {Joi.ObjectSchema} schema
  * @param {string} property
- * @returns
+ * @returns {import('express').RequestHandler}
  */
 function validatorHandler(schema, property) {
   return async (req, res, next) => {

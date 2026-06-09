@@ -6,7 +6,7 @@ const {
 } = require('../../../utils/clean.data.utils');
 
 /**
- * Parser Document Snapshot to User model
+ * Parses a Firestore DocumentSnapshot into a User instance.
  * @param {FireStore.DocumentSnapshot} docSnap
  * @returns {User}
  */
@@ -22,7 +22,7 @@ function userParser(docSnap) {
 }
 
 /**
- *Parser User to create doc object
+ * Prepares a User for Firestore creation.
  * @param {User} user
  * @returns {Object}
  */
@@ -39,7 +39,7 @@ function createUserParser(user) {
 }
 
 /**
- * Parser User to update doc object
+ * Prepares a User for Firestore update — strips id, created, updated, email and removes undefined keys.
  * @param {User} user
  * @returns {Object}
  */

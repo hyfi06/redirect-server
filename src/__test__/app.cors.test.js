@@ -90,7 +90,7 @@ describe('config.cors parsing from CORS env var', () => {
     }
   });
 
-  it('returns the string "*" when CORS env var is absent', () => {
+  it('returns true when CORS env var is absent', () => {
     delete process.env.CORS;
     let result;
     jest.isolateModules(() => {
@@ -98,7 +98,7 @@ describe('config.cors parsing from CORS env var', () => {
       jest.mock('dotenv', () => ({ config: jest.fn() }));
       result = require('../config').cors;
     });
-    expect(result).toBe('*');
+    expect(result).toBe(true);
   });
 
   it('returns a single-element array for one origin', () => {
@@ -119,14 +119,49 @@ describe('config.cors parsing from CORS env var', () => {
     expect(result).toEqual(['https://app.example.com', 'https://admin.example.com']);
   });
 
-  // Edge case: if .env contains CORS=*, the truthy check still routes to
-  // split(), producing ['*']. This is the unhandled case documented in the spec.
-  it('produces ["*"] when CORS env var is literally the string "*" — known limitation', () => {
+  it('returns true when CORS env var is the string "*"', () => {
     process.env.CORS = '*';
     let result;
     jest.isolateModules(() => {
       result = require('../config').cors;
     });
-    expect(result).toEqual(['*']);
+    expect(result).toBe(true);
+  });
+});
+
+describe('env validation guard', () => {
+  const REQUIRED_VARS = ['JWT_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT'];
+  const savedValues = {};
+
+  beforeAll(() => {
+    REQUIRED_VARS.forEach(k => {
+      savedValues[k] = process.env[k];
+      delete process.env[k];
+    });
+  });
+
+  afterAll(() => {
+    REQUIRED_VARS.forEach(k => {
+      if (savedValues[k] === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = savedValues[k];
+      }
+    });
+  });
+
+  it('imports without error in NODE_ENV=test even when required vars are absent', () => {
+    expect(() => {
+      jest.isolateModules(() => {
+        jest.mock('dotenv', () => ({ config: jest.fn() }));
+        require('../config');
+      });
+    }).not.toThrow();
+  });
+
+  it('validation block is skipped because NODE_ENV is "test" during the test run', () => {
+    // The guard condition `process.env.NODE_ENV !== 'test'` must be false here,
+    // meaning the validation block (and process.exit) is never reached.
+    expect(process.env.NODE_ENV).toBe('test');
   });
 });

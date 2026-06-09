@@ -26,9 +26,16 @@ class CrudService {
     return this.docParser(newDoc);
   }
 
+  /**
+   * @param {object} [options]
+   * @param {string} [options.orderBy] - Field to sort by; prefix "-" for descending
+   * @param {number} [options.offset]
+   * @param {number} [options.limit]
+   * @returns {Promise<T[]>}
+   */
   async getAll(options) {
     const { orderBy, offset, limit } = options;
-    const fsCollection = await this.db.collection;
+    const fsCollection = this.db.collection;
     let fsFilter;
     if (orderBy) {
       fsFilter = /^-/.test(orderBy)
