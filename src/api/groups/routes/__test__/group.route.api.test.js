@@ -173,6 +173,17 @@ describe('GET /groups', () => {
       .set('x-test-user', userHeader(ADMIN_USER));
     expect(res.status).toBe(400);
   });
+
+  it('admin with offset and limit: calls getAll with parsed integers and returns 200', async () => {
+    mockGroupMethods.getAll.mockResolvedValue([]);
+    const res = await request(app)
+      .get('/groups?offset=5&limit=10')
+      .set('x-test-user', userHeader(ADMIN_USER));
+    expect(res.status).toBe(200);
+    expect(mockGroupMethods.getAll).toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 5, limit: 10 }),
+    );
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

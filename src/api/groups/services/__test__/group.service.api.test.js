@@ -407,4 +407,52 @@ describe('GroupService.update()', () => {
     expect(fetchOrder).toContain('fetch:new@test.com');
     expect(fetchOrder).toContain('fetch:old@test.com');
   });
+
+  it('rethrows error and skips db.update when userService.update fails adding a member', async () => {
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: [] });
+    setupFindOne(currentSnap);
+
+    const userObj = { id: 'u-1', email: 'new@test.com', groups: [], role: 'user', firstName: '', lastName: '' };
+    mockUserService.getByEmail.mockResolvedValue(userObj);
+
+    const syncErr = new Error('Write failed');
+    mockUserService.update.mockRejectedValue(syncErr);
+
+    const service = new GroupService(mockUserService);
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['new@test.com'] });
+
+    let err;
+    try {
+      await service.update('g-1', group);
+    } catch (e) {
+      err = e;
+    }
+
+    expect(err).toBe(syncErr);
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('rethrows error and skips db.update when userService.update fails removing a member', async () => {
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['leaving@test.com'] });
+    setupFindOne(currentSnap);
+
+    const userObj = { id: 'u-2', email: 'leaving@test.com', groups: ['fc'], role: 'user', firstName: '', lastName: '' };
+    mockUserService.getByEmail.mockResolvedValue(userObj);
+
+    const syncErr = new Error('Write failed');
+    mockUserService.update.mockRejectedValue(syncErr);
+
+    const service = new GroupService(mockUserService);
+    const group = new Group({ id: 'g-1', slug: 'fc', users: [] });
+
+    let err;
+    try {
+      await service.update('g-1', group);
+    } catch (e) {
+      err = e;
+    }
+
+    expect(err).toBe(syncErr);
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
 });
