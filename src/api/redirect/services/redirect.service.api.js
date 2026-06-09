@@ -40,7 +40,8 @@ class RedirectServiceApi extends CrudService {
   async create(redirect) {
     try {
       await this.getByPath(redirect.path.replace(/\/$/, ''));
-    } catch (error) {
+    } catch (e) {
+      if (e.output?.statusCode !== 404) throw e;
       const newDoc = await this.db.create(this.createParser(redirect));
       return this.docParser(newDoc);
     }
