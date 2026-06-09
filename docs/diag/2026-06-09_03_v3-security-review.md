@@ -9,11 +9,11 @@
 
 ## Resumen ejecutivo
 
-| # | Archivo | Severidad | Categoría | Confianza |
-|---|---|---|---|---|
-| 1 | `src/api/redirect/routes/redirect.route.api.js:23` | Media | `authorization_bypass` | 9/10 |
+| # | Archivo | Severidad | Categoría | Confianza | Estado |
+|---|---|---|---|---|---|
+| 1 | `src/api/redirect/routes/redirect.route.api.js:23` | Media | `authorization_bypass` | 9/10 | Resuelto |
 
-Sin hallazgos de severidad alta. Un hallazgo de severidad media confirmado: bypass de autorización en el endpoint de listado de redirects para usuarios con rol `admin`.
+Sin hallazgos de severidad alta. Un hallazgo de severidad media confirmado y resuelto: bypass de autorización en el endpoint de listado de redirects para usuarios con rol `admin`.
 
 Archivos revisados sin hallazgos: autenticación JWT, callback OAuth2, todos los handlers CRUD de redirects/users/groups, schemas Joi, construcción de queries Firestore, endpoint de health check, middleware authenticate/authorize, y validación de env al startup.
 
@@ -34,7 +34,7 @@ Este comportamiento es inconsistente con el modelo de acceso aplicado en el rest
 
 | Endpoint | Bypass para admin |
 |---|---|
-| `GET /api/v1/redirects` | ❌ **ausente** |
+| `GET /api/v1/redirects` | ✅ `req.user.role === 'admin'` → `getAll()` |
 | `GET /api/v1/redirects/:id` (línea 64) | ✅ `req.user.role === 'admin'` |
 | `PATCH /api/v1/redirects/:id` (línea 116) | ✅ guard `req.user.role !== 'admin'` |
 | `DELETE /api/v1/redirects/:id` (línea 139) | ✅ guard `req.user.role !== 'admin'` |
@@ -85,7 +85,13 @@ if (req.user.role === 'admin') {
 
 ### Clasificación como ítem de trabajo
 
-Este hallazgo debe documentarse como **GAP-4** en el diagnóstico de producción y resolverse antes de exponer la API a usuarios reales. No bloquea el despliegue inicial con tráfico controlado (los admins aún pueden acceder a redirects individuales por ID), pero debe corregirse antes de que los admins necesiten capacidades de auditoría.
+Este hallazgo fue documentado como **GAP-4** y resuelto en el mismo sprint de revisión.
+
+### Resolución
+
+**Fix aplicado:** Se añadió un bypass para admin al inicio del handler `GET /`, siguiendo el patrón de `GET /api/v1/groups`. Si `req.user.role === 'admin'`, el handler llama `redirectServicieApi.getAll(options)` y retorna antes de construir el filtro Firestore. Los usuarios no-admin siguen el flujo de filtro existente sin cambios.
+
+**Archivo modificado:** `src/api/redirect/routes/redirect.route.api.js`, líneas 31–38.
 
 ---
 
