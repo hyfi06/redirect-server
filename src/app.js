@@ -10,6 +10,7 @@ const { wrapErrors, errorHandler } = require('./middleware/error.handler');
 
 const redirectRoute = require('./redirect/routes');
 const rootRouter = require('./routes/root');
+const healthRouter = require('./routes/health');
 const { apiV1 } = require('./api');
 
 const app = express();
@@ -26,6 +27,7 @@ app.use(express.json());
 rootRouter(app);
 app.use(passport.initialize());
 apiV1(app);
+healthRouter(app);
 redirectRoute(app);
 
 // Catch 404
