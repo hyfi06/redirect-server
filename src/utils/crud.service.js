@@ -35,7 +35,7 @@ class CrudService {
    */
   async getAll(options) {
     const { orderBy, offset, limit } = options;
-    const fsCollection = await this.db.collection;
+    const fsCollection = this.db.collection;
     let fsFilter;
     if (orderBy) {
       fsFilter = /^-/.test(orderBy)
