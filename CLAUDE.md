@@ -62,46 +62,58 @@ Only the owner (or an admin) can edit or delete a redirect.
 
 ## Development Flow
 
-Every unit of work — a spec step, a bug fix, a refactor — follows this three-step cycle before moving to the next:
+### Full cycle — from spec to closed plan
 
 ```
-[backend-engineer] → [feat/fix/refactor] commit
+[software-architect] write or update spec
+        ↓ [docs] commit
+[software-architect] write plan for one spec step (§x.y)
+        ↓ [docs] commit
+[backend-engineer]   implement the plan step
+        ↓ [feat/fix/refactor/chore] commit
+[test-engineer]      write tests for the new code
+        ↓ [test] commit
+[docs-engineer]      document new code inline; update spec and plan checkboxes
+        ↓ [docs] commit
         ↓
-[test-engineer]    → [test] commit
-        ↓
-[docs-engineer]    → [docs] commit  (or confirms docs are sufficient)
+  next plan step? → back to [backend-engineer]
+  plan complete?  → [docs-engineer] closes the plan → [docs] commit
+                    next spec step? → new plan → back to [software-architect]
+                    spec complete?  → [docs-engineer] closes the spec → [docs] commit
 ```
 
 ### What counts as a unit of work
 
 A unit is the smallest change that is complete and independently valuable:
 
-- One sub-item of a spec (e.g. §1.1, §2.3)
+- One sub-item of a plan step derived from a spec section (e.g. §1.1)
 - A single bug fix
-- A single function refactor
+- A single refactor
 
-Do not batch multiple spec sub-items into one cycle. Each sub-item gets its own `[feat] → [test] → [docs]` sequence.
+Do not batch multiple plan steps into one cycle. Each step gets its own `[feat/fix/…] → [test] → [docs]` sequence.
 
-### Agent responsibilities per step
+### Agent responsibilities
 
 | Step | Agent | Produces |
 |---|---|---|
+| Spec | `software-architect` | Spec file in `docs/spec/`, decisions documented, open questions resolved |
+| Plan | `software-architect` | Plan file with numbered steps derived from one spec section |
 | Code | `backend-engineer` | Working implementation, no regressions in test suite |
 | Test | `test-engineer` | Tests covering all branches and edge cases of the new code |
-| Docs | `docs-engineer` | Inline JSDoc where required; CLAUDE.md, specs, and plan checkboxes updated to reflect decisions made and progress achieved |
+| Docs | `docs-engineer` | Inline JSDoc where required; CLAUDE.md, spec, and plan checkboxes updated |
 
 ### When the backend-engineer hits an undocumented decision
 
-If during implementation an architectural or business decision arises that isn't covered by the spec, the backend-engineer **stops and asks** — either the user directly or the `software-architect` agent — before proceeding. It does not guess or invent behavior.
+If during implementation an architectural or business decision arises that isn't covered by the spec or plan, the backend-engineer **stops and asks** — either the user directly or the `software-architect` agent — before proceeding. It does not guess or invent behavior.
 
 ### Agents available
 
 | Agent | When to invoke |
 |---|---|
-| `backend-engineer` | Implement a spec task, new endpoint, middleware, or service |
+| `software-architect` | Write or update specs and plans; architectural decisions; design review |
+| `backend-engineer` | Implement a plan step: new endpoint, middleware, service, or refactor |
 | `test-engineer` | Write or fix tests for modified files |
-| `docs-engineer` | Review inline docs, update CLAUDE.md, verify specs reflect confirmed decisions, and mark plan progress |
-| `software-architect` | Architectural decisions, design review, spec verification |
+| `docs-engineer` | Review inline docs; update CLAUDE.md; mark spec and plan progress; close plans and specs |
 
 ---
 
