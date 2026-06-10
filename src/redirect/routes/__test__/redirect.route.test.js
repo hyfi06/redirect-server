@@ -1,10 +1,10 @@
 const request = require('supertest');
 const express = require('express');
 const redirectRoute = require('..');
-const RedirectService = require('../../services/redirect.service');
+const RedirectService = require('../../../api/redirect/services/redirect.service.api');
 const { nodeCache } = require('../../../utils/cache');
 
-jest.mock('../../services/redirect.service');
+jest.mock('../../../api/redirect/services/redirect.service.api');
 jest.mock('../../../utils/cache', () => ({
   nodeCache: {
     has: jest.fn(),
