@@ -3,7 +3,7 @@
 const {
   createUserParser,
   updateUserParser,
-} = require('../user.parser.api');
+} = require('../user.parser');
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers

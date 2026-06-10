@@ -1,6 +1,6 @@
 'use strict';
 
-const User = require('../user');
+const User = require('../user.model');
 
 describe('User model', () => {
   // -------------------------------------------------------------------------

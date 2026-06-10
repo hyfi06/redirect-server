@@ -2,12 +2,12 @@ const boom = require('@hapi/boom');
 const { log } = require('../../../utils/logger');
 const CrudService = require('../../../utils/crud.service');
 const config = require('../../../config');
-const User = require('../../users/models/user');
-const { groupDocParser, createGroupParser, updateGroupParser } = require('../parsers/group.parser.api');
+const User = require('../../users/models/user.model');
+const { groupDocParser, createGroupParser, updateGroupParser } = require('../parsers/group.parser');
 
 class GroupService extends CrudService {
   /**
-   * @param {import('../../users/services/user.service.api')} userService
+   * @param {import('../../users/services/user.service')} userService
    * Depends on UserServices for membership sync. If UserServices ever needs GroupService,
    * extract the sync logic to a MembershipService.
    */
@@ -28,8 +28,8 @@ class GroupService extends CrudService {
   }
 
   /**
-   * @param {import('../models/group.model.api')} group
-   * @returns {Promise<import('../models/group.model.api')>}
+   * @param {import('../models/group.model')} group
+   * @returns {Promise<import('../models/group.model')>}
    */
   async create(group) {
     try {
@@ -46,8 +46,8 @@ class GroupService extends CrudService {
    * Fetch-first: all users in the diff are fetched before any write.
    * If any user does not exist, the request fails with 400 and nothing is written.
    * @param {string} id
-   * @param {import('../models/group.model.api')} group
-   * @returns {Promise<import('../models/group.model.api')>}
+   * @param {import('../models/group.model')} group
+   * @returns {Promise<import('../models/group.model')>}
    * @throws {import('@hapi/boom').Boom} 400 if any user in the membership diff does not exist
    */
   async update(id, group) {

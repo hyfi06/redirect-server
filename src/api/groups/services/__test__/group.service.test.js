@@ -14,8 +14,8 @@ jest.mock('@google-cloud/firestore');
 jest.mock('../../../../lib/firestore');
 
 const FireStoreAdapter = require('../../../../lib/firestore');
-const GroupService = require('../group.service.api');
-const { Group } = require('../../models/group.model.api');
+const GroupService = require('../group.service');
+const { Group } = require('../../models/group.model');
 
 // ---- Shared mock FireStore db ----
 let mockDb;

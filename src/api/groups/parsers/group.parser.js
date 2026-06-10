@@ -1,5 +1,5 @@
 const FireStore = require('@google-cloud/firestore');
-const { Group } = require('../models/group.model.api');
+const { Group } = require('../models/group.model');
 const { cleanDocObject, deleteRegData } = require('../../../utils/clean.data.utils');
 
 /**

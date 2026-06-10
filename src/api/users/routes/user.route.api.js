@@ -3,8 +3,8 @@ const boom = require('@hapi/boom');
 const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
-const User = require('../models/user');
-const UserService = require('../services/user.service.api');
+const User = require('../models/user.model');
+const UserService = require('../services/user.service');
 const {
   idSchema,
   getUsersQuerySchema,

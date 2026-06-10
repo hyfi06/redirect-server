@@ -37,16 +37,16 @@ jest.mock('../../../../middleware/authenticate.middleware', () => ({
 
 // ---- Mock the service before any require of the router ----
 // (The router instantiates the service at module-evaluation time via `new UserService()`.)
-jest.mock('../../services/user.service.api');
-const UserService = require('../../services/user.service.api');
+jest.mock('../../services/user.service');
+const UserService = require('../../services/user.service');
 
 // ---- Mock the User model ----
 // PATCH handler does `new User({ id, ...req.body })` but updateUserSelfSchema
 // forbids email — so any PATCH body will miss email, causing the real User
 // constructor to throw. Mocking User lets us test the route handler contract
 // (toPublic(), status codes) in isolation.
-jest.mock('../../models/user');
-const User = require('../../models/user');
+jest.mock('../../models/user.model');
+const User = require('../../models/user.model');
 
 // ---- Import the router after mocks are in place ----
 const { userRouterApi } = require('../user.route.api');

@@ -1,12 +1,12 @@
 const CrudService = require('../../../utils/crud.service');
-const User = require('../models/user');
+const User = require('../models/user.model');
 const config = require('../../../config');
 const boom = require('@hapi/boom');
 const {
   createUserParser,
   updateUserParser,
   userParser,
-} = require('../parsers/user.parser.api');
+} = require('../parsers/user.parser');
 
 class UserServices extends CrudService {
   constructor() {

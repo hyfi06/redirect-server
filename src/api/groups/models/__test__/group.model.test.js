@@ -1,4 +1,4 @@
-const { Group } = require('../group.model.api');
+const { Group } = require('../group.model');
 
 describe('Group model', () => {
   describe('constructor', () => {

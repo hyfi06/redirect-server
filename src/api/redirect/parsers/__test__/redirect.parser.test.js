@@ -2,12 +2,12 @@
 
 jest.mock('@google-cloud/firestore');
 
-const Redirect = require('../../models/redirect.models.api');
+const Redirect = require('../../models/redirect.model');
 const {
   redirectParser,
   createRedirectParser,
   updateRedirectParser,
-} = require('../redirect.parser.api');
+} = require('../redirect.parser');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

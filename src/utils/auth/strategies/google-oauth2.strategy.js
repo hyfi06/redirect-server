@@ -1,8 +1,8 @@
 const passport = require('passport');
 const config = require('../../../config');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth2');
-const UserServices = require('../../../api/users/services/user.service.api');
-const User = require('../../../api/users/models/user');
+const UserServices = require('../../../api/users/services/user.service');
+const User = require('../../../api/users/models/user.model');
 
 const userService = new UserServices();
 

@@ -1,11 +1,11 @@
 const config = require('../../../config');
 const CrudService = require('../../../utils/crud.service');
-const Redirect = require('../models/redirect.models.api');
+const Redirect = require('../models/redirect.model');
 const {
   redirectParser,
   createRedirectParser,
   updateRedirectParser,
-} = require('../parsers/redirect.parser.api');
+} = require('../parsers/redirect.parser');
 const boom = require('@hapi/boom');
 
 class RedirectServiceApi extends CrudService {

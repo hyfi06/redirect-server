@@ -38,7 +38,7 @@ jest.mock('../../../../middleware/authenticate.middleware', () => ({
 }));
 
 // ---- Mock RedirectServiceApi ----
-jest.mock('../../services/redirect.service.api', () => {
+jest.mock('../../services/redirect.service', () => {
   return jest.fn().mockImplementation(() => mockMethods);
 });
 

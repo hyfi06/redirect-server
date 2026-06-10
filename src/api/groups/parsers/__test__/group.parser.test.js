@@ -1,5 +1,5 @@
-const { Group } = require('../../models/group.model.api');
-const { groupDocParser, createGroupParser, updateGroupParser } = require('../group.parser.api');
+const { Group } = require('../../models/group.model');
+const { groupDocParser, createGroupParser, updateGroupParser } = require('../group.parser');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // groupDocParser

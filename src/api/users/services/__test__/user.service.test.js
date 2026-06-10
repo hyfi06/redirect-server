@@ -1,7 +1,7 @@
 'use strict';
 
-const UserServices = require('../user.service.api');
-const User = require('../../models/user');
+const UserServices = require('../user.service');
+const User = require('../../models/user.model');
 
 jest.mock('../../../../lib/firestore');
 const FireStoreAdapter = require('../../../../lib/firestore');

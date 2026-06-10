@@ -1,8 +1,8 @@
 const express = require('express');
 const boom = require('@hapi/boom');
-const RedirectServiceApi = require('../services/redirect.service.api');
+const RedirectServiceApi = require('../services/redirect.service');
 const { Filter } = require('@google-cloud/firestore');
-const Redirect = require('../models/redirect.models.api');
+const Redirect = require('../models/redirect.model');
 const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
 const {

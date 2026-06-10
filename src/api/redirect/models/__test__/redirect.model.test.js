@@ -1,6 +1,6 @@
 'use strict';
 
-const Redirect = require('../redirect.models.api');
+const Redirect = require('../redirect.model');
 
 describe('Redirect constructor', () => {
   const fullData = {

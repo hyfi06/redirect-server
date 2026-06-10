@@ -1,5 +1,5 @@
 const FireStore = require('@google-cloud/firestore');
-const Redirect = require('../models/redirect.models.api');
+const Redirect = require('../models/redirect.model');
 const {
   cleanDocObject,
   deleteRegData,

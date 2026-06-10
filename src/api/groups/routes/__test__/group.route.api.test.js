@@ -42,12 +42,12 @@ jest.mock('../../../../middleware/authenticate.middleware', () => ({
 }));
 
 // ---- Mock GroupService ----
-jest.mock('../../services/group.service.api', () => {
+jest.mock('../../services/group.service', () => {
   return jest.fn().mockImplementation(() => mockGroupMethods);
 });
 
 // ---- Mock UserServices (only instantiated in the route module, never called directly in routes) ----
-jest.mock('../../../users/services/user.service.api', () => {
+jest.mock('../../../users/services/user.service', () => {
   return jest.fn().mockImplementation(() => ({}));
 });
 

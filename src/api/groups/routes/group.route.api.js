@@ -3,9 +3,9 @@ const boom = require('@hapi/boom');
 const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
-const { Group } = require('../models/group.model.api');
-const GroupService = require('../services/group.service.api');
-const UserServices = require('../../users/services/user.service.api');
+const { Group } = require('../models/group.model');
+const GroupService = require('../services/group.service');
+const UserServices = require('../../users/services/user.service');
 const {
   createGroupSchema,
   updateGroupSchema,

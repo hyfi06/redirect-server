@@ -1,5 +1,5 @@
 const FireStore = require('@google-cloud/firestore');
-const User = require('../models/user');
+const User = require('../models/user.model');
 const {
   cleanDocObject,
   deleteRegData,

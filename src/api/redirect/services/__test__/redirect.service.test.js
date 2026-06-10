@@ -20,7 +20,7 @@ jest.mock('../../../../config', () => ({
 }));
 
 const FireStoreAdapter = require('../../../../lib/firestore');
-const RedirectServiceApi = require('../redirect.service.api');
+const RedirectServiceApi = require('../redirect.service');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared mock db + helpers
