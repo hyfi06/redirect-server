@@ -1,18 +1,22 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const passport = require('passport');
 const config = require('./config');
 
-const notFoundHandler = require('./middleware/notFoundHandler');
-const { wrapErrors, errorHandler } = require('./middleware/errorHandler');
+const { log } = require('./utils/logger');
+const notFoundHandler = require('./middleware/notFound.handler');
+const { wrapErrors, errorHandler } = require('./middleware/error.handler');
 
-const redirectRouter = require('./routes/redirect');
+const redirectRoute = require('./redirect/routes');
 const rootRouter = require('./routes/root');
+const healthRouter = require('./routes/health');
+const { apiV1 } = require('./api');
 
 const app = express();
 app.use(
   cors({
-    origin: config.cors.split(','),
+    origin: config.cors,
   })
 );
 
@@ -21,7 +25,10 @@ app.use(express.json());
 
 /* Routers */
 rootRouter(app);
-redirectRouter(app);
+app.use(passport.initialize());
+apiV1(app);
+healthRouter(app);
+redirectRoute(app);
 
 // Catch 404
 app.use(notFoundHandler);
@@ -31,9 +38,5 @@ app.use(wrapErrors);
 app.use(errorHandler);
 
 app.listen(config.port, function () {
-  if (config.dev) {
-    console.log(`Listening http://localhost:${config.port}/`);
-  } else {
-    console.log(`Server listening on port ${config.port}`);
-  }
+  log('INFO', `Server listening on port ${config.port}`);
 });

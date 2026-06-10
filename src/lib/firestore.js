@@ -15,34 +15,32 @@ class FireStoreAdapter {
    * @param {string} id
    * @returns {Firestore.DocumentSnapshot}
    */
-  async getById(id) {
+  async get(id) {
     const docRef = this.collection.doc(id);
-    const doc = await docRef.get();
-    if (!doc.exists) {
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
       throw boom.notFound('Resource not found');
     } else {
-      return doc;
+      return docSnap;
     }
   }
 
   /**
    * Create new document
-   * @param {string} id
    * @param {Object} data
    * @returns {Firestore.DocumentSnapshot}
    */
-  async create(id, data) {
-    const docRef = await this.collection.doc(id);
+  async create(data) {
     try {
-      await docRef.create({
+      const docRef = await this.collection.add({
         created: Firestore.Timestamp.fromMillis(Date.now()),
         updated: Firestore.Timestamp.fromMillis(Date.now()),
         ...data,
       });
+      return await docRef.get();
     } catch (err) {
-      throw boom.conflict(`Document already created with id ${id}`, err);
+      throw boom.badRequest('Error in data', err);
     }
-    return await docRef.get();
   }
 
   /**
@@ -52,8 +50,11 @@ class FireStoreAdapter {
    * @returns {Firestore.DocumentSnapshot}
    */
   async update(id, data) {
-    const docRef = await this.collection.doc(id);
-    await docRef.set({
+    const docRef = this.collection.doc(id);
+    if (!(await docRef.get()).exists) {
+      throw boom.notFound('Resource not found');
+    }
+    await docRef.update({
       updated: Firestore.Timestamp.fromMillis(Date.now()),
       ...data,
     });
@@ -66,7 +67,10 @@ class FireStoreAdapter {
    * @returns {string}
    */
   async delete(id) {
-    const docRef = await this.collection.doc(id);
+    const docRef = this.collection.doc(id);
+    if (!(await docRef.get()).exists) {
+      throw boom.notFound('Resource not found');
+    }
     await docRef.delete();
     return id;
   }

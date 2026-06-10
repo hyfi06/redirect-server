@@ -1,0 +1,50 @@
+const CrudService = require('../../../utils/crud.service');
+const User = require('../models/user');
+const config = require('../../../config');
+const boom = require('@hapi/boom');
+const {
+  createUserParser,
+  updateUserParser,
+  userParser,
+} = require('../parsers/user.parser.api');
+
+class UserServices extends CrudService {
+  constructor() {
+    super(
+      config.firestore.collections.users,
+      userParser,
+      createUserParser,
+      updateUserParser,
+    );
+  }
+
+  /**
+   * @param {string} email - The user's email address
+   * @returns {Promise<User>}
+   */
+  async getByEmail(email) {
+    const query = this.db.collection.where('email', '==', email);
+    const userSnap = await query.get();
+    if (userSnap.empty) {
+      throw boom.notFound('User not found');
+    }
+    return this.docParser(userSnap.docs[0]);
+  }
+
+  /**
+   * Creates a new user, enforcing email uniqueness.
+   * @param {User} user
+   * @returns {Promise<User>}
+   */
+  async create(user) {
+    try {
+      await this.getByEmail(user.email);
+    } catch (error) {
+      const newDoc = await this.db.create(this.createParser(user));
+      return this.docParser(newDoc);
+    }
+    throw boom.badRequest('User already created');
+  }
+}
+
+module.exports = UserServices;

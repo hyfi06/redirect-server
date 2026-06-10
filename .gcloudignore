@@ -22,3 +22,12 @@ README.md
 .eslintrc
 .prettierrc.json
 coverage
+
+# Docs and dev guidance (not needed at runtime)
+docs/
+CLAUDE.md
+.claude/
+
+# Test files and test configuration
+jest.config.js
+src/**/__test__/

@@ -1,29 +1,94 @@
-# Redirect Server
+# 1kg.me — URL Shortener
 
-Express redirect server
+Self-hosted URL shortener running on Google Cloud App Engine + Firestore. Users register redirect paths (`1kg.me/{group-slug}/{path}` → URL). Access is controlled by ownership and group-based permissions.
 
-## Install
+**Stack:** Node.js 24, Express 4, Firestore, Google OAuth2 + JWT.
+
+---
+
+## Changelog v3
+
+- JWT authentication (HS256, configurable TTL)
+- Google OAuth2 login flow
+- REST API v1: redirects, users, groups
+- Path namespace enforcement (group-scoped paths for regular users)
+- Structured JSON logging for Cloud Logging
+- `GET /_ah/health` health check endpoint with Firestore connectivity probe
+
+---
+
+## Prerequisites
+
+- Node.js >= 24
+- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install-sdk)
+- GCP project with App Engine and Firestore (Native mode) enabled
+
+---
+
+## Local Setup
 
 ```bash
 npm install
-```
-
-## Run
-
-```bash
-npm start
-```
-
-### Development
-
-```bash
+cp .env.example .env
+# Edit .env with your values
+gcloud auth application-default login
 npm run dev
 ```
 
-## Deploy
+---
 
-[Install Google Cloud CLI](https://cloud.google.com/sdk/docs/install-sdk)
+## Environment Variables
+
+| Variable | Description | Required | Default |
+|---|---|---|---|
+| `PORT` | Server port | No | `3000` |
+| `NODE_ENV` | Environment (`development`/`production`/`test`) | No | — |
+| `CORS` | Comma-separated allowed origins | No | `*` |
+| `JWT_SECRET` | Secret for signing and verifying JWTs (min 32 chars recommended) | **Yes** | — |
+| `JWT_TTL` | JWT expiry duration (e.g. `2h`, `1d`, `30m`) | No | `2h` |
+| `GOOGLE_CLIENT_ID` | Client ID from Google Cloud Console | **Yes** | — |
+| `GOOGLE_CLIENT_SECRET` | Client Secret from Google Cloud Console | **Yes** | — |
+| `GOOGLE_OAUTH_REDIRECT` | OAuth2 callback URL (e.g. `https://1kg.me/api/v1/auth/google/callback`) | **Yes** | — |
+
+> `JWT_SECRET` and `GOOGLE_CLIENT_SECRET` must never be written into `app.yaml`. Use Secret Manager or environment injection at deploy time.
+
+---
+
+## Tests
+
+```bash
+npm test
+```
+
+---
+
+## Deploy
 
 ```bash
 gcloud app deploy app.yaml
 ```
+
+### Create Firestore composite indexes
+
+```bash
+gcloud firestore indexes composite create \
+  --collection-group=redirects \
+  --field-config=field-path=owner,order=ASCENDING \
+  --field-config=field-path=updated,order=DESCENDING
+
+gcloud firestore indexes composite create \
+  --collection-group=redirects \
+  --field-config=field-path=permission,array-config=CONTAINS \
+  --field-config=field-path=updated,order=DESCENDING
+
+gcloud firestore indexes composite create \
+  --collection-group=groups \
+  --field-config=field-path=slug,order=ASCENDING \
+  --field-config=field-path=updated,order=DESCENDING
+```
+
+---
+
+## API Reference
+
+See [docs/api/v1.md](docs/api/v1.md) for full endpoint documentation.

@@ -1,4 +1,4 @@
-runtime: nodejs18
+runtime: nodejs24
 
 entrypoint: node src/app.js
 
