@@ -30,7 +30,7 @@ class User {
       updated,
     } = data;
     this.id = id || null;
-    this.email = email.toLowerCase().trim();
+    this.email = email ? email.toLowerCase().trim() : undefined;
     this.firstName = firstName?.trim() || '';
     this.lastName = lastName?.trim() || '';
     this.groups = groups || [];
