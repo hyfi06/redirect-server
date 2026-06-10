@@ -179,6 +179,7 @@ Used agents: backend-engineer
 npm run dev         # Development with nodemon and DEBUG=app:* enabled
 npm test            # Run Jest with coverage (sets NODE_ENV=test)
 npm run test:watch
+npm run indexes     # Sync Firestore composite indexes from firestore.indexes.json to the active GCP project
 npm run deploy      # gcloud app deploy app.yaml
 ```
 
@@ -268,17 +269,9 @@ res.redirect(302, url)
 
 ---
 
-### `src/redirect/` is a pure facade over `src/api/redirect/`
+### `src/redirect/` imports directly from `src/api/redirect/`
 
-All files in `src/redirect/` are re-exports. The real code lives in `src/api/redirect/`:
-
-```
-src/redirect/models/redirect.model.js      → re-export → src/api/redirect/models/
-src/redirect/parsers/redirect.parsers.js   → re-export → src/api/redirect/parsers/
-src/redirect/services/redirect.service.js  → re-export → src/api/redirect/services/
-```
-
-When modifying redirect logic, always edit under `src/api/redirect/`.
+`src/redirect/routes/redirect.router.js` imports the redirect service directly from `src/api/redirect/services/`. There are no re-export intermediaries. When modifying redirect logic, always edit under `src/api/redirect/`.
 
 ---
 
@@ -297,19 +290,19 @@ CrudService               src/utils/crud.service.js
   • Wraps FireStoreAdapter; applies parsers on every read/write
   • .find(query, options) supports orderBy (prefix "-" = desc), offset, limit
     ↑ (extends)
-RedirectServiceApi        src/api/redirect/services/redirect.service.api.js
+RedirectServiceApi        src/api/redirect/services/redirect.service.js
   • .getByPath(path)  — Firestore where('path', '==', path)
   • .create()         — enforces path uniqueness before insert
                         (throws boom.badRequest if path already taken)
 
-UserServices              src/api/users/services/user.service.api.js
+UserServices              src/api/users/services/user.service.js
   • .getByEmail(email) — Firestore where('email', '==', email)
   • .create()          — enforces email uniqueness before insert
   Note: User constructor accepts email as optional (guard: email ? ... : undefined).
         PATCH handlers do not supply email — it is immutable post-creation and
         discarded by updateParser before any Firestore write.
 
-GroupService              src/api/groups/services/group.service.api.js
+GroupService              src/api/groups/services/group.service.js
   • .getBySlug(slug)   — Firestore where('slug', '==', slug)
   • .create()          — enforces slug uniqueness before insert
   • .update(id, group) — fetch-first diff of users array; syncs User.groups
