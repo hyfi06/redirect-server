@@ -102,6 +102,14 @@ Do not batch multiple plan steps into one cycle. Each step gets its own `[feat/f
 | Test | `test-engineer` | Tests covering all branches and edge cases of the new code |
 | Docs | `docs-engineer` | Inline JSDoc where required; CLAUDE.md, spec, and plan checkboxes updated |
 
+### software-architect — code in specs and plans
+
+Specs and plans describe **what** to build and **why**, not **how**. The backend-engineer reads the plan and proposes the implementation with their own expertise.
+
+- **Default: no code.** Specs and plans use prose, tables, and file/method names. They do not include implementation code.
+- **Exception: agreed solutions only.** If a specific solution was analyzed in depth with the user and explicitly agreed upon (e.g. a non-obvious algorithm, a Firestore query shape, a data migration strategy), that solution may be included in the spec to preserve the decision. Mark it clearly as an agreed solution, not a suggestion.
+- **Rationale:** architect-authored code in plans has introduced bugs that reached the backend-engineer without review. The backend-engineer's implementation is the authoritative solution — the plan must not pre-empt it.
+
 ### When the backend-engineer hits an undocumented decision
 
 If during implementation an architectural or business decision arises that isn't covered by the spec or plan, the backend-engineer **stops and asks** — either the user directly or the `software-architect` agent — before proceeding. It does not guess or invent behavior.
