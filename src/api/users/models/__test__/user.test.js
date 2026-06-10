@@ -88,6 +88,21 @@ describe('User model', () => {
       expect(user.created).toBeUndefined();
       expect(user.updated).toBeUndefined();
     });
+
+    // Regression guard: PATCH handler calls new User({ id, ...value }) where value
+    // never contains email (both update schemas forbid it). Before the fix, this
+    // crashed with "TypeError: Cannot read properties of undefined (reading 'toLowerCase')".
+    it('does not throw when email is absent and sets this.email to undefined', () => {
+      expect(() => new User({ id: 'user-123', firstName: 'Test' })).not.toThrow();
+      const user = new User({ id: 'user-123', firstName: 'Test' });
+      expect(user.email).toBeUndefined();
+    });
+
+    it('does not throw when email is explicitly undefined', () => {
+      expect(() => new User({ email: undefined, id: 'user-123' })).not.toThrow();
+      const user = new User({ email: undefined, id: 'user-123' });
+      expect(user.email).toBeUndefined();
+    });
   });
 
   // -------------------------------------------------------------------------
