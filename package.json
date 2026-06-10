@@ -8,6 +8,7 @@
     "start": "NODE_ENV=production node src/app.js",
     "test": "NODE_ENV=test npx jest",
     "test:watch": "NODE_ENV=test npx jest --watch",
+    "indexes": "node scripts/manage-indexes.js",
     "deploy": "gcloud app deploy"
   },
   "repository": {
