@@ -1,7 +1,7 @@
 # Bug Report — `PATCH /api/v1/users/:id` crash por `email` undefined
 
 **Fecha:** 2026-06-09
-**Estado:** PENDIENTE
+**Estado:** RESUELTO
 **Severidad:** Alta — crash en producción, endpoint inutilizable
 
 ---
@@ -131,3 +131,12 @@ this.email = email.toLowerCase().trim();
 // Después:
 this.email = email ? email.toLowerCase().trim() : undefined;
 ```
+
+---
+
+## 7. Resolución
+
+- **Fix**: commit `228b447` — `[fix] make email optional in User constructor — guard against undefined`
+- **Tests**: commit `5694f3e` — `[test] add regression tests for User constructor email guard`
+- **Versión**: 3.0.1
+- **Fecha de resolución**: 2026-06-10
