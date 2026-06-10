@@ -285,6 +285,9 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.api.js
 UserServices              src/api/users/services/user.service.api.js
   • .getByEmail(email) — Firestore where('email', '==', email)
   • .create()          — enforces email uniqueness before insert
+  Note: User constructor accepts email as optional (guard: email ? ... : undefined).
+        PATCH handlers do not supply email — it is immutable post-creation and
+        discarded by updateParser before any Firestore write.
 
 GroupService              src/api/groups/services/group.service.api.js
   • .getBySlug(slug)   — Firestore where('slug', '==', slug)
