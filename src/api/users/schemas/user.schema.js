@@ -3,7 +3,7 @@ const Joi = require('joi');
 const id = Joi.string();
 const email = Joi.string().email();
 const name = Joi.string().max(70).min(1);
-// max(10) guards the array-contains-any Firestore limit (§0.1)
+// max(10) guards the array-contains-any Firestore limit of 10 values
 const groups = Joi.array().items(Joi.string()).max(10);
 const token = Joi.string();
 const role = Joi.string();
