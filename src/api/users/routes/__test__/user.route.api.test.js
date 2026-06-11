@@ -497,6 +497,39 @@ describe('POST /api/v1/users', () => {
 
     expect(res.status).toBe(400);
   });
+
+  // §0.1 — group limit guard: Firestore array-contains-any supports max 10 values
+  it('returns 400 when groups array has 11 elements (exceeds Firestore limit)', async () => {
+    const body = {
+      ...validBody,
+      groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11'],
+    };
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send(body);
+
+    expect(res.status).toBe(400);
+    expect(UserService.prototype.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts groups array of exactly 10 elements', async () => {
+    const mockUser = mockUserWithPublic({ id: 'new-user', email: 'new@example.com' });
+    UserService.prototype.create.mockResolvedValue(mockUser);
+
+    const body = {
+      ...validBody,
+      groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'],
+    };
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send(body);
+
+    expect(res.status).toBe(201);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -541,6 +574,30 @@ describe('PATCH /api/v1/users/:id', () => {
         .patch('/api/v1/users/user-upd')
         .set('x-test-user', userHeader(ADMIN_USER))
         .send({ groups: ['fc', 'cs'] });
+
+      expect(res.status).toBe(200);
+      expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    });
+
+    // §0.1 — group limit guard: Firestore array-contains-any supports max 10 values
+    it('returns 400 when admin sets groups to an array of 11 elements (exceeds Firestore limit)', async () => {
+      const res = await request(app)
+        .patch('/api/v1/users/user-upd')
+        .set('x-test-user', userHeader(ADMIN_USER))
+        .send({ groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11'] });
+
+      expect(res.status).toBe(400);
+      expect(UserService.prototype.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts groups array of exactly 10 elements when admin updates a user', async () => {
+      const mockUser = mockUserWithPublic({ id: 'user-upd', groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'] });
+      UserService.prototype.update.mockResolvedValue(mockUser);
+
+      const res = await request(app)
+        .patch('/api/v1/users/user-upd')
+        .set('x-test-user', userHeader(ADMIN_USER))
+        .send({ groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'] });
 
       expect(res.status).toBe(200);
       expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
