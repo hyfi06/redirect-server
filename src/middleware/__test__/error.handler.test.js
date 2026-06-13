@@ -57,8 +57,8 @@ describe('error.handler', () => {
     const mockErr = boom.badImplementation();
     errorHandler(mockErr, mockReq, mockRes, mockNext);
 
+    expect(mockRes.status).toHaveBeenCalledWith(500);
     expect(mockRes.sendFile).toHaveBeenCalled();
-    expect(mockRes.status).not.toHaveBeenCalled();
     expect(mockRes.json).not.toHaveBeenCalled();
   });
 
@@ -92,6 +92,7 @@ describe('error.handler', () => {
     const mockErr = boom.notFound();
     errorHandler(mockErr, mockReq, mockRes, mockNext);
 
+    expect(mockRes.status).toHaveBeenCalledWith(404);
     expect(mockRes.sendFile).toHaveBeenCalled();
   });
 });
