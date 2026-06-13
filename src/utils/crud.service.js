@@ -71,7 +71,8 @@ class CrudService {
     let fsQuery = this.db.collection;
     if (query) {
       fsQuery = fsQuery.where(...query);
-    } else if (!orderBy) {
+    }
+    if (!orderBy) {
       fsQuery = fsQuery.orderBy('updated', 'desc');
     }
     let fsFilter = fsQuery;
