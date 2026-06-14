@@ -58,13 +58,15 @@ class CrudService {
   }
 
   /**
-   * find docs by query
+   * Find docs matching a Firestore where() filter. Always applies
+   * orderBy('updated', 'desc') unless options.orderBy is provided.
    * @template T
-   * @param {string[]} query
-   * @param {string} options.orderBy
-   * @param {number} options.offset
-   * @param {number} options.limit
-   * @return {T[]}
+   * @param {Array} [query] - Arguments spread into collection.where(); omit to match all docs
+   * @param {object} [options]
+   * @param {string} [options.orderBy] - Field to sort by; prefix "-" for descending
+   * @param {number} [options.offset]
+   * @param {number} [options.limit]
+   * @returns {Promise<T[]>}
    */
   async find(query, options) {
     const { orderBy, offset, limit } = options;
