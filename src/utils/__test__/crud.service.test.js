@@ -183,6 +183,12 @@ describe('CrudService — find()', () => {
     expect(mockDb.collection.orderBy).toHaveBeenCalledWith('updated', 'desc');
   });
 
+  it("defaults to orderBy('updated', 'desc') when a query is present but no orderBy option", async () => {
+    await service.find(['status', '==', 'active'], {});
+
+    expect(mockDb.collection.orderBy).toHaveBeenCalledWith('updated', 'desc');
+  });
+
   it('does not apply the default orderBy when query is null but orderBy option is set', async () => {
     await service.find(null, { orderBy: 'name' });
 
