@@ -32,6 +32,8 @@ function wrapErrors(err, req, res, next) {
 }
 
 /**
+ * Serves HTML error pages for 404 and production 500; returns JSON for all other errors.
+ * The 500 HTML branch is suppressed in dev so stack traces reach the JSON response.
  * @param {import('@hapi/boom').Boom} err
  * @param {import('express').Request} req
  * @param {import('express').Response} res
