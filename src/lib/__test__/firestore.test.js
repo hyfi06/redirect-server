@@ -156,10 +156,11 @@ describe('FireStoreAdapter', () => {
     });
 
     it('throws a boom.notFound error when the document does not exist', async () => {
-      const mockDoc = { exists: false };
+      const notFoundError = new Error('NOT_FOUND');
+      notFoundError.code = 5;
       const mockDocRef = {
-        get: jest.fn().mockResolvedValue(mockDoc),
-        update: jest.fn(),
+        get: jest.fn(),
+        update: jest.fn().mockRejectedValue(notFoundError),
       };
       mockCollection.doc.mockReturnValue(mockDocRef);
 
@@ -169,7 +170,42 @@ describe('FireStoreAdapter', () => {
         message: 'Resource not found',
       });
 
-      expect(mockDocRef.update).not.toHaveBeenCalled();
+      expect(mockDocRef.update).toHaveBeenCalled();
+    });
+
+    it('does not call get() before docRef.update() — post-update read is the only get() call', async () => {
+      const mockData = { field: 'value' };
+      const mockDoc = {
+        exists: true,
+        id: 'testId',
+        data: jest.fn().mockReturnValue(mockData),
+      };
+      const mockDocRef = {
+        get: jest.fn().mockResolvedValue(mockDoc),
+        update: jest.fn().mockResolvedValue(undefined),
+      };
+      mockCollection.doc.mockReturnValue(mockDocRef);
+
+      await firestoreAdapter.update('testId', mockData);
+
+      // get() must be called exactly once: the post-update read.
+      // A pre-existence check would produce a second call.
+      expect(mockDocRef.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('propagates errors from docRef.update() unchanged when code is not 5', async () => {
+      const unexpectedError = new Error('internal write error');
+      unexpectedError.code = 13; // gRPC INTERNAL — not NOT_FOUND
+      const mockDocRef = {
+        get: jest.fn(),
+        update: jest.fn().mockRejectedValue(unexpectedError),
+      };
+      mockCollection.doc.mockReturnValue(mockDocRef);
+
+      const thrown = await firestoreAdapter.update('testId', {}).catch((e) => e);
+
+      expect(thrown).toBe(unexpectedError);
+      expect(thrown.isBoom).toBeUndefined();
     });
   });
 
@@ -213,9 +249,11 @@ describe('FireStoreAdapter', () => {
     it('uses the same error message as get() and update() when the document does not exist', async () => {
       // Verify consistency of the not-found message across all three methods.
       const missingDoc = { exists: false };
+      const notFoundError = new Error('NOT_FOUND');
+      notFoundError.code = 5;
       const makeDocRef = () => ({
         get: jest.fn().mockResolvedValue(missingDoc),
-        update: jest.fn(),
+        update: jest.fn().mockRejectedValue(notFoundError),
         delete: jest.fn(),
       });
 

@@ -53,13 +53,15 @@ class FireStoreAdapter {
    */
   async update(id, data) {
     const docRef = this.collection.doc(id);
-    if (!(await docRef.get()).exists) {
-      throw boom.notFound('Resource not found');
+    try {
+      await docRef.update({
+        updated: Firestore.Timestamp.fromMillis(Date.now()),
+        ...data,
+      });
+    } catch (err) {
+      if (err.code === 5) throw boom.notFound('Resource not found');
+      throw err;
     }
-    await docRef.update({
-      updated: Firestore.Timestamp.fromMillis(Date.now()),
-      ...data,
-    });
     return await docRef.get();
   }
 
