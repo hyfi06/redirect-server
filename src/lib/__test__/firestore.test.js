@@ -33,10 +33,24 @@ describe('FireStoreAdapter', () => {
   // ---------------------------------------------------------------------------
 
   it('two FireStoreAdapter instances share the same this.db reference', () => {
+    // Both adapters receive firestoreClient via require(); within a single
+    // module registry both require() calls return the identical mock object,
+    // mirroring how Node module caching works in production.
     const adapterA = new FireStoreAdapter('colA');
     const adapterB = new FireStoreAdapter('colB');
 
     expect(adapterA.db).toBe(adapterB.db);
+  });
+
+  it('FireStoreAdapter does not call the Firestore constructor — it uses the singleton client', () => {
+    // FireStoreAdapter only needs Firestore.Timestamp; it must not call
+    // new Firestore.Firestore() itself (that would break batch writes in §1.3).
+    // Clearing the mock count first ensures we only count calls from this block.
+    Firestore.Firestore.mockClear();
+
+    new FireStoreAdapter('colC');
+
+    expect(Firestore.Firestore).not.toHaveBeenCalled();
   });
 
   // ---------------------------------------------------------------------------
@@ -218,5 +232,42 @@ describe('FireStoreAdapter', () => {
       expect(updateError.message).toBe(getError.message);
       expect(deleteError.message).toBe(getError.message);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// firestore-client singleton — module-level guarantee
+// ---------------------------------------------------------------------------
+// These tests load firestore-client.js through its real path (bypassing the
+// module-level mock) using jest.isolateModules, which creates a fresh module
+// registry for each callback. Within a single callback the registry behaves
+// exactly like Node's require() cache: the same module path returns the same
+// object, regardless of how many times it is required.
+//
+// The @google-cloud/firestore auto-mock (declared at module level) still
+// applies inside isolateModules, so no real GCP connection is attempted.
+
+describe('firestore-client singleton', () => {
+  it('returns the same object reference on every require() within the same registry', () => {
+    let client1;
+    let client2;
+    jest.isolateModules(() => {
+      client1 = require('../firestore-client');
+      client2 = require('../firestore-client');
+    });
+    expect(client1).toBe(client2);
+  });
+
+  it('FireStoreAdapter.db is the same object as the firestore-client module export', () => {
+    // This verifies that FireStoreAdapter assigns this.db = firestoreClient
+    // (the singleton) rather than constructing a new client independently.
+    let client;
+    let adapter;
+    jest.isolateModules(() => {
+      client = require('../firestore-client');
+      const FreshAdapter = require('../firestore');
+      adapter = new FreshAdapter('colA');
+    });
+    expect(adapter.db).toBe(client);
   });
 });
