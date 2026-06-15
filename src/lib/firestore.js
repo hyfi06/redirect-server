@@ -1,3 +1,4 @@
+// Firestore is still required for Firestore.Timestamp — the client instance comes from the singleton.
 const Firestore = require('@google-cloud/firestore');
 const boom = require('@hapi/boom');
 const firestoreClient = require('./firestore-client');
