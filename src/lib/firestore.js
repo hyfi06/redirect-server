@@ -1,12 +1,13 @@
 const Firestore = require('@google-cloud/firestore');
 const boom = require('@hapi/boom');
+const firestoreClient = require('./firestore-client');
 
 class FireStoreAdapter {
   /**
    * @param {string} collection
    */
   constructor(collection) {
-    this.db = new Firestore.Firestore();
+    this.db = firestoreClient;
     this.collection = this.db.collection(collection);
   }
 

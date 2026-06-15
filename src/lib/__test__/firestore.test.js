@@ -2,6 +2,11 @@ const Firestore = require('@google-cloud/firestore');
 const FireStoreAdapter = require('../firestore');
 
 jest.mock('@google-cloud/firestore');
+jest.mock('../../lib/firestore-client', () => ({
+  collection: jest.fn(),
+}));
+
+const firestoreClient = require('../../lib/firestore-client');
 
 describe('FireStoreAdapter', () => {
   let firestoreAdapter;
@@ -9,14 +14,11 @@ describe('FireStoreAdapter', () => {
     doc: jest.fn(),
     add: jest.fn(),
   };
-  const mockDb = {
-    collection: jest.fn().mockReturnValue(mockCollection),
-  };
 
   const mockTimestamp = new Date('2020-03-16');
 
   beforeEach(() => {
-    Firestore.Firestore.mockReturnValue(mockDb);
+    firestoreClient.collection.mockReturnValue(mockCollection);
     Firestore.Timestamp.fromMillis = jest.fn().mockReturnValue(mockTimestamp);
 
     firestoreAdapter = new FireStoreAdapter('testCollection');
