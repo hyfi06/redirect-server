@@ -1,8 +1,8 @@
+const Firestore = require('@google-cloud/firestore');
 const boom = require('@hapi/boom');
-const { log } = require('../../../utils/logger');
 const CrudService = require('../../../utils/crud.service');
 const config = require('../../../config');
-const User = require('../../users/models/user.model');
+const firestoreClient = require('../../../lib/firestore-client');
 const { groupDocParser, createGroupParser, updateGroupParser } = require('../parsers/group.parser');
 
 class GroupService extends CrudService {
@@ -14,6 +14,8 @@ class GroupService extends CrudService {
   constructor(userService) {
     super(config.firestore.collections.groups, groupDocParser, createGroupParser, updateGroupParser);
     this.userService = userService;
+    this.groupsCollection = config.firestore.collections.groups;
+    this.usersCollection = config.firestore.collections.users;
   }
 
   /**
@@ -42,15 +44,19 @@ class GroupService extends CrudService {
   }
 
   /**
-   * Updates the group and syncs User.groups for added/removed members.
-   * Fetch-first: all users in the diff are fetched before any write.
-   * If any user does not exist, the request fails with 400 and nothing is written.
+   * Updates the group and atomically syncs User.groups for added/removed members
+   * using a Firestore WriteBatch. Fetch-first: all users in the diff are fetched
+   * before any write. If any user does not exist, the request fails with 400 and
+   * nothing is written.
    * @param {string} id
    * @param {import('../models/group.model')} group
    * @returns {Promise<import('../models/group.model')>}
    * @throws {import('@hapi/boom').Boom} 400 if any user in the membership diff does not exist
    */
   async update(id, group) {
+    const batch = firestoreClient.batch();
+    const now = Firestore.Timestamp.fromMillis(Date.now());
+
     if (group.users !== undefined) {
       const current = await this.findOne(id);
       const oldUsers = current.users || [];
@@ -74,30 +80,29 @@ class GroupService extends CrudService {
         }
       }
 
-      // Sync User.groups for added members
+      // Queue batch updates for added members
       for (const email of added) {
         const user = userMap.get(email);
-        try {
-          await this.userService.update(new User({ ...user, groups: [...user.groups, current.slug] }));
-        } catch (e) {
-          log('ERROR', `Failed to add group ${current.slug} to user ${email}`, { error: e.message });
-          throw e;
-        }
+        const userRef = firestoreClient.collection(this.usersCollection).doc(user.id);
+        batch.update(userRef, { groups: [...user.groups, current.slug], updated: now });
       }
 
-      // Sync User.groups for removed members
+      // Queue batch updates for removed members
       for (const email of removed) {
         const user = userMap.get(email);
-        try {
-          await this.userService.update(new User({ ...user, groups: user.groups.filter((g) => g !== current.slug) }));
-        } catch (e) {
-          log('ERROR', `Failed to remove group ${current.slug} from user ${email}`, { error: e.message });
-          throw e;
-        }
+        const userRef = firestoreClient.collection(this.usersCollection).doc(user.id);
+        batch.update(userRef, { groups: user.groups.filter((g) => g !== current.slug), updated: now });
       }
     }
 
-    return super.update(group);
+    // Include the group document itself in the batch
+    const groupRef = firestoreClient.collection(this.groupsCollection).doc(id);
+    batch.update(groupRef, { ...updateGroupParser(group), updated: now });
+
+    await batch.commit();
+
+    const updatedSnap = await groupRef.get();
+    return this.docParser(updatedSnap);
   }
 }
 
