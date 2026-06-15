@@ -29,6 +29,17 @@ describe('FireStoreAdapter', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // singleton db reference
+  // ---------------------------------------------------------------------------
+
+  it('two FireStoreAdapter instances share the same this.db reference', () => {
+    const adapterA = new FireStoreAdapter('colA');
+    const adapterB = new FireStoreAdapter('colB');
+
+    expect(adapterA.db).toBe(adapterB.db);
+  });
+
+  // ---------------------------------------------------------------------------
   // get()
   // ---------------------------------------------------------------------------
 
