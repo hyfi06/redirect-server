@@ -305,8 +305,10 @@ UserServices              src/api/users/services/user.service.js
 GroupService              src/api/groups/services/group.service.js
   • .getBySlug(slug)   — Firestore where('slug', '==', slug)
   • .create()          — enforces slug uniqueness before insert
-  • .update(id, group) — fetch-first diff of users array; syncs User.groups
-                         for added/removed members before calling super.update()
+  • .update(id, group) — fetch-first diff of users array; builds a WriteBatch with
+                         one update per added/removed member plus the group itself;
+                         commits atomically. Does NOT call super.update() — bypasses
+                         FireStoreAdapter entirely; Timestamps are set manually.
   Receives UserServices via constructor injection (D12).
   If UserServices ever needs GroupService, extract sync to a MembershipService.
 ```

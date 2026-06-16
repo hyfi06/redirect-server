@@ -48,6 +48,12 @@ class GroupService extends CrudService {
    * using a Firestore WriteBatch. Fetch-first: all users in the diff are fetched
    * before any write. If any user does not exist, the request fails with 400 and
    * nothing is written.
+   *
+   * Timestamp must be set manually on every batch entry — WriteBatch bypasses
+   * FireStoreAdapter, so auto-timestamping does not apply.
+   *
+   * The post-commit get() is required to return the updated document: batch.commit()
+   * returns void and does not provide the updated field values.
    * @param {string} id
    * @param {import('../models/group.model')} group
    * @returns {Promise<import('../models/group.model')>}
