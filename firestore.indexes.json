@@ -23,6 +23,13 @@
         { "fieldPath": "slug", "order": "ASCENDING" },
         { "fieldPath": "updated", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "apiKeys",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "keyHash", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
