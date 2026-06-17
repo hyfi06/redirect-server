@@ -5,6 +5,7 @@ const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
 const User = require('../models/user.model');
 const UserService = require('../services/user.service');
+const { apiKeyRouter } = require('./api-key.route');
 const {
   idSchema,
   getUsersQuerySchema,
@@ -28,6 +29,9 @@ userRouterApi.get('/me', async (req, res, next) => {
     next(error);
   }
 });
+
+// /me/api-keys must be mounted before /:id so Express does not treat "me" as an id param
+userRouterApi.use('/me/api-keys', apiKeyRouter);
 
 // D16: list exposes emails, roles, and group membership — no legitimate use case for regular users in v3
 userRouterApi.get(
