@@ -118,6 +118,8 @@ redirectRouterApi.patch(
   async (req, res, next) => {
     const { id } = req.params;
     try {
+      // Fetch first: owner and permission come from the stored document, never from
+      // the request body — the body cannot be trusted to assert its own access rights.
       const existing = await redirectServicieApi.findOne(id);
       const editPermissions = req.user.groups.map(g => `edit:${g}`);
       const canEdit =
@@ -143,6 +145,8 @@ redirectRouterApi.delete(
   async (req, res, next) => {
     const { id } = req.params;
     try {
+      // Fetch first: same reason as PATCH — access check requires the stored owner
+      // and permission fields, which cannot be supplied by the requester.
       const existing = await redirectServicieApi.findOne(id);
       const deletePermissions = req.user.groups.map(g => `delete:${g}`);
       const canDelete =

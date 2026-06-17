@@ -46,12 +46,13 @@ The `slug` is the segment used in redirect paths: `1kg.me/{slug}/{path}`.
 
 ### Permissions
 
-Permissions live in `Redirect.permission: string[]`, entries formatted as `"read:{group}"` or `"edit:{group}"`.  
+Permissions live in `Redirect.permission: string[]`, entries formatted as `"read:{group}"`, `"edit:{group}"`, or `"delete:{group}"`.  
 A redirect is visible to a requester if:
 - The requester is the `owner`, OR
 - The requester belongs to a group listed in `permission` with the `read` scope.
 
-Only the owner (or an admin) can edit or delete a redirect.
+A redirect can be edited by the owner, an admin, or a user whose group appears in `permission` with the `edit` scope.  
+A redirect can be deleted by the owner, an admin, or a user whose group appears in `permission` with the `delete` scope.
 
 ### Branch strategy
 
