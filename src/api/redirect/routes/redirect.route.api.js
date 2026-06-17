@@ -5,6 +5,8 @@ const { Filter } = require('@google-cloud/firestore');
 const Redirect = require('../models/redirect.model');
 const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
+const GroupService = require('../../groups/services/group.service');
+const UserServices = require('../../users/services/user.service');
 const {
   getRedirectQuerySchema,
   getRedirectSchema,
@@ -14,6 +16,8 @@ const {
 } = require('../schemas/redirect.schema');
 
 const redirectServicieApi = new RedirectServiceApi();
+const userService = new UserServices();
+const groupService = new GroupService(userService);
 const redirectRouterApi = express.Router();
 
 // All redirect routes require a valid JWT — owner and group membership are derived
@@ -92,6 +96,11 @@ redirectRouterApi.post(
       if (!group) return next(boom.forbidden('group is required for non-admin users'));
       if (!req.user.groups.includes(group))
         return next(boom.forbidden('User does not belong to this group'));
+      try {
+        await groupService.getBySlug(group);
+      } catch (error) {
+        return next(error);
+      }
     }
 
     // Leading "/" is required: the catch-all redirect handler uses req.path which
