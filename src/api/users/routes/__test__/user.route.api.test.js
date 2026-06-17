@@ -743,6 +743,74 @@ describe('PATCH /api/v1/users/:id', () => {
 });
 
 // ---------------------------------------------------------------------------
+// §3.4 — API Key rejection on user routes
+// ---------------------------------------------------------------------------
+// The userRouterApi middleware (after authenticate) checks req.user.apiKey and
+// rejects any API Key request with 403. This covers every user route because
+// the check is a router-level middleware that runs before any route handler.
+
+describe('API Key rejection on user routes', () => {
+  const API_KEY_ADMIN = {
+    ...ADMIN_USER,
+    apiKey: { id: 'key-1', scopes: ['read:redirects', 'write:redirects'] },
+  };
+  const API_KEY_USER = {
+    ...REGULAR_USER,
+    apiKey: { id: 'key-2', scopes: ['read:redirects'] },
+  };
+
+  it('GET / returns 403 when req.user.apiKey is defined (API Key auth)', async () => {
+    const res = await request(app)
+      .get('/api/v1/users')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.find).not.toHaveBeenCalled();
+  });
+
+  it('GET /me returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .get('/api/v1/users/me')
+      .set('x-test-user', userHeader(API_KEY_USER));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.findOne).not.toHaveBeenCalled();
+  });
+
+  it('GET /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .get('/api/v1/users/user-abc')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.findOne).not.toHaveBeenCalled();
+  });
+
+  it('POST / returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(API_KEY_ADMIN))
+      .send({ email: 'new@example.com', firstName: 'New', lastName: 'User' });
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.create).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/users/${REGULAR_USER.userId}`)
+      .set('x-test-user', userHeader(API_KEY_USER))
+      .send({ firstName: 'Hacker' });
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.update).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .delete('/api/v1/users/user-abc')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.delete).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // DELETE /:id — admin only
 // ---------------------------------------------------------------------------
 

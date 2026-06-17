@@ -89,6 +89,67 @@ const SAMPLE_GROUP = {
 afterEach(() => jest.clearAllMocks());
 
 // ─────────────────────────────────────────────────────────────────────────────
+// §3.4 — API Key rejection on group routes
+// ─────────────────────────────────────────────────────────────────────────────
+// The groupRouterApi middleware (after authenticate) checks req.user.apiKey and
+// rejects any API Key request with 403. This covers every group route because
+// the check is a router-level middleware that runs before any route handler.
+
+describe('API Key rejection on group routes', () => {
+  const API_KEY_ADMIN = {
+    ...ADMIN_USER,
+    apiKey: { id: 'key-1', scopes: ['read:redirects', 'write:redirects'] },
+  };
+  const API_KEY_USER = {
+    ...REGULAR_USER,
+    apiKey: { id: 'key-2', scopes: ['read:redirects'] },
+  };
+
+  it('GET / returns 403 when req.user.apiKey is defined (API Key auth)', async () => {
+    const res = await request(app)
+      .get('/groups')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.getAll).not.toHaveBeenCalled();
+    expect(mockGroupMethods.find).not.toHaveBeenCalled();
+  });
+
+  it('GET /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .get('/groups/group-1')
+      .set('x-test-user', userHeader(API_KEY_USER));
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.findOne).not.toHaveBeenCalled();
+  });
+
+  it('POST / returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .post('/groups')
+      .set('x-test-user', userHeader(API_KEY_ADMIN))
+      .send({ name: 'Facultad de Ciencias', slug: 'fc' });
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.create).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .patch('/groups/group-1')
+      .set('x-test-user', userHeader(API_KEY_ADMIN))
+      .send({ name: 'New Name' });
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.update).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .delete('/groups/group-1')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.delete).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // authenticate applied to every route
 // ─────────────────────────────────────────────────────────────────────────────
 describe('authenticate applied to all routes', () => {

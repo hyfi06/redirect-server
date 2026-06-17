@@ -621,3 +621,63 @@ describe('DELETE /redirects/:id — delete permission', () => {
     expect(mockMethods.delete).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// §3.4 — API Key scope enforcement on redirect routes
+// ---------------------------------------------------------------------------
+// The authorizeApiKeyScope middleware runs as real code here (not mocked).
+// The authenticate mock injects req.user from the x-test-user header, so we
+// simulate API Key auth by including apiKey: { id, scopes } in the user header.
+// JWT auth (no apiKey field) passes through authorizeApiKeyScope unconditionally.
+
+describe('API Key scope enforcement', () => {
+  it('GET / with API Key having read:redirects scope returns 200', async () => {
+    mockMethods.getAll.mockResolvedValue([SAMPLE_REDIRECT]);
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-1', scopes: ['read:redirects'] } };
+    const res = await request(app)
+      .get('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin));
+    expect(res.status).toBe(200);
+  });
+
+  it('GET / with API Key missing read:redirects scope returns 403', async () => {
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-2', scopes: ['write:redirects'] } };
+    const res = await request(app)
+      .get('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin));
+    expect(res.status).toBe(403);
+    expect(mockMethods.find).not.toHaveBeenCalled();
+    expect(mockMethods.getAll).not.toHaveBeenCalled();
+  });
+
+  it('POST / with API Key having write:redirects scope returns 201', async () => {
+    mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-3', scopes: ['write:redirects'] } };
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin))
+      .send({ path: 'promo', url: 'https://example.com' });
+    expect(res.status).toBe(201);
+    expect(mockMethods.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('POST / with API Key missing write:redirects scope returns 403', async () => {
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-4', scopes: ['read:redirects'] } };
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin))
+      .send({ path: 'promo', url: 'https://example.com' });
+    expect(res.status).toBe(403);
+    expect(mockMethods.create).not.toHaveBeenCalled();
+  });
+
+  it('GET / with JWT (no apiKey field in req.user) passes through scope check and returns 200', async () => {
+    // ADMIN_USER has no apiKey property — simulates a standard JWT session.
+    // authorizeApiKeyScope treats apiKey === undefined as a no-op (pass through).
+    mockMethods.getAll.mockResolvedValue([SAMPLE_REDIRECT]);
+    const res = await request(app)
+      .get('/redirects')
+      .set('x-test-user', userHeader(ADMIN_USER));
+    expect(res.status).toBe(200);
+  });
+});
