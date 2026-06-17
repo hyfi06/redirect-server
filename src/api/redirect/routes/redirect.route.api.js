@@ -119,11 +119,12 @@ redirectRouterApi.patch(
     const { id } = req.params;
     try {
       const existing = await redirectServicieApi.findOne(id);
-      // Only the owner or an admin may modify a redirect — enforced here because
-      // ownership is on the stored document, not derivable from the request alone.
-      if (req.user.role !== 'admin' && existing.owner !== req.user.email) {
-        return next(boom.forbidden('Only the owner or an admin can modify this redirect'));
-      }
+      const editPermissions = req.user.groups.map(g => `edit:${g}`);
+      const canEdit =
+        req.user.role === 'admin' ||
+        existing.owner === req.user.email ||
+        (existing.permission || []).some(p => editPermissions.includes(p));
+      if (!canEdit) return next(boom.forbidden('Insufficient permissions'));
       const redirect = new Redirect({ id, ...req.body });
       const doc = await redirectServicieApi.update(redirect);
       res.status(200).json({
@@ -143,10 +144,12 @@ redirectRouterApi.delete(
     const { id } = req.params;
     try {
       const existing = await redirectServicieApi.findOne(id);
-      // Same ownership rule as PATCH — must fetch the document to verify owner.
-      if (req.user.role !== 'admin' && existing.owner !== req.user.email) {
-        return next(boom.forbidden('Only the owner or an admin can modify this redirect'));
-      }
+      const deletePermissions = req.user.groups.map(g => `delete:${g}`);
+      const canDelete =
+        req.user.role === 'admin' ||
+        existing.owner === req.user.email ||
+        (existing.permission || []).some(p => deletePermissions.includes(p));
+      if (!canDelete) return next(boom.forbidden('Insufficient permissions'));
       const deletedId = await redirectServicieApi.delete(id);
       res.status(200).json({
         message: 'redirect deleted',
