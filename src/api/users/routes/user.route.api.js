@@ -20,6 +20,12 @@ const userRouterApi = express.Router();
 // All user routes require a valid JWT
 userRouterApi.use(authenticate);
 
+// API Keys are scoped to redirects only — user management requires a full JWT session
+userRouterApi.use((req, res, next) => {
+  if (req.user.apiKey !== undefined) return next(boom.forbidden('API Keys cannot be used on this resource'));
+  next();
+});
+
 // GET /me must be declared before GET /:id so Express does not treat "me" as an id param (D-B4-4)
 userRouterApi.get('/me', async (req, res, next) => {
   try {

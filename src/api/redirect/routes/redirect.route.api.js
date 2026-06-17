@@ -5,6 +5,7 @@ const { Filter } = require('@google-cloud/firestore');
 const Redirect = require('../models/redirect.model');
 const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
+const { authorizeApiKeyScope } = require('../../../middleware/authorize-api-key-scope.middleware');
 const GroupService = require('../../groups/services/group.service');
 const UserServices = require('../../users/services/user.service');
 const {
@@ -26,6 +27,7 @@ redirectRouterApi.use(authenticate);
 
 redirectRouterApi.get(
   '/',
+  authorizeApiKeyScope('read:redirects'),
   validatorHandler(getRedirectQuerySchema, 'query'),
   async (req, res, next) => {
     const { orderBy, offset, limit } = req.query;
@@ -64,6 +66,7 @@ redirectRouterApi.get(
 
 redirectRouterApi.get(
   '/:id',
+  authorizeApiKeyScope('read:redirects'),
   validatorHandler(getRedirectSchema, 'params'),
   async (req, res, next) => {
     const { id } = req.params;
@@ -86,6 +89,7 @@ redirectRouterApi.get(
 
 redirectRouterApi.post(
   '/',
+  authorizeApiKeyScope('write:redirects'),
   validatorHandler(createRedirectSchema, 'body'),
   async (req, res, next) => {
     const { group, path, url, permission, categories } = req.body;
@@ -126,6 +130,7 @@ redirectRouterApi.post(
 
 redirectRouterApi.patch(
   '/:id',
+  authorizeApiKeyScope('write:redirects'),
   validatorHandler(getRedirectSchema, 'params'),
   validatorHandler(updateRedirectSchema, 'body'),
   async (req, res, next) => {
@@ -154,6 +159,7 @@ redirectRouterApi.patch(
 
 redirectRouterApi.delete(
   '/:id',
+  authorizeApiKeyScope('write:redirects'),
   validatorHandler(deleteRedirectSchema, 'params'),
   async (req, res, next) => {
     const { id } = req.params;

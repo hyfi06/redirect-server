@@ -20,6 +20,12 @@ const groupRouterApi = express.Router();
 
 groupRouterApi.use(authenticate);
 
+// API Keys are scoped to redirects only — group management requires a full JWT session
+groupRouterApi.use((req, res, next) => {
+  if (req.user.apiKey !== undefined) return next(boom.forbidden('API Keys cannot be used on this resource'));
+  next();
+});
+
 groupRouterApi.get(
   '/',
   validatorHandler(getGroupQuerySchema, 'query'),
