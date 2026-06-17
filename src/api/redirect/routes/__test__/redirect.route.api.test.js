@@ -399,7 +399,7 @@ describe('POST /redirects — namespace and owner', () => {
 });
 
 // ---------------------------------------------------------------------------
-// PATCH /:id — ownership check (§2.3)
+// PATCH /:id — ownership check (§2.3) and edit-permission check (§2.1)
 // ---------------------------------------------------------------------------
 
 describe('PATCH /redirects/:id — ownership', () => {
@@ -451,6 +451,50 @@ describe('PATCH /redirects/:id — ownership', () => {
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /:id — edit-permission check (§2.1 — Paso 9)
+// ---------------------------------------------------------------------------
+
+describe('PATCH /redirects/:id — edit permission', () => {
+  it('returns 200 when user group has edit:{slug} in redirect.permission', async () => {
+    const editorUser = { userId: 'user-10', email: 'editor@test.com', role: 'user', groups: ['fc'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['edit:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    mockMethods.update.mockResolvedValue({ ...redirect, url: 'https://new.example.com' });
+    const res = await request(app)
+      .patch('/redirects/redirect-1')
+      .set('x-test-user', userHeader(editorUser))
+      .send({ url: 'https://new.example.com' });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('redirect updated');
+    expect(mockMethods.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 403 when user group is not in redirect.permission with edit: scope', async () => {
+    const wrongGroupUser = { userId: 'user-11', email: 'wronggroup@test.com', role: 'user', groups: ['cs'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['edit:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .patch('/redirects/redirect-1')
+      .set('x-test-user', userHeader(wrongGroupUser))
+      .send({ url: 'https://new.example.com' });
+    expect(res.status).toBe(403);
+    expect(mockMethods.update).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when user has no groups, is not owner, and is not admin', async () => {
+    const noGroupUser = { userId: 'user-12', email: 'nogroup2@test.com', role: 'user', groups: [] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['edit:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .patch('/redirects/redirect-1')
+      .set('x-test-user', userHeader(noGroupUser))
+      .send({ url: 'https://new.example.com' });
+    expect(res.status).toBe(403);
+    expect(mockMethods.update).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // DELETE /:id — ownership check (§2.3)
 // ---------------------------------------------------------------------------
 
@@ -494,6 +538,36 @@ describe('DELETE /redirects/:id — ownership', () => {
       .delete('/redirects/redirect-1')
       .set('x-test-user', userHeader(REGULAR_USER));
     expect(res.status).toBe(404);
+    expect(mockMethods.delete).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /:id — delete-permission check (§2.2 — Paso 10)
+// ---------------------------------------------------------------------------
+
+describe('DELETE /redirects/:id — delete permission', () => {
+  it('returns 200 when user group has delete:{slug} in redirect.permission', async () => {
+    const deleterUser = { userId: 'user-20', email: 'deleter@test.com', role: 'user', groups: ['fc'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['delete:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    mockMethods.delete.mockResolvedValue('redirect-1');
+    const res = await request(app)
+      .delete('/redirects/redirect-1')
+      .set('x-test-user', userHeader(deleterUser));
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('redirect deleted');
+    expect(mockMethods.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 403 when user group is not in redirect.permission with delete: scope', async () => {
+    const wrongGroupUser = { userId: 'user-21', email: 'wronggroup2@test.com', role: 'user', groups: ['cs'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['delete:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .delete('/redirects/redirect-1')
+      .set('x-test-user', userHeader(wrongGroupUser));
+    expect(res.status).toBe(403);
     expect(mockMethods.delete).not.toHaveBeenCalled();
   });
 });
