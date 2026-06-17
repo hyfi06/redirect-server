@@ -23,6 +23,11 @@ const mockMethods = {
   delete: jest.fn(),
 };
 
+// ---- Shared GroupService mock methods ----
+const mockGroupMethods = {
+  getBySlug: jest.fn(),
+};
+
 // ---- Mock authenticate before any require of the route ----
 jest.mock('../../../../middleware/authenticate.middleware', () => ({
   authenticate: (req, res, next) => {
@@ -40,6 +45,13 @@ jest.mock('../../../../middleware/authenticate.middleware', () => ({
 // ---- Mock RedirectServiceApi ----
 jest.mock('../../services/redirect.service', () => {
   return jest.fn().mockImplementation(() => mockMethods);
+});
+
+// ---- Mock GroupService ----
+// The route instantiates GroupService at module level, so this mock must be
+// registered before the router is required (same ordering constraint as RedirectServiceApi).
+jest.mock('../../../groups/services/group.service', () => {
+  return jest.fn().mockImplementation(() => mockGroupMethods);
 });
 
 // ---- Import the router after mocks are in place ----
@@ -354,6 +366,7 @@ describe('POST /redirects — namespace and owner', () => {
   });
 
   it('non-admin with a valid group creates redirect with fullPath = /<group>/<path>', async () => {
+    mockGroupMethods.getBySlug.mockResolvedValue({ id: 'group-1', slug: 'fc', name: 'Facultad de Ciencias' });
     mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
     const res = await request(app)
       .post('/redirects')
@@ -395,6 +408,43 @@ describe('POST /redirects — namespace and owner', () => {
       .set('x-test-user', userHeader(ADMIN_USER))
       .send({ path: 'promo', url: 'https://example.com' });
     expect(res.status).toBe(400);
+  });
+
+  // §2.3 — GroupService.getBySlug validation
+  it('returns 404 when non-admin provides a group slug that does not exist in Firestore', async () => {
+    const boomErr = {
+      isBoom: true,
+      output: { statusCode: 404, payload: { statusCode: 404, error: 'Not Found', message: 'Group not found' } },
+    };
+    mockGroupMethods.getBySlug.mockRejectedValue(boomErr);
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(REGULAR_USER))
+      .send({ group: 'fc', path: 'seminar', url: 'https://example.com' });
+    expect(res.status).toBe(404);
+    expect(mockMethods.create).not.toHaveBeenCalled();
+  });
+
+  it('does not call groupService.getBySlug when the user is admin', async () => {
+    mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ path: 'promo', url: 'https://example.com' });
+    expect(res.status).toBe(201);
+    expect(mockGroupMethods.getBySlug).not.toHaveBeenCalled();
+  });
+
+  it('returns 201 when non-admin provides a group slug that resolves successfully in Firestore', async () => {
+    mockGroupMethods.getBySlug.mockResolvedValue({ id: 'group-1', slug: 'fc', name: 'Facultad de Ciencias' });
+    mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(REGULAR_USER))
+      .send({ group: 'fc', path: 'seminar', url: 'https://example.com' });
+    expect(res.status).toBe(201);
+    expect(mockGroupMethods.getBySlug).toHaveBeenCalledWith('fc');
+    expect(mockMethods.create).toHaveBeenCalledTimes(1);
   });
 });
 
