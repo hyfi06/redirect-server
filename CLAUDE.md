@@ -305,6 +305,9 @@ UserServices              src/api/users/services/user.service.js
 
 GroupService              src/api/groups/services/group.service.js
   • .getBySlug(slug)   — Firestore where('slug', '==', slug)
+                         Also called by the redirect router (POST /api/v1/redirects) to
+                         verify the group exists in Firestore before constructing the path.
+                         Admin users bypass this check (they can create root-level paths).
   • .create()          — enforces slug uniqueness before insert
   • .update(id, group) — fetch-first diff of users array; builds a WriteBatch with
                          one update per added/removed member plus the group itself;

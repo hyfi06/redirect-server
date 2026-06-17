@@ -96,6 +96,10 @@ redirectRouterApi.post(
       if (!group) return next(boom.forbidden('group is required for non-admin users'));
       if (!req.user.groups.includes(group))
         return next(boom.forbidden('User does not belong to this group'));
+      // Verify the group still exists in Firestore — the JWT may reflect a group
+      // that was deleted after the user last authenticated. Checked before getByPath
+      // so we fail fast on a nonexistent group before paying the uniqueness-check cost.
+      // Admin users bypass this: they can create root-level paths with no group (D-§2-2).
       try {
         await groupService.getBySlug(group);
       } catch (error) {
