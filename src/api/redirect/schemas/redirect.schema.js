@@ -45,6 +45,8 @@ const createRedirectSchema = Joi.object({
   categories: categories,
 });
 
+// path and owner are absent — path is immutable post-creation (prevents namespace escalation
+// and uniqueness bypass); owner is derived from req.user, never trusted from the body
 const updateRedirectSchema = Joi.object({
   url: url,
   permission: permission,

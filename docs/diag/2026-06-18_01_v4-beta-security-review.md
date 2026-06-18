@@ -11,8 +11,8 @@
 
 | # | Archivo | Severidad | Categoría | Confianza | Estado |
 |---|---|---|---|---|---|
-| 1 | `src/api/redirect/routes/redirect.route.api.js` | Alta | `privilege_escalation` | 9/10 | Abierto |
-| 2 | `src/api/redirect/routes/redirect.route.api.js` | Media | `authorization_bypass` | 9/10 | Abierto |
+| 1 | `src/api/redirect/routes/redirect.route.api.js` | Alta | `privilege_escalation` | 9/10 | Resuelto |
+| 2 | `src/api/redirect/routes/redirect.route.api.js` | Media | `authorization_bypass` | 9/10 | Resuelto |
 
 Dos hallazgos confirmados, ambos en el handler `PATCH /api/v1/redirects/:id`. La infraestructura de API Keys (generación criptográfica, hashing SHA-256, scope enforcement, subcollección Firestore) es sólida. La autenticación JWT y OAuth2 no presentan vulnerabilidades nuevas.
 

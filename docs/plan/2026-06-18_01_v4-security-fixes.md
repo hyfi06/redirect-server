@@ -42,7 +42,7 @@ Mantener `path` en `updateRedirectSchema` y añadir en el handler PATCH:
 
 ## Pasos
 
-### Paso 1 — Eliminar `path` de `updateRedirectSchema`
+### Paso 1 — [x] Eliminar `path` de `updateRedirectSchema`
 
 **Archivo:** `src/api/redirect/schemas/redirect.schema.js`
 
@@ -56,7 +56,7 @@ Tipo de commit: `[fix]`
 
 ---
 
-### Paso 2 — Verificar que `updateRedirectParser` descarta `path` si llegara a Firestore
+### Paso 2 — [x] Verificar que `updateRedirectParser` descarta `path` si llegara a Firestore
 
 **Archivo:** `src/api/redirect/parsers/redirect.parser.js`
 
@@ -70,7 +70,7 @@ Tipo de commit: `[fix]` (solo si hay cambio; `[docs]` si solo se añade un comen
 
 ---
 
-### Paso 3 — Escribir tests para los dos cambios
+### Paso 3 — [x] Escribir tests para los dos cambios
 
 **Archivo de tests:** `src/api/redirect/routes/__test__/redirect.route.api.test.js` (extender el archivo existente)
 **Archivo de tests del parser:** `src/api/redirect/parsers/__test__/redirect.parser.test.js` (o el archivo existente al lado del parser)
