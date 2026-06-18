@@ -46,6 +46,10 @@ async function authenticateApiKey(token, req, next) {
       apiKey: { id: result.apiKey.id, scopes: result.apiKey.scopes },
     };
 
+    // TTL 30s: a revoked key remains valid for up to 30 seconds after revocation.
+    // This is an accepted trade-off between cost (one Firestore read per 30s window)
+    // and revocation latency. The DELETE endpoint also calls nodeCache.del(keyHash)
+    // to provide best-effort immediate invalidation within the same instance.
     nodeCache.set(keyHash, req.user, 30);
     next();
   } catch (err) {

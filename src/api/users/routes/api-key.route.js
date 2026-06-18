@@ -8,6 +8,8 @@ const { createApiKeySchema, deleteApiKeySchema } = require('../schemas/api-key.s
 const { nodeCache } = require('../../../utils/cache');
 
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+// Scopes that require admin role — Joi accepts them for all users; the role check
+// lives here because it depends on req.user.role, not just the request body.
 const ADMIN_ONLY_SCOPES = ['read:users', 'write:users', 'read:groups', 'write:groups'];
 
 /**

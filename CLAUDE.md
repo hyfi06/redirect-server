@@ -238,10 +238,11 @@ Serves static files from `src/public/` and the home HTML. Sets `Cache-Control: 3
 ### Surface 2 — REST API (`src/api/`)
 
 ```
-/api/v1/auth        →  src/api/auth/routes/auth.route.api.js
-/api/v1/redirects   →  src/api/redirect/routes/redirect.route.api.js
-/api/v1/users       →  src/api/users/routes/user.route.api.js
-/api/v1/groups      →  src/api/groups/routes/group.route.api.js
+/api/v1/auth                    →  src/api/auth/routes/auth.route.api.js
+/api/v1/redirects               →  src/api/redirect/routes/redirect.route.api.js
+/api/v1/users                   →  src/api/users/routes/user.route.api.js
+/api/v1/users/me/api-keys       →  src/api/users/routes/api-key.route.js (sub-router)
+/api/v1/groups                  →  src/api/groups/routes/group.route.api.js
 ```
 
 Every endpoint is validated by `validatorHandler` (Joi) before the handler runs. Pattern:
@@ -315,6 +316,19 @@ GroupService              src/api/groups/services/group.service.js
                          FireStoreAdapter entirely; Timestamps are set manually.
   Receives UserServices via constructor injection (D12).
   If UserServices ever needs GroupService, extract sync to a MembershipService.
+
+ApiKeyService             src/api/users/services/api-key.service.js
+  Does NOT extend CrudService — the subcollection path includes a dynamic userId segment
+  that CrudService's fixed-collection constructor cannot accommodate. Accesses Firestore
+  directly via the singleton firestoreClient.
+  • .list(userId)         — returns all keys in users/{userId}/apiKeys, ordered by createdAt desc
+  • .create(userId, key)  — enforces 10-active-key limit; writes to subcollection;
+                            createdAt Timestamp set manually (no FireStoreAdapter auto-timestamping)
+  • .revoke(userId, keyId)— sets active=false; returns keyHash for caller to invalidate cache
+  • .findByHash(keyHash)  — collectionGroup('apiKeys').where('keyHash','==',keyHash).limit(1);
+                            extracts userId from docSnap.ref.parent.parent.id;
+                            returns {apiKey, userId} or null
+  Requires COLLECTION_GROUP index on apiKeys.keyHash (see firestore.indexes.json §3.7).
 ```
 
 ---
@@ -356,14 +370,17 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 
 - **JWT**: `src/utils/auth/jwt.js` — `sign()` and `verify()` implemented. Config: `config.jwt.jwtSecret` / `config.jwt.jwtTtl`.
 - **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email, updates tokens, calls `done(null, savedUser)`. Returns 401 if email not in Firestore.
-- **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — verifies Bearer JWT, sets `req.user` to decoded payload `{ userId, email, role, groups }`.
+- **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — Bearer token dispatcher. If the token starts with `sk_1kg_`, delegates to `authenticateApiKey` (SHA-256 hash lookup via `ApiKeyService.findByHash`, with a 30s node-cache TTL). Otherwise delegates to `authenticateJwt` (JWT verify). Both paths set `req.user`. For API Key auth, `req.user` additionally contains `apiKey: { id, scopes }`. Cache TTL means a revoked key remains valid for up to 30 seconds; the `DELETE /me/api-keys/:keyId` endpoint calls `nodeCache.del(keyHash)` for best-effort same-instance invalidation.
 - **`authorize` middleware**: `src/middleware/authorize.middleware.js` — factory `authorize(...roles)` that checks `req.user.role`.
+- **`authorizeApiKeyScope` middleware**: `src/middleware/authorize-api-key-scope.middleware.js` — factory `authorizeApiKeyScope(requiredScope)`. No-op for JWT requests (`req.user.apiKey === undefined`). For API Key requests, returns 403 if the required scope is not in `req.user.apiKey.scopes`. Applied per-route on the redirect router.
 - **Auth routes**: `src/api/auth/routes/auth.route.api.js` — mounted at `/api/v1/auth/`. Two routes: `GET /google` (initiates OAuth2 flow) and `GET /google/callback` (exchanges code, returns JWT). Auth routes are under `/api/v1/auth/` and never at root level — the catch-all `GET /*` would intercept them otherwise (D4).
 - **`passport.initialize()`** mounted in `src/app.js` before `apiV1`.
 - **`/api/v1/redirects` is fully protected**: `authenticate` is applied at router level (`redirectRouterApi.use(authenticate)`). All five routes require a valid JWT.
 - **`GET /api/v1/redirects` admin bypass**: if `req.user.role === 'admin'`, the handler calls `redirectServicieApi.getAll(options)` and returns before building the Firestore filter. Non-admin users see only redirects they own or have `read:{group}` permission on.
 - **`GET /api/v1/redirects/:id` access control**: after fetching the document, the handler checks that the requester is admin, or is the owner, or belongs to a group whose `read:{slug}` entry appears in `redirect.permission`. Returns 403 if none of the conditions are met (D3).
-- **`/api/v1/users` is fully protected**: `authenticate` is applied at router level. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated user. `PATCH /:id` is accessible to admins (any user) or to the user editing their own profile.
+- **`/api/v1/users` is fully protected**: `authenticate` is applied at router level. Both the users and groups routers reject API Key requests entirely with 403 — a `router.use()` middleware checks `req.user.apiKey !== undefined` immediately after `authenticate`. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated (JWT) user. `PATCH /:id` is accessible to admins or to the user editing their own profile.
+- **`/api/v1/users/me/api-keys`**: sub-router (`src/api/users/routes/api-key.route.js`) mounted inside the user router at `/me/api-keys`, after `GET /me` and before `GET /:id` (Express declaration order). The API key rejection middleware applies to this path as well — managing API keys requires a full JWT session; API Key bearer tokens cannot be used to create or revoke other API keys. `POST /` returns the plaintext token only once; only `keyHash` is stored. Non-admin users cannot request admin-only scopes (`read:users`, `write:users`, `read:groups`, `write:groups`).
+- **`/api/v1/redirects` accepts API Keys**: `authorizeApiKeyScope` is applied per-route. `GET /` and `GET /:id` require scope `read:redirects`; `POST /`, `PATCH /:id`, and `DELETE /:id` require scope `write:redirects`. JWT requests pass through the scope middleware unconditionally.
 
 ---
 
@@ -384,7 +401,9 @@ errorHandler:
 
 ### Caching
 
-- **Server-side**: singleton `node-cache` instance (`src/utils/cache.js`), keyed by path, TTL = 5 minutes (300s).
+- **Server-side**: singleton `node-cache` instance (`src/utils/cache.js`). Two keying schemes:
+  - Redirect path → destination URL. Key = path string, TTL = 5 minutes (300s). Used by the public catch-all router.
+  - API Key hash → `req.user` object. Key = SHA-256 hex of the token, TTL = 30 seconds. Used by `authenticate` to avoid one Firestore read per API Key request. Entries are deleted by `apiKeyService.revoke()` callers for best-effort same-instance invalidation.
 - **Client-side**: `Cache-Control: public, max-age=300` header set only in production.
 - The home page sets a 30-minute client cache.
 
