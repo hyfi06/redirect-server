@@ -223,6 +223,8 @@ describe('ApiKeyService', () => {
     it('writes the document with createdAt Timestamp when fewer than 10 active keys exist', async () => {
       // Active count check → size: 3 (under limit)
       mockApiKeysCol.get.mockResolvedValueOnce({ size: 3, empty: false, docs: [] });
+      // findByHash collision check → no collision
+      mockCollectionGroupChain.get.mockResolvedValue({ empty: true, docs: [] });
 
       const createdSnap = makeDocSnap({ id: 'key-new' });
       const mockDocRef = { get: jest.fn().mockResolvedValue(createdSnap) };
@@ -240,6 +242,8 @@ describe('ApiKeyService', () => {
 
     it('returns the created ApiKey parsed from the Firestore response', async () => {
       mockApiKeysCol.get.mockResolvedValueOnce({ size: 0, empty: true, docs: [] });
+      // findByHash collision check → no collision
+      mockCollectionGroupChain.get.mockResolvedValue({ empty: true, docs: [] });
 
       const createdSnap = makeDocSnap({ id: 'key-new', name: 'New Key', prefix: 'nwk' });
       const mockDocRef = { get: jest.fn().mockResolvedValue(createdSnap) };
@@ -254,6 +258,8 @@ describe('ApiKeyService', () => {
 
     it('checks active keys using a where filter on the active field', async () => {
       mockApiKeysCol.get.mockResolvedValueOnce({ size: 0, empty: true, docs: [] });
+      // findByHash collision check → no collision
+      mockCollectionGroupChain.get.mockResolvedValue({ empty: true, docs: [] });
 
       const createdSnap = makeDocSnap({ id: 'key-new' });
       const mockDocRef = { get: jest.fn().mockResolvedValue(createdSnap) };
@@ -262,6 +268,33 @@ describe('ApiKeyService', () => {
       await service.create('user-abc', new ApiKey({ name: 'K', keyHash: 'h', prefix: 'p', scopes: [] }));
 
       expect(mockApiKeysCol.where).toHaveBeenCalledWith('active', '==', true);
+    });
+
+    it('throws boom.conflict (409) when findByHash detects a hash collision', async () => {
+      boom.conflict = jest.fn().mockReturnValue({
+        isBoom: true,
+        output: {
+          statusCode: 409,
+          payload: { error: 'Conflict', message: 'API key hash collision — retry with a new token' },
+        },
+        message: 'API key hash collision — retry with a new token',
+      });
+
+      // Active count check → under limit
+      mockApiKeysCol.get.mockResolvedValueOnce({ size: 0, empty: true, docs: [] });
+      // findByHash → collision: an existing key has the same hash
+      const existingSnap = makeDocSnap({ id: 'existing-key', userId: 'other-user', keyHash: 'colliding-hash' });
+      mockCollectionGroupChain.get.mockResolvedValue({ empty: false, docs: [existingSnap] });
+
+      const apiKey = makeApiKeyInput({ keyHash: 'colliding-hash' });
+
+      await expect(service.create('user-abc', apiKey)).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 409 },
+        message: 'API key hash collision — retry with a new token',
+      });
+      expect(boom.conflict).toHaveBeenCalledWith('API key hash collision — retry with a new token');
+      expect(mockApiKeysCol.add).not.toHaveBeenCalled();
     });
   });
 

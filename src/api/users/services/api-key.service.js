@@ -35,6 +35,12 @@ class ApiKeyService {
     if (activeSnap.size >= 10) {
       throw boom.badRequest('API key limit reached (10)');
     }
+    // Guard against hash collisions — the token space is ~2.3×10⁻⁵⁷ so this
+    // should never fire in practice, but the service must not silently overwrite.
+    const existing = await this.findByHash(apiKey.keyHash);
+    if (existing !== null) {
+      throw boom.conflict('API key hash collision — retry with a new token');
+    }
     const docData = {
       ...createApiKeyParser(apiKey),
       createdAt: Firestore.Timestamp.fromMillis(Date.now()),

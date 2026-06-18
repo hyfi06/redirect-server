@@ -51,20 +51,27 @@ apiKeyRouter.post('/', validatorHandler(createApiKeySchema, 'body'), async (req,
     return next(boom.forbidden('Admin scopes require admin role'));
   }
 
-  const token = 'sk_1kg_' + randomBase62(32);
-  const keyHash = crypto.createHash('sha256').update(token).digest('hex');
-  const prefix = token.slice(0, 8);
-
-  const apiKey = new ApiKey({
-    name,
-    keyHash,
-    prefix,
-    scopes,
-    expiresAt: expiresAt ? new Date(expiresAt) : null,
-  });
-
   try {
-    const savedKey = await apiKeyService.create(req.user.userId, apiKey);
+    let savedKey, token;
+    // Retry loop handles the astronomically unlikely hash collision (service throws 409).
+    while (true) {
+      token = 'sk_1kg_' + randomBase62(32);
+      const keyHash = crypto.createHash('sha256').update(token).digest('hex');
+      const apiKey = new ApiKey({
+        name,
+        keyHash,
+        prefix: token.slice(0, 8),
+        scopes,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      });
+      try {
+        savedKey = await apiKeyService.create(req.user.userId, apiKey);
+        break;
+      } catch (err) {
+        if (err.isBoom && err.output.statusCode === 409) continue;
+        throw err;
+      }
+    }
     res.status(201).json({ message: 'api key created', data: { ...savedKey.toPublic(), token } });
   } catch (error) {
     next(error);
