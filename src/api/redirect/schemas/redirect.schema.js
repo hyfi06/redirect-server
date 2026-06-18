@@ -46,7 +46,6 @@ const createRedirectSchema = Joi.object({
 });
 
 const updateRedirectSchema = Joi.object({
-  path: slugPath,
   url: url,
   permission: permission,
   categories: categories,

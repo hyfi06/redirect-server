@@ -46,6 +46,9 @@ function updateRedirectParser(redirect) {
   const docData = { ...redirect };
   deleteRegData(docData);
   delete docData.owner;
+  // path is immutable post-creation — strip here regardless of schema to prevent
+  // privilege escalation and uniqueness bypass if schema changes in the future
+  delete docData.path;
   cleanDocObject(docData);
   return docData;
 }
