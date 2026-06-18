@@ -322,7 +322,8 @@ ApiKeyService             src/api/users/services/api-key.service.js
   that CrudService's fixed-collection constructor cannot accommodate. Accesses Firestore
   directly via the singleton firestoreClient.
   • .list(userId)         — returns all keys in users/{userId}/apiKeys, ordered by createdAt desc
-  • .create(userId, key)  — enforces 10-active-key limit; writes to subcollection;
+  • .create(userId, key)  — enforces 10-active-key limit; enforces keyHash uniqueness (throws 409
+                            on collision — caller should retry); writes to subcollection;
                             createdAt Timestamp set manually (no FireStoreAdapter auto-timestamping)
   • .revoke(userId, keyId)— sets active=false; returns keyHash for caller to invalidate cache
   • .findByHash(keyHash)  — collectionGroup('apiKeys').where('keyHash','==',keyHash).limit(1);

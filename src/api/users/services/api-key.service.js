@@ -29,6 +29,7 @@ class ApiKeyService {
    * @param {string} userId
    * @param {import('../models/api-key.model')} apiKey
    * @returns {Promise<import('../models/api-key.model')>}
+   * @throws {boom.Boom} 409 if keyHash already exists across all users
    */
   async create(userId, apiKey) {
     const activeSnap = await this._collection(userId).where('active', '==', true).get();
