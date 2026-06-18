@@ -216,10 +216,10 @@ describe('updateRedirectParser', () => {
     expect(Object.prototype.hasOwnProperty.call(result, 'categories')).toBe(false);
   });
 
-  it('preserves path in the output', () => {
+  it('strips path from the output — path is immutable and must not be written on update', () => {
     const redirect = new Redirect({ path: '/fc/seminar', url: 'https://example.com', owner: 'a@test.com' });
     const result = updateRedirectParser(redirect);
-    expect(result.path).toBe('/fc/seminar');
+    expect(result.path).toBeUndefined();
   });
 
   it('preserves url in the output', () => {

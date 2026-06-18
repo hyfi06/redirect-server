@@ -188,12 +188,12 @@ describe('updateRedirectSchema', () => {
     expect(error).toBeUndefined();
   });
 
-  it('accepts a valid path that matches the slug pattern', () => {
+  it('rejects path — path is immutable and not allowed in update body', () => {
     const { error } = validate(updateRedirectSchema, { path: 'fc/nuevo-evento' });
-    expect(error).toBeUndefined();
+    expect(error).toBeDefined();
   });
 
-  it('rejects a path with a leading slash', () => {
+  it('rejects path with a leading slash — path is immutable and not allowed in update body', () => {
     const { error } = validate(updateRedirectSchema, { path: '/fc/nuevo-evento' });
     expect(error).toBeDefined();
   });
