@@ -40,7 +40,7 @@ class CrudService {
     if (orderBy) {
       fsFilter = /^-/.test(orderBy)
         ? fsCollection.orderBy(orderBy.replace(/^-/, ''), 'desc')
-        : fsCollection.orderBy(orderBy);
+        : fsCollection.orderBy(orderBy, 'asc');
     } else {
       fsFilter = fsCollection.orderBy('updated', 'desc');
     }

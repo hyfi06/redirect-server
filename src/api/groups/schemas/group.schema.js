@@ -18,7 +18,7 @@ const idParamSchema = Joi.object({
 
 const getGroupQuerySchema = Joi.object({
   orderBy: Joi.string(),
-  offset: Joi.number().integer().min(0),
+  offset: Joi.number().integer().min(1),
   limit: Joi.number().integer().min(1),
 }).options({ allowUnknown: false });
 
