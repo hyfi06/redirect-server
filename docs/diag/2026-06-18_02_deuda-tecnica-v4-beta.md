@@ -13,7 +13,7 @@ La rama `dev` incorpora, respecto a `v3.0.1`, los siguientes cambios estructural
 
 Los ítems del diagnóstico anterior (`docs/diag/2026-06-10_06_deuda-tecnica-v4.md`) que han quedado resueltos son: BUG-A (error handler), la atomicidad del sync de grupos (bloque D), y los dos hallazgos de seguridad del security review `2026-06-18_01` (privilege escalation y path duplication en PATCH). Los ítems de infraestructura/operaciones (rate limiting, Secret Manager, CI/CD) permanecen abiertos y no se repiten aquí al no haber variado.
 
-Esta auditoría identifica **tres bugs nuevos** de severidad Media y **ocho ítems de deuda** de severidad Baja o Media no documentados anteriormente. El bug más crítico para la integridad de datos es la divergencia en el patrón de verificación de unicidad en `UserService.create()` respecto a `RedirectService.create()` y `GroupService.create()`: un error de Firestore durante la comprobación de unicidad podría crear un usuario duplicado silenciosamente.
+Esta auditoría identifica **tres bugs nuevos** de severidad Media y **siete ítems de deuda** de severidad Baja o Media no documentados anteriormente. BUG-3 cubre una inconsistencia simétrica: tanto `DELETE /groups/:id` como `DELETE /users/:id` dejan referencias huérfanas en la colección opuesta. La solución requiere sobreescribir ambos `delete()` — y extraer un `MembershipService` para evitar la dependencia circular `UserService ↔ GroupService`. BUG-1 es el segundo ítem crítico: un error transitorio de Firestore en el check de unicidad de `UserService.create()` podría crear usuarios duplicados silenciosamente.
 
 ---
 
@@ -59,23 +59,41 @@ Eliminar el `await` de la línea 27 de `redirect.service.js`. Cambio de una pala
 
 ---
 
-### BUG-3 — `DELETE /api/v1/groups/:id` no limpia `User.groups` de los miembros del grupo
+### BUG-3 — Las operaciones `delete` de grupo y de usuario no mantienen la consistencia `Group.users ↔ User.groups`
 
-**Archivo:** `src/api/groups/routes/group.route.api.js:112-125` / `src/utils/crud.service.js:126-129`  
+**Archivos:** `src/api/groups/services/group.service.js` / `src/api/users/services/user.service.js` / `src/utils/crud.service.js:126-129`  
 **Severidad:** Media  
 **Estado:** Abierto
 
 #### Descripción
 
-El handler `DELETE /api/v1/groups/:id` llama a `groupService.delete(id)`, que hereda `CrudService.delete()` sin sobreescribirlo. `CrudService.delete()` solo borra el documento del grupo en Firestore. No existe lógica de cleanup para actualizar `User.groups` de los miembros del grupo eliminado.
+El sync `Group.users ↔ User.groups` se mantiene atómicamente via WriteBatch en `GroupService.update()`, que es la única puerta de entrada para cambios de membresía. Sin embargo, ambas operaciones de borrado delegan en `CrudService.delete()` sin sobreescribir:
 
-Resultado: después de borrar un grupo, todos los usuarios que pertenecían a él siguen teniendo el slug del grupo en su campo `groups`. Sus JWTs activos seguirán incluyendo ese slug. El endpoint `GET /api/v1/groups` de usuarios regulares consultará `find(['slug', 'in', req.user.groups])` y recibirá un array vacío para el slug eliminado (Firestore query no falla), pero el JWT sigue afirmando que el usuario pertenece al grupo.
+| Operación | ¿Limpia la otra colección? |
+|-----------|--------------------------|
+| `PATCH /api/v1/groups/:id` (add/remove member) | ✅ WriteBatch atómico |
+| `DELETE /api/v1/groups/:id` | ❌ Solo borra el doc del grupo — `User.groups` queda con el slug muerto |
+| `DELETE /api/v1/users/:id` | ❌ Solo borra el doc del usuario — `Group.users` queda con el userId muerto |
 
-El impacto práctico en v4-beta es moderado porque los JWTs tienen TTL de 2 horas y no existe mecanismo de auto-renovación, pero cuando se renueve el token el `req.user.groups` del usuario seguirá incluyendo el slug eliminado si `User.groups` no se limpió. También afecta a `GET /api/v1/groups/:id` donde el check de acceso usa `req.user.groups.includes(data.slug)` — si el grupo fue recreado con el mismo slug, un usuario con el slug en su JWT heredado tendría acceso aunque no haya sido añadido al nuevo grupo.
+**Impacto de `DELETE /groups/:id`:** los usuarios que pertenecían al grupo retienen el slug en `User.groups`. Sus JWTs renovados seguirán afirmando pertenencia al grupo. Si el slug se reutiliza en un grupo nuevo, esos usuarios tendrían acceso al nuevo grupo sin haber sido añadidos explícitamente.
+
+**Impacto de `DELETE /users/:id`:** los grupos a los que pertenecía el usuario retienen su ID en `Group.users`. `GroupService.update()` hace fetch-first de ese ID antes de cada batch de membresía — si el user doc ya no existe, ese fetch lanzará 404 y bloqueará ediciones del grupo hasta que el ID sea limpiado manualmente.
+
+#### Decisión arquitectónica
+
+Ambos lados del sync deben resolverse juntos para garantizar consistencia. La solución simétrica es:
+
+- `GroupService.delete()` construye un WriteBatch que limpia `User.groups` de cada miembro (sin fetch-first — confiar en `group.users` que la API mantiene consistente) y borra el documento del grupo atómicamente. `FieldValue.arrayRemove(slug)` resuelve el elemento a nivel de servidor sin necesidad de leer cada documento de usuario.
+- `UserService.delete()` necesita limpiar `Group.users` de cada grupo al que pertenecía el usuario. Esto requiere acceso a `GroupService` desde `UserService`, lo que crea una dependencia circular. CLAUDE.md ya anticipa este caso: *"If UserServices ever needs GroupService, extract sync to a MembershipService."*
 
 #### Recomendación
 
-Sobreescribir `delete(id)` en `GroupService` para que, antes de borrar el documento del grupo, obtenga la lista de `users` del grupo y construya un `WriteBatch` que (1) actualice `User.groups` quitando el slug para cada miembro, y (2) borre el documento del grupo. Esto es análogo al batch write de `GroupService.update()`. Si `group.users` está vacío, el batch solo contiene la operación de borrado.
+Implementar ambos fixes en el mismo sprint. El orden:
+
+1. Sobreescribir `GroupService.delete()` con WriteBatch + `FieldValue.arrayRemove` (no requiere cambios de arquitectura).
+2. Extraer un `MembershipService` (`src/api/users/services/membership.service.js`) que reciba `userService` y `groupService` por inyección de dependencia y exponga `removeUserFromAllGroups(userId, userGroups)`. `UserService.delete()` llama a `MembershipService` después del delete del usuario.
+
+Mientras no se implemente, cualquier borrado de grupo o usuario deja referencias huérfanas que solo se resuelven manualmente via Firestore console o un script de mantenimiento.
 
 ---
 
@@ -208,21 +226,19 @@ En `getAll()`, cambiar `orderBy(field)` a `orderBy(field, 'asc')` para hacer exp
 
 ---
 
-### DI-7 — `Group.delete()` delega en `CrudService.delete()` sin sobreescribir, pero `Group.update()` sí sobreescribe
+### DI-7 — Ni `GroupService` ni `UserService` sobreescriben `delete()`, pero ambos necesitan sync de membresía
 
-**Archivo:** `src/api/groups/services/group.service.js`  
+**Archivos:** `src/api/groups/services/group.service.js` / `src/api/users/services/user.service.js`  
 **Severidad:** Baja  
 **Estado:** Abierto (relacionado con BUG-3)
 
 #### Descripción
 
-`GroupService` sobreescribe `update()` porque el sync de membresía requiere lógica adicional. Por consistencia y para hacer explícita la intención, también debería sobreescribir `delete()` — actualmente hereda el comportamiento base sin comentario alguno que explique por qué no se sobreescribe. Quien lea la clase en el futuro puede asumir incorrectamente que el delete no necesita sync, cuando en realidad el sync de membresía en delete está pendiente (BUG-3).
-
-Esta es la misma situación que originó el bug de sync atómico documentado en el diagnóstico anterior: la lógica de sync se concentra en `update()` pero el delete queda sin sync.
+`GroupService` sobreescribe `update()` porque el sync de membresía lo requiere, pero no sobreescribe `delete()`. `UserService` tampoco sobreescribe `delete()`. Ambas clases heredan `CrudService.delete()` sin comentario que explique la omisión, lo que lleva a asumir que el delete no necesita sync — cuando en realidad sí lo necesita en ambos lados (ver BUG-3).
 
 #### Recomendación
 
-Resolver BUG-3 implica sobreescribir `delete()` en `GroupService`. Si BUG-3 no se resuelve de inmediato, añadir un comentario en `GroupService` que documente explícitamente que `delete()` hereda `CrudService.delete()` y que el cleanup de membresía es deuda pendiente.
+Resolver BUG-3 implica sobreescribir `delete()` en `GroupService` y `UserService`. Mientras no se resuelva, añadir un comentario en ambas clases que documente que el cleanup de membresía es deuda pendiente.
 
 ---
 
@@ -247,7 +263,7 @@ Los siguientes ítems del diagnóstico `2026-06-10_06_deuda-tecnica-v4.md` se re
 ### Bloque A — Bugs (alta prioridad)
 
 - [ ] **A1** Corregir `UserService.create()`: añadir `if (error.output?.statusCode !== 404) throw error;` en el catch del check de unicidad. Seguir el patrón de `RedirectService.create()` y `GroupService.create()`. `[fix]`
-- [ ] **A2** Implementar `GroupService.delete()` sobreescrito con WriteBatch: obtener `group.users`, limpiar `User.groups` de cada miembro, y borrar el documento del grupo atómicamente. `[feat]`
+- [ ] **A2** Implementar sync completo en delete: (a) sobreescribir `GroupService.delete()` con WriteBatch + `FieldValue.arrayRemove`; (b) extraer `MembershipService` para romper la dependencia circular; (c) sobreescribir `UserService.delete()` para limpiar `Group.users` vía `MembershipService`. Los tres pasos deben implementarse en el mismo sprint para garantizar consistencia bidireccional. `[feat]`
 - [ ] **A3** Eliminar el `await` espurio en `RedirectServiceApi.getByPath()` línea 27. `[style]`
 
 ### Bloque B — Limpieza de código (baja prioridad)
