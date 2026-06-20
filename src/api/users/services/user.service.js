@@ -8,7 +8,7 @@ const {
   userParser,
 } = require('../parsers/user.parser');
 
-class UserServices extends CrudService {
+class UserService extends CrudService {
   constructor(membershipService) {
     super(
       config.firestore.collections.users,
@@ -64,4 +64,4 @@ class UserServices extends CrudService {
   }
 }
 
-module.exports = UserServices;
+module.exports = UserService;

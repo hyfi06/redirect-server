@@ -7,7 +7,7 @@ const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorizeApiKeyScope } = require('../../../middleware/authorize-api-key-scope.middleware');
 const GroupService = require('../../groups/services/group.service');
-const UserServices = require('../../users/services/user.service');
+const UserService = require('../../users/services/user.service');
 const {
   getRedirectQuerySchema,
   getRedirectSchema,
@@ -17,7 +17,7 @@ const {
 } = require('../schemas/redirect.schema');
 
 const redirectServicieApi = new RedirectServiceApi();
-const userService = new UserServices();
+const userService = new UserService();
 const groupService = new GroupService(userService);
 const redirectRouterApi = express.Router();
 

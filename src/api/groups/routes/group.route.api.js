@@ -5,7 +5,7 @@ const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
 const { Group } = require('../models/group.model');
 const GroupService = require('../services/group.service');
-const UserServices = require('../../users/services/user.service');
+const UserService = require('../../users/services/user.service');
 const {
   createGroupSchema,
   updateGroupSchema,
@@ -13,7 +13,7 @@ const {
   getGroupQuerySchema,
 } = require('../schemas/group.schema');
 
-const userService = new UserServices();
+const userService = new UserService();
 const groupService = new GroupService(userService);
 
 const groupRouterApi = express.Router();
