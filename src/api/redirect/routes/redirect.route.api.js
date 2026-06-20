@@ -17,8 +17,7 @@ const {
 } = require('../schemas/redirect.schema');
 
 const redirectServicieApi = new RedirectServiceApi();
-const userService = new UserService();
-const groupService = new GroupService(userService);
+const groupService = new GroupService(new UserService());
 const redirectRouterApi = express.Router();
 
 // All redirect routes require a valid JWT — owner and group membership are derived

@@ -29,13 +29,6 @@ const getRedirectSchema = Joi.object({
   id: id.required(),
 });
 
-// NOTE: getByPathRedirectSchema is not used by any route. The slugPath pattern
-// rejects leading slashes, but Express req.path always starts with "/".
-// Wire-in requires either adapting the pattern or stripping the slash before validation.
-const getByPathRedirectSchema = Joi.object({
-  path: slugPath.required(),
-});
-
 // owner is absent — it is derived from req.user in the handler, never trusted from the body
 const createRedirectSchema = Joi.object({
   path: slugPath.required(),
@@ -60,7 +53,6 @@ const deleteRedirectSchema = Joi.object({
 module.exports = {
   getRedirectQuerySchema,
   getRedirectSchema,
-  getByPathRedirectSchema,
   createRedirectSchema,
   updateRedirectSchema,
   deleteRedirectSchema,
