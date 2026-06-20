@@ -23,7 +23,7 @@ Esta auditoría identifica **tres bugs nuevos** de severidad Media y **siete ít
 
 **Archivo:** `src/api/users/services/user.service.js:40-47`  
 **Severidad:** Media  
-**Estado:** Abierto
+**Estado:** Resuelto
 
 #### Descripción
 
@@ -43,7 +43,7 @@ Añadir la guarda `if (e.output?.statusCode !== 404) throw error;` dentro del `c
 
 **Archivo:** `src/api/redirect/services/redirect.service.js:27`  
 **Severidad:** Baja  
-**Estado:** Abierto
+**Estado:** Resuelto
 
 #### Descripción
 

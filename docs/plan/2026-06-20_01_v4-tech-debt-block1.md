@@ -23,7 +23,7 @@ Al completarse el plan, el repositorio debe tener:
 
 ## Pasos
 
-### Paso 1 — BUG-1 + BUG-2: guardia de unicidad y await espurio
+### Paso 1 — BUG-1 + BUG-2: guardia de unicidad y await espurio [x]
 
 Los dos cambios son de una línea cada uno. Se agrupan en un solo commit `[fix]` para evitar commits triviales; BUG-2 es puramente cosmético pero pertenece naturalmente al mismo pase de correcciones rápidas.
 
