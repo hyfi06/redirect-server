@@ -44,6 +44,28 @@ class GroupService extends CrudService {
   }
 
   /**
+   * Deletes a group and atomically removes its slug from all member User.groups arrays.
+   * Uses a WriteBatch — auto-timestamping does not apply; updated is set manually.
+   * @param {string} id
+   * @returns {Promise<string>} the deleted document id
+   */
+  async delete(id) {
+    const current = await this.findOne(id);
+    const groupRef = firestoreClient.collection(this.groupsCollection).doc(id);
+    const batch = firestoreClient.batch();
+    const now = Firestore.Timestamp.fromMillis(Date.now());
+
+    for (const userId of (current.users ?? [])) {
+      const userRef = firestoreClient.collection(this.usersCollection).doc(userId);
+      batch.update(userRef, { groups: Firestore.FieldValue.arrayRemove(current.slug), updated: now });
+    }
+
+    batch.delete(groupRef);
+    await batch.commit();
+    return id;
+  }
+
+  /**
    * Updates the group and atomically syncs User.groups for added/removed members
    * using a Firestore WriteBatch. Fetch-first: all users in the diff are fetched
    * before any write. If any user does not exist, the request fails with 400 and
