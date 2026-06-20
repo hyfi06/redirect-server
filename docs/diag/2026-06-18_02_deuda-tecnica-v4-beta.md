@@ -103,7 +103,7 @@ Mientras no se implemente, cualquier borrado de grupo o usuario deja referencias
 
 **Archivos:** `src/api/users/services/user.service.js:11`, y todos los archivos que importan el módulo  
 **Severidad:** Baja  
-**Estado:** Abierto
+**Estado:** Resuelto (B1)
 
 #### Descripción
 
@@ -121,7 +121,7 @@ Renombrar la clase a `UserService` (singular) en `user.service.js`. Actualizar t
 
 **Archivos:** `src/api/redirect/routes/redirect.route.api.js:19-21`, `src/api/groups/routes/group.route.api.js:16-17`, `src/middleware/authenticate.middleware.js:8-9`, `src/utils/auth/strategies/google-oauth2.strategy.js:7`  
 **Severidad:** Baja  
-**Estado:** Abierto
+**Estado:** Parcialmente resuelto (B2) — la instancia `userService` no utilizada directamente en `redirect.route.api.js` fue eliminada. La proliferación general de instancias entre módulos permanece abierta.
 
 #### Descripción
 
@@ -146,7 +146,7 @@ A corto plazo, eliminar la instancia `userService` en `redirect.route.api.js` y 
 
 **Archivo:** `src/api/redirect/schemas/redirect.schema.js:35-37,63`  
 **Severidad:** Baja  
-**Estado:** Abierto
+**Estado:** Resuelto (B3)
 
 #### Descripción
 
@@ -164,7 +164,7 @@ Eliminar la definición y la exportación de `getByPathRedirectSchema`. Mover el
 
 **Archivos:** `src/api/redirect/schemas/redirect.schema.js:19`, `src/api/users/schemas/user.schema.js:19`, `src/api/groups/schemas/group.schema.js:21`  
 **Severidad:** Baja  
-**Estado:** Abierto
+**Estado:** Resuelto (B6)
 
 #### Descripción
 
@@ -188,7 +188,7 @@ Cambiar `getGroupQuerySchema` para usar `min(1)` en `offset`, consistente con lo
 
 **Archivo:** `src/api/redirect/routes/redirect.route.api.js:35`  
 **Severidad:** Baja  
-**Estado:** Abierto
+**Estado:** Resuelto (B5)
 
 #### Descripción
 
@@ -212,7 +212,7 @@ Adoptar el patrón del handler de grupos/usuarios: `offset: offset ? parseInt(of
 
 **Archivo:** `src/utils/crud.service.js:42-44,82-84`  
 **Severidad:** Baja  
-**Estado:** Abierto (heredado de BUG-D del diagnóstico anterior, con un matiz nuevo)
+**Estado:** Parcialmente resuelto (B7) — `getAll()` ahora usa `orderBy(field, 'asc')` explícito. La inconsistencia de `find()` con y sin `query` (BUG-D original) permanece abierta.
 
 #### Descripción
 
@@ -250,7 +250,7 @@ Los siguientes ítems del diagnóstico `2026-06-10_06_deuda-tecnica-v4.md` se re
 |-------------|-------------|-------------------|
 | BUG-A | errorHandler HTTP 200 en 404/500 | **Resuelto** — `error.handler.js` ahora llama `res.status(statusCode)` antes de `sendFile()` |
 | BUG-B | Tests del error handler verificaban el comportamiento incorrecto | **Resuelto** — los tests fueron actualizados junto con el fix |
-| BUG-C | `TWENTY_MINUTES_IN_SECONDS` dead code en `timeConst.js` | **Abierto** — sigue exportado y sin uso |
+| BUG-C | `TWENTY_MINUTES_IN_SECONDS` dead code en `timeConst.js` | **Resuelto** (B4) — eliminado de `timeConst.js` |
 | BUG-D | `CrudService.find()` orderBy inconsistente | **Abierto** — ver DI-6 arriba |
 | 3.1 | Sync Group.users ↔ User.groups no atómico | **Resuelto** — `GroupService.update()` usa WriteBatch |
 | 3.5 | FireStoreAdapter instanciaba cliente Firestore por colección | **Resuelto** — `firestore-client.js` es un singleton compartido |
@@ -268,10 +268,10 @@ Los siguientes ítems del diagnóstico `2026-06-10_06_deuda-tecnica-v4.md` se re
 
 ### Bloque B — Limpieza de código (baja prioridad)
 
-- [ ] **B1** Renombrar la clase `UserServices` a `UserService` en `user.service.js` y actualizar todas las importaciones. `[refactor]`
-- [ ] **B2** Eliminar la instancia `userService` no utilizada directamente en `redirect.route.api.js` (línea 20). `[chore]`
-- [ ] **B3** Eliminar `getByPathRedirectSchema` de `redirect.schema.js` (dead code). Preservar el comentario contextual en `redirect.router.js`. `[chore]`
-- [ ] **B4** Eliminar `TWENTY_MINUTES_IN_SECONDS` de `timeConst.js` (dead code, documentado como BUG-C desde el diagnóstico anterior). `[chore]`
-- [ ] **B5** Unificar el manejo de `offset`/`limit` undefined en `redirect.route.api.js`: usar `offset ? parseInt(offset) : undefined` consistente con los otros handlers. `[style]`
-- [ ] **B6** Corregir `offset: min(0)` en `getGroupQuerySchema` a `min(1)` para consistencia con los schemas de redirect y user. `[fix]`
-- [ ] **B7** Hacer explícita la dirección `'asc'` en el `orderBy` de `CrudService.getAll()` cuando se usa un campo personalizado. `[style]`
+- [x] **B1** Renombrar la clase `UserServices` a `UserService` en `user.service.js` y actualizar todas las importaciones. `[refactor]`
+- [x] **B2** Eliminar la instancia `userService` no utilizada directamente en `redirect.route.api.js` (línea 20). `[chore]`
+- [x] **B3** Eliminar `getByPathRedirectSchema` de `redirect.schema.js` (dead code). Preservar el comentario contextual en `redirect.router.js`. `[chore]`
+- [x] **B4** Eliminar `TWENTY_MINUTES_IN_SECONDS` de `timeConst.js` (dead code, documentado como BUG-C desde el diagnóstico anterior). `[chore]`
+- [x] **B5** Unificar el manejo de `offset`/`limit` undefined en `redirect.route.api.js`: usar `offset ? parseInt(offset) : undefined` consistente con los otros handlers. `[style]`
+- [x] **B6** Corregir `offset: min(0)` en `getGroupQuerySchema` a `min(1)` para consistencia con los schemas de redirect y user. `[fix]`
+- [x] **B7** Hacer explícita la dirección `'asc'` en el `orderBy` de `CrudService.getAll()` cuando se usa un campo personalizado. `[style]`

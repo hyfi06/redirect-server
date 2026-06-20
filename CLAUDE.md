@@ -297,7 +297,7 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.js
   • .create()         — enforces path uniqueness before insert
                         (throws boom.badRequest if path already taken)
 
-UserServices              src/api/users/services/user.service.js
+UserService               src/api/users/services/user.service.js
   • .getByEmail(email) — Firestore where('email', '==', email)
   • .create()          — enforces email uniqueness before insert
   • .delete(id)        — fetch-first (findOne) to capture user.groups before deletion;
@@ -324,7 +324,7 @@ GroupService              src/api/groups/services/group.service.js
                          WriteBatch with FieldValue.arrayRemove(slug) on each member's
                          User.groups field (no fetch per user — server-side op); adds the
                          group delete to the batch; commits atomically. Timestamps set manually.
-  Receives UserServices via constructor injection (D12).
+  Receives UserService via constructor injection (D12).
 
 MembershipService         src/api/users/services/membership.service.js
   Does NOT extend CrudService. Breaks the circular dependency UserService ↔ GroupService.

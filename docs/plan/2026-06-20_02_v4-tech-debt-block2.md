@@ -1,5 +1,7 @@
 # Plan — Tech Debt Block 2: Limpieza de código
 
+> **PLAN CERRADO — 2026-06-20.** Todos los pasos completados. B1-B7 resueltos.
+
 **Diag:** docs/diag/2026-06-18_02_deuda-tecnica-v4-beta.md (B1-B7)
 **Rama:** v4-beta
 **Fecha:** 2026-06-20

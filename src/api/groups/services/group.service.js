@@ -8,7 +8,7 @@ const { groupDocParser, createGroupParser, updateGroupParser } = require('../par
 class GroupService extends CrudService {
   /**
    * @param {import('../../users/services/user.service')} userService
-   * Depends on UserServices for membership sync. If UserServices ever needs GroupService,
+   * Depends on UserService for membership sync. If UserService ever needs GroupService,
    * extract the sync logic to a MembershipService.
    */
   constructor(userService) {
