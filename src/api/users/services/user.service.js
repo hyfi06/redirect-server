@@ -9,13 +9,14 @@ const {
 } = require('../parsers/user.parser');
 
 class UserServices extends CrudService {
-  constructor() {
+  constructor(membershipService) {
     super(
       config.firestore.collections.users,
       userParser,
       createUserParser,
       updateUserParser,
     );
+    this.membershipService = membershipService;
   }
 
   /**
@@ -29,6 +30,20 @@ class UserServices extends CrudService {
       throw boom.notFound('User not found');
     }
     return this.docParser(userSnap.docs[0]);
+  }
+
+  /**
+   * Deletes a user and removes them from all their groups atomically.
+   * @param {string} id
+   * @returns {Promise<string>} the deleted document id
+   */
+  async delete(id) {
+    const user = await this.findOne(id);
+    await super.delete(id);
+    if (this.membershipService) {
+      await this.membershipService.removeUserFromAllGroups(id, user.groups);
+    }
+    return id;
   }
 
   /**
