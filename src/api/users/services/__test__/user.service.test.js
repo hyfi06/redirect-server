@@ -128,6 +128,26 @@ describe('UserServices', () => {
 
       expect(mockDb.create).not.toHaveBeenCalled();
     });
+
+    it('propagates non-404 errors from getByEmail without calling db.create', async () => {
+      // Simulate a Firestore / network error surfaced as a Boom 503
+      const serviceUnavailableError = {
+        isBoom: true,
+        output: { statusCode: 503 },
+        message: 'Service Unavailable',
+      };
+      mockDb.collection.get.mockRejectedValue(serviceUnavailableError);
+
+      const input = new User({ email: 'any@example.com', firstName: 'Any', lastName: 'User' });
+
+      await expect(service.create(input)).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 503 },
+        message: 'Service Unavailable',
+      });
+
+      expect(mockDb.create).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
