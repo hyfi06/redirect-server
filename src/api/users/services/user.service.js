@@ -40,6 +40,7 @@ class UserServices extends CrudService {
     try {
       await this.getByEmail(user.email);
     } catch (error) {
+      if (error.output?.statusCode !== 404) throw error;
       const newDoc = await this.db.create(this.createParser(user));
       return this.docParser(newDoc);
     }

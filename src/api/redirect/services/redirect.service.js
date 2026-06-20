@@ -24,7 +24,7 @@ class RedirectServiceApi extends CrudService {
    * @returns {Redirect}
    */
   async getByPath(path) {
-    const query = await this.db.collection.where('path', '==', path);
+    const query = this.db.collection.where('path', '==', path);
     const snapshot = await query.get();
     if (snapshot.empty) {
       throw boom.notFound('Resource not found');
