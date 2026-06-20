@@ -55,8 +55,8 @@ userRouterApi.get(
     const { offset, limit } = req.query;
     try {
       const data = await userService.find(null, {
-        offset: parseInt(offset),
-        limit: parseInt(limit),
+        offset: offset ? parseInt(offset) : undefined,
+        limit: limit ? parseInt(limit) : undefined,
       });
       res.status(200).json({
         message: 'users retrieved',
