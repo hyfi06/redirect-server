@@ -300,6 +300,12 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.js
 UserServices              src/api/users/services/user.service.js
   • .getByEmail(email) — Firestore where('email', '==', email)
   • .create()          — enforces email uniqueness before insert
+  • .delete(id)        — fetch-first (findOne) to capture user.groups before deletion;
+                         calls super.delete(id) to remove the user document; then delegates
+                         group cleanup to membershipService.removeUserFromAllGroups(id, user.groups).
+                         The two Firestore operations are not atomic with each other — user doc
+                         is deleted first. If membershipService is absent (bare instance), the
+                         group cleanup step is skipped.
   Note: User constructor accepts email as optional (guard: email ? ... : undefined).
         PATCH handlers do not supply email — it is immutable post-creation and
         discarded by updateParser before any Firestore write.
@@ -314,8 +320,22 @@ GroupService              src/api/groups/services/group.service.js
                          one update per added/removed member plus the group itself;
                          commits atomically. Does NOT call super.update() — bypasses
                          FireStoreAdapter entirely; Timestamps are set manually.
+  • .delete(id)        — fetch-first (findOne) to read group.users and group.slug; builds a
+                         WriteBatch with FieldValue.arrayRemove(slug) on each member's
+                         User.groups field (no fetch per user — server-side op); adds the
+                         group delete to the batch; commits atomically. Timestamps set manually.
   Receives UserServices via constructor injection (D12).
-  If UserServices ever needs GroupService, extract sync to a MembershipService.
+
+MembershipService         src/api/users/services/membership.service.js
+  Does NOT extend CrudService. Breaks the circular dependency UserService ↔ GroupService.
+  Receives userService and groupService by constructor injection.
+  • .removeUserFromAllGroups(userId, userGroups) — for each slug in userGroups, resolves the
+    group document via GroupService.getBySlug(slug), then builds a WriteBatch with
+    FieldValue.arrayRemove(userId) on each group's users field; commits atomically.
+    No-op when userGroups is empty or absent.
+  Wired in src/api/users/routes/user.route.api.js: userServiceForGroup (bare, no membershipService)
+  → GroupService → MembershipService(userServiceForGroup, groupService) → UserService(membershipService).
+  userServiceForGroup must not carry a membershipService to avoid a circular dependency.
 
 ApiKeyService             src/api/users/services/api-key.service.js
   Does NOT extend CrudService — the subcollection path includes a dynamic userId segment

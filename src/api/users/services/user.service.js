@@ -36,6 +36,7 @@ class UserServices extends CrudService {
    * Deletes a user and removes them from all their groups atomically.
    * @param {string} id
    * @returns {Promise<string>} the deleted document id
+   * @throws {import('@hapi/boom').Boom} 404 if the user does not exist
    */
   async delete(id) {
     const user = await this.findOne(id);

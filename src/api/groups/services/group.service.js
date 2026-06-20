@@ -48,6 +48,7 @@ class GroupService extends CrudService {
    * Uses a WriteBatch — auto-timestamping does not apply; updated is set manually.
    * @param {string} id
    * @returns {Promise<string>} the deleted document id
+   * @throws {import('@hapi/boom').Boom} 404 if the group does not exist
    */
   async delete(id) {
     const current = await this.findOne(id);

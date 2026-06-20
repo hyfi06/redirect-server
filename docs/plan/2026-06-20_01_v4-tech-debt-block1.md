@@ -4,6 +4,8 @@
 **Rama:** dev
 **Fecha:** 2026-06-20
 
+> **PLAN CERRADO — 2026-06-20.** Todos los pasos completados. BUG-1, BUG-2, y BUG-3 resueltos.
+
 ---
 
 ## Objetivo
@@ -48,7 +50,7 @@ Para BUG-2 no se requieren tests adicionales: el comportamiento de `getByPath()`
 
 ---
 
-### Paso 2 — BUG-3 parte 1: `GroupService.delete()` + extracción de `MembershipService`
+### Paso 2 — BUG-3 parte 1: `GroupService.delete()` + extracción de `MembershipService` [x]
 
 Este paso implementa el lado Grupo del sync y extrae el `MembershipService` que el siguiente paso necesitará.
 
@@ -108,7 +110,7 @@ La dependencia circular `UserService → GroupService → UserService` queda rot
 
 ---
 
-### Paso 3 — BUG-3 parte 2: `UserService.delete()` con `MembershipService`
+### Paso 3 — BUG-3 parte 2: `UserService.delete()` con `MembershipService` [x]
 
 **Archivos afectados:**
 

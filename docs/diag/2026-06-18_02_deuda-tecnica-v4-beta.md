@@ -63,7 +63,7 @@ Eliminar el `await` de la línea 27 de `redirect.service.js`. Cambio de una pala
 
 **Archivos:** `src/api/groups/services/group.service.js` / `src/api/users/services/user.service.js` / `src/utils/crud.service.js:126-129`  
 **Severidad:** Media  
-**Estado:** Abierto
+**Estado:** Resuelto
 
 #### Descripción
 
@@ -230,7 +230,7 @@ En `getAll()`, cambiar `orderBy(field)` a `orderBy(field, 'asc')` para hacer exp
 
 **Archivos:** `src/api/groups/services/group.service.js` / `src/api/users/services/user.service.js`  
 **Severidad:** Baja  
-**Estado:** Abierto (relacionado con BUG-3)
+**Estado:** Resuelto (resuelto junto con BUG-3)
 
 #### Descripción
 
