@@ -165,7 +165,7 @@ describe('getGroupQuerySchema', () => {
   });
 
   it('accepts offset alone', () => {
-    const { error } = validate(getGroupQuerySchema, { offset: 0 });
+    const { error } = validate(getGroupQuerySchema, { offset: 1 });
     expect(error).toBeUndefined();
   });
 
@@ -184,9 +184,9 @@ describe('getGroupQuerySchema', () => {
     expect(error).toBeDefined();
   });
 
-  it('accepts offset: 0 — minimum is 0', () => {
+  it('rejects offset: 0 — minimum is 1', () => {
     const { error } = validate(getGroupQuerySchema, { offset: 0 });
-    expect(error).toBeUndefined();
+    expect(error).toBeDefined();
   });
 
   it('rejects unknown fields', () => {

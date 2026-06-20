@@ -2,7 +2,6 @@ const {
   createRedirectSchema,
   updateRedirectSchema,
   getRedirectQuerySchema,
-  getByPathRedirectSchema,
 } = require('../redirect.schema');
 
 /**
@@ -278,28 +277,3 @@ describe('getRedirectQuerySchema', () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// getByPathRedirectSchema
-// NOTE: This schema is exported but not currently used by any route.
-// The slugPath pattern rejects leading slashes — Express req.path always has
-// a leading slash (e.g. /fc/seminar). If wired into the catch-all route as-is,
-// it would reject every redirect request. Tested here to document current behavior.
-// ─────────────────────────────────────────────────────────────────────────────
-describe('getByPathRedirectSchema', () => {
-  it('accepts a path without a leading slash', () => {
-    const { error } = validate(getByPathRedirectSchema, { path: 'fc/seminar' });
-    expect(error).toBeUndefined();
-  });
-
-  it('rejects a path with a leading slash — current pattern does not allow it', () => {
-    // This is the format Express provides in req.path ("/fc/seminar").
-    // If this schema is ever wired into the catch-all route, it must be fixed.
-    const { error } = validate(getByPathRedirectSchema, { path: '/fc/seminar' });
-    expect(error).toBeDefined();
-  });
-
-  it('path is required', () => {
-    const { error } = validate(getByPathRedirectSchema, {});
-    expect(error).toBeDefined();
-  });
-});

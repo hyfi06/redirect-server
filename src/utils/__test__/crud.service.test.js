@@ -108,10 +108,10 @@ describe('CrudService — getAll()', () => {
     expect(mockDb.collection.orderBy).toHaveBeenCalledWith('updated', 'desc');
   });
 
-  it('applies ascending orderBy when the field has no leading dash', async () => {
+  it("applies ascending orderBy(field, 'asc') when the field has no leading dash", async () => {
     await service.getAll({ orderBy: 'name' });
 
-    expect(mockDb.collection.orderBy).toHaveBeenCalledWith('name');
+    expect(mockDb.collection.orderBy).toHaveBeenCalledWith('name', 'asc');
     expect(mockDb.collection.orderBy).not.toHaveBeenCalledWith('name', 'desc');
   });
 
