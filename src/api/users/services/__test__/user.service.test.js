@@ -1,6 +1,6 @@
 'use strict';
 
-const UserServices = require('../user.service');
+const UserService = require('../user.service');
 const User = require('../../models/user.model');
 
 jest.mock('../../../../lib/firestore');
@@ -32,7 +32,7 @@ function makeDocSnap(overrides = {}) {
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
-describe('UserServices', () => {
+describe('UserService', () => {
   let service;
   let mockDb;
 
@@ -51,7 +51,7 @@ describe('UserServices', () => {
       },
     };
     FireStoreAdapter.mockImplementation(() => mockDb);
-    service = new UserServices();
+    service = new UserService();
   });
 
   afterEach(() => {
@@ -324,7 +324,7 @@ describe('UserServices', () => {
 
     it('calls membershipService.removeUserFromAllGroups with the user id and groups', async () => {
       const mockMembershipService = { removeUserFromAllGroups: jest.fn().mockResolvedValue(undefined) };
-      const serviceWithMembership = new UserServices(mockMembershipService);
+      const serviceWithMembership = new UserService(mockMembershipService);
 
       mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc', 'cs'] }));
       mockDb.delete.mockResolvedValue('user-1');
@@ -346,7 +346,7 @@ describe('UserServices', () => {
 
     it('does not call super.delete or membershipService when findOne throws 404', async () => {
       const mockMembershipService = { removeUserFromAllGroups: jest.fn() };
-      const serviceWithMembership = new UserServices(mockMembershipService);
+      const serviceWithMembership = new UserService(mockMembershipService);
 
       const notFound = Object.assign(new Error('Resource not found'), {
         isBoom: true,

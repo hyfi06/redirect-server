@@ -7,7 +7,7 @@
  * - firestoreClient (singleton from src/lib/firestore-client.js) is mocked with
  *   batch() and collection() so the WriteBatch path in update() is fully
  *   exercisable without a real Firestore connection.
- * - UserServices is injected by constructor and mocked as a plain object with
+ * - UserService is injected by constructor and mocked as a plain object with
  *   jest.fn() methods. GroupService requires userService to be passed in.
  * - boom is NOT mocked — GroupService throws real boom objects; tests inspect
  *   e.output.statusCode to verify error semantics.
@@ -29,7 +29,7 @@ const { Group } = require('../../models/group.model');
 // ---- Shared mock FireStore db ----
 let mockDb;
 
-// ---- Shared mock UserServices ----
+// ---- Shared mock UserService ----
 let mockUserService;
 
 // ---- Shared batch mock ----

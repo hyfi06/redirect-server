@@ -4,7 +4,7 @@
  * Strategy:
  * - `authenticate` is mocked at module level. The mock reads an x-test-user
  *   header to inject req.user, or calls next(boom.unauthorized()) when absent.
- * - GroupService and UserServices are fully mocked before the router is imported.
+ * - GroupService and UserService are fully mocked before the router is imported.
  * - A single Express app is built once for the whole suite.
  * - The error handler mirrors the one in the real app pipeline.
  */
@@ -46,7 +46,7 @@ jest.mock('../../services/group.service', () => {
   return jest.fn().mockImplementation(() => mockGroupMethods);
 });
 
-// ---- Mock UserServices (only instantiated in the route module, never called directly in routes) ----
+// ---- Mock UserService (only instantiated in the route module, never called directly in routes) ----
 jest.mock('../../../users/services/user.service', () => {
   return jest.fn().mockImplementation(() => ({}));
 });
