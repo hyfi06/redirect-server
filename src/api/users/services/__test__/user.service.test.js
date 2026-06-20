@@ -284,30 +284,83 @@ describe('UserServices', () => {
   });
 
   // -------------------------------------------------------------------------
-  // delete (inherited from CrudService)
+  // delete — overrides CrudService: fetch-first, then delete, then group sync
   // -------------------------------------------------------------------------
   describe('delete', () => {
     it('returns the deleted document id when the document exists', async () => {
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-del', groups: [] }));
       mockDb.delete.mockResolvedValue('user-del');
 
       const result = await service.delete('user-del');
 
       expect(result).toBe('user-del');
+      expect(mockDb.get).toHaveBeenCalledWith('user-del');
       expect(mockDb.delete).toHaveBeenCalledWith('user-del');
     });
 
     it('propagates boom.notFound when the document does not exist', async () => {
-      mockDb.delete.mockRejectedValue({
+      const notFound = Object.assign(new Error('Resource not found'), {
         isBoom: true,
         output: { statusCode: 404 },
-        message: 'Resource not found',
       });
+      mockDb.get.mockRejectedValue(notFound);
 
       await expect(service.delete('ghost')).rejects.toMatchObject({
         isBoom: true,
         output: { statusCode: 404 },
         message: 'Resource not found',
       });
+      expect(mockDb.delete).not.toHaveBeenCalled();
+    });
+
+    it('returns the deleted user id when no membershipService is provided', async () => {
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: [] }));
+      mockDb.delete.mockResolvedValue('user-1');
+
+      const result = await service.delete('user-1');
+
+      expect(result).toBe('user-1');
+    });
+
+    it('calls membershipService.removeUserFromAllGroups with the user id and groups', async () => {
+      const mockMembershipService = { removeUserFromAllGroups: jest.fn().mockResolvedValue(undefined) };
+      const serviceWithMembership = new UserServices(mockMembershipService);
+
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc', 'cs'] }));
+      mockDb.delete.mockResolvedValue('user-1');
+
+      const result = await serviceWithMembership.delete('user-1');
+
+      expect(mockMembershipService.removeUserFromAllGroups).toHaveBeenCalledTimes(1);
+      expect(mockMembershipService.removeUserFromAllGroups).toHaveBeenCalledWith('user-1', ['fc', 'cs']);
+      expect(result).toBe('user-1');
+    });
+
+    it('skips membershipService when not provided', async () => {
+      // service in the outer beforeEach is constructed without membershipService
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc'] }));
+      mockDb.delete.mockResolvedValue('user-1');
+
+      await expect(service.delete('user-1')).resolves.toBe('user-1');
+    });
+
+    it('does not call super.delete or membershipService when findOne throws 404', async () => {
+      const mockMembershipService = { removeUserFromAllGroups: jest.fn() };
+      const serviceWithMembership = new UserServices(mockMembershipService);
+
+      const notFound = Object.assign(new Error('Resource not found'), {
+        isBoom: true,
+        output: { statusCode: 404 },
+      });
+      mockDb.get.mockRejectedValue(notFound);
+
+      await expect(serviceWithMembership.delete('nonexistent')).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 404 },
+      });
+
+      expect(mockDb.delete).not.toHaveBeenCalled();
+      expect(mockMembershipService.removeUserFromAllGroups).not.toHaveBeenCalled();
     });
   });
 });
