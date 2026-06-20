@@ -81,9 +81,10 @@ beforeEach(() => {
   // which is fine for tests (the value is only passed to Firestore, which is mocked).
   Firestore.Timestamp = { fromMillis: jest.fn().mockReturnValue({ _seconds: 0 }) };
 
-  // Batch mock — tracks update() and commit() calls
+  // Batch mock — tracks update(), delete(), and commit() calls
   mockBatch = {
     update: jest.fn(),
+    delete: jest.fn(),
     commit: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -614,5 +615,100 @@ describe('GroupService.update()', () => {
     }
 
     expect(err).toBe(commitErr);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// delete
+// ─────────────────────────────────────────────────────────────────────────────
+describe('GroupService.delete()', () => {
+  // Helper: configure mockDb.get for findOne(id) — same as update() tests.
+  function setupFindOne(snap) {
+    mockDb.get.mockResolvedValue(snap);
+  }
+
+  it('deletes the group and removes slug from each member\'s groups', async () => {
+    // findOne returns a group with two members
+    const currentSnap = makeDocSnap({ id: 'group-1', slug: 'fc', users: ['user-1', 'user-2'] });
+    setupFindOne(currentSnap);
+
+    const service = new GroupService(mockUserService);
+    const result = await service.delete('group-1');
+
+    // batch.update called once per member with arrayRemove of the slug
+    expect(mockBatch.update).toHaveBeenCalledTimes(2);
+    const [, payload1] = mockBatch.update.mock.calls[0];
+    const [, payload2] = mockBatch.update.mock.calls[1];
+    expect(payload1.groups).toEqual(Firestore.FieldValue.arrayRemove('fc'));
+    expect(payload1.updated).toBeDefined();
+    expect(payload2.groups).toEqual(Firestore.FieldValue.arrayRemove('fc'));
+    expect(payload2.updated).toBeDefined();
+
+    // batch.delete called once for the group document ref
+    expect(mockBatch.delete).toHaveBeenCalledTimes(1);
+
+    // batch.commit called once after all entries are queued
+    expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+
+    // returns the deleted document id
+    expect(result).toBe('group-1');
+  });
+
+  it('deletes the group when it has no members', async () => {
+    const currentSnap = makeDocSnap({ id: 'group-1', slug: 'fc', users: [] });
+    setupFindOne(currentSnap);
+
+    const service = new GroupService(mockUserService);
+    await service.delete('group-1');
+
+    // No member updates — users array is empty
+    expect(mockBatch.update).not.toHaveBeenCalled();
+
+    // Group document is still deleted
+    expect(mockBatch.delete).toHaveBeenCalledTimes(1);
+    expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes the group when users field is absent', async () => {
+    // makeDocSnap without users — docParser receives users: [] but here we test
+    // the raw ?? [] guard by stubbing findOne directly to return an object with no users key.
+    mockDb.get.mockResolvedValue({
+      ref: { id: 'group-1' },
+      data: () => ({
+        name: 'Facultad de Ciencias',
+        slug: 'fc',
+        // users field intentionally absent
+        created: { toMillis: () => 1000000 },
+        updated: { toMillis: () => 2000000 },
+      }),
+    });
+
+    const service = new GroupService(mockUserService);
+    await service.delete('group-1');
+
+    // No member updates — users is undefined, ?? [] guard applies
+    expect(mockBatch.update).not.toHaveBeenCalled();
+
+    // Group document is still deleted
+    expect(mockBatch.delete).toHaveBeenCalledTimes(1);
+    expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates 404 when group does not exist and does not call batch.commit()', async () => {
+    const boom = require('@hapi/boom');
+    const notFoundErr = boom.notFound('Group not found');
+    mockDb.get.mockRejectedValue(notFoundErr);
+
+    const service = new GroupService(mockUserService);
+    let err;
+    try {
+      await service.delete('nonexistent');
+    } catch (e) {
+      err = e;
+    }
+
+    expect(err).toBe(notFoundErr);
+    expect(err.output.statusCode).toBe(404);
+    expect(mockBatch.commit).not.toHaveBeenCalled();
   });
 });
