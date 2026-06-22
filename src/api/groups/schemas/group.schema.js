@@ -3,13 +3,13 @@ const Joi = require('joi');
 const createGroupSchema = Joi.object({
   name: Joi.string().required(),
   slug: Joi.string().lowercase().pattern(/^[a-z0-9-]+$/).required(),
-  users: Joi.array().items(Joi.string().email()),
+  users: Joi.array().items(Joi.string()),
 }).options({ allowUnknown: false });
 
 // slug is intentionally absent — it is immutable after creation (D7/D13)
 const updateGroupSchema = Joi.object({
   name: Joi.string(),
-  users: Joi.array().items(Joi.string().email()),
+  users: Joi.array().items(Joi.string()),
 }).options({ allowUnknown: false });
 
 const idParamSchema = Joi.object({

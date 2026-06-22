@@ -92,35 +92,35 @@ class GroupService extends CrudService {
       const oldUsers = current.users || [];
       const newUsers = group.users;
 
-      const added = newUsers.filter((email) => !oldUsers.includes(email));
-      const removed = oldUsers.filter((email) => !newUsers.includes(email));
-      const diffEmails = [...added, ...removed];
+      const added = newUsers.filter((userId) => !oldUsers.includes(userId));
+      const removed = oldUsers.filter((userId) => !newUsers.includes(userId));
+      const diffIds = [...added, ...removed];
 
       // Fetch-first: verify all users in the diff exist before writing anything
       const userMap = new Map();
-      for (const email of diffEmails) {
+      for (const userId of diffIds) {
         try {
-          const user = await this.userService.getByEmail(email);
-          userMap.set(email, user);
+          const user = await this.userService.findOne(userId);
+          userMap.set(userId, user);
         } catch (e) {
           if (e.output?.statusCode === 404) {
-            throw boom.badRequest(`User not found: ${email}`);
+            throw boom.badRequest(`User not found: ${userId}`);
           }
           throw e;
         }
       }
 
       // Queue batch updates for added members
-      for (const email of added) {
-        const user = userMap.get(email);
-        const userRef = firestoreClient.collection(this.usersCollection).doc(user.id);
+      for (const userId of added) {
+        const user = userMap.get(userId);
+        const userRef = firestoreClient.collection(this.usersCollection).doc(userId);
         batch.update(userRef, { groups: [...user.groups, current.slug], updated: now });
       }
 
       // Queue batch updates for removed members
-      for (const email of removed) {
-        const user = userMap.get(email);
-        const userRef = firestoreClient.collection(this.usersCollection).doc(user.id);
+      for (const userId of removed) {
+        const user = userMap.get(userId);
+        const userRef = firestoreClient.collection(this.usersCollection).doc(userId);
         batch.update(userRef, { groups: user.groups.filter((g) => g !== current.slug), updated: now });
       }
     }
