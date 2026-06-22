@@ -43,7 +43,7 @@ npm run dev
 |---|---|---|---|
 | `PORT` | Server port | No | `3000` |
 | `NODE_ENV` | Environment (`development`/`production`/`test`) | No | — |
-| `CORS` | Comma-separated allowed origins | No | `*` |
+| `CORS` | Comma-separated allowed origins | **Yes (production)** | `*` |
 | `JWT_SECRET` | Secret for signing and verifying JWTs (min 32 chars recommended) | **Yes** | — |
 | `JWT_TTL` | JWT expiry duration (e.g. `2h`, `1d`, `30m`) | No | `2h` |
 | `GOOGLE_CLIENT_ID` | Client ID from Google Cloud Console | **Yes** | — |
@@ -51,6 +51,8 @@ npm run dev
 | `GOOGLE_OAUTH_REDIRECT` | OAuth2 callback URL (e.g. `https://1kg.me/api/v1/auth/google/callback`) | **Yes** | — |
 
 > `JWT_SECRET` and `GOOGLE_CLIENT_SECRET` must never be written into `app.yaml`. Use Secret Manager or environment injection at deploy time.
+
+> **Production:** `CORS` defaults to `*` (any origin). Always set it explicitly to the allowed origin(s) (e.g. `https://1kg.me`) in your production environment or deploy pipeline. Leaving it as `*` allows any browser origin to make credentialed API requests.
 
 ---
 
@@ -64,11 +66,17 @@ npm test
 
 ## Deploy
 
+> **Order matters:** Firestore indexes must be deployed and reach **READY** status before the application is deployed. Deploying the app first will cause 500 errors on the first requests that hit composite-index queries (non-admin users listing redirects or groups).
+
+### Step 1 — Deploy Firestore indexes
+
 ```bash
-gcloud app deploy app.yaml
+npm run indexes
 ```
 
-### Create Firestore composite indexes
+This syncs `firestore.indexes.json` to the active GCP project. Wait until all indexes show `READY` in the [Firestore console](https://console.cloud.google.com/firestore/indexes) before proceeding.
+
+Alternatively, create them manually:
 
 ```bash
 gcloud firestore indexes composite create \
@@ -85,6 +93,12 @@ gcloud firestore indexes composite create \
   --collection-group=groups \
   --field-config=field-path=slug,order=ASCENDING \
   --field-config=field-path=updated,order=DESCENDING
+```
+
+### Step 2 — Deploy the application
+
+```bash
+gcloud app deploy app.yaml
 ```
 
 ---
