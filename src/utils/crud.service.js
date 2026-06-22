@@ -33,7 +33,7 @@ class CrudService {
    * @param {number} [options.limit]
    * @returns {Promise<T[]>}
    */
-  async getAll(options) {
+  async getAll(options = {}) {
     const { orderBy, offset, limit } = options;
     const fsCollection = this.db.collection;
     let fsFilter;
@@ -68,7 +68,7 @@ class CrudService {
    * @param {number} [options.limit]
    * @returns {Promise<T[]>}
    */
-  async find(query, options) {
+  async find(query, options = {}) {
     const { orderBy, offset, limit } = options;
     let fsQuery = this.db.collection;
     if (query) {
