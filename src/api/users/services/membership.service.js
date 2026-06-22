@@ -14,6 +14,27 @@ class MembershipService {
   }
 
   /**
+   * Adds batch operations to remove userId from every group in userGroups.
+   * Does NOT commit the batch — caller is responsible for committing.
+   * No-op when userGroups is empty or absent.
+   * @param {FirebaseFirestore.WriteBatch} batch
+   * @param {string} userId
+   * @param {string[]} userGroups - array of group slugs the user belongs to
+   * @returns {Promise<void>}
+   */
+  async addOpsToRemoveUserFromGroups(batch, userId, userGroups) {
+    if (!userGroups?.length) return;
+
+    const now = Firestore.Timestamp.fromMillis(Date.now());
+
+    for (const slug of userGroups) {
+      const group = await this.groupService.getBySlug(slug);
+      const groupRef = firestoreClient.collection(this.groupsCollection).doc(group.id);
+      batch.update(groupRef, { users: Firestore.FieldValue.arrayRemove(userId), updated: now });
+    }
+  }
+
+  /**
    * Removes userId from every group in userGroups atomically via a WriteBatch.
    * No-op when userGroups is empty or absent.
    * @param {string} userId
@@ -24,14 +45,7 @@ class MembershipService {
     if (!userGroups?.length) return;
 
     const batch = firestoreClient.batch();
-    const now = Firestore.Timestamp.fromMillis(Date.now());
-
-    for (const slug of userGroups) {
-      const group = await this.groupService.getBySlug(slug);
-      const groupRef = firestoreClient.collection(this.groupsCollection).doc(group.id);
-      batch.update(groupRef, { users: Firestore.FieldValue.arrayRemove(userId), updated: now });
-    }
-
+    await this.addOpsToRemoveUserFromGroups(batch, userId, userGroups);
     await batch.commit();
   }
 }
