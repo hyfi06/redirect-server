@@ -244,6 +244,7 @@ describe('GroupService.update()', () => {
   }
 
   it('calls firestoreClient.batch() exactly once per update call', async () => {
+    setupFindOne(makeDocSnap({ id: 'g-1', slug: 'fc' }));
     const updatedSnap = makeDocSnap({ id: 'g-1', name: 'New Name', slug: 'fc' });
     setupPostCommitRead(updatedSnap);
 
@@ -256,6 +257,7 @@ describe('GroupService.update()', () => {
   });
 
   it('calls batch.commit() exactly once per update call', async () => {
+    setupFindOne(makeDocSnap({ id: 'g-1', slug: 'fc' }));
     const updatedSnap = makeDocSnap({ id: 'g-1', name: 'New Name', slug: 'fc' });
     setupPostCommitRead(updatedSnap);
 
@@ -268,6 +270,7 @@ describe('GroupService.update()', () => {
   });
 
   it('returns the parsed Group read from Firestore after commit', async () => {
+    setupFindOne(makeDocSnap({ id: 'g-1', slug: 'fc' }));
     const updatedSnap = makeDocSnap({ id: 'g-1', name: 'New Name', slug: 'fc' });
     setupPostCommitRead(updatedSnap);
 
@@ -280,6 +283,7 @@ describe('GroupService.update()', () => {
   });
 
   it('skips user sync and includes only the group entry in the batch when group.users is undefined', async () => {
+    setupFindOne(makeDocSnap({ id: 'g-1', slug: 'fc' }));
     const updatedSnap = makeDocSnap({ id: 'g-1', name: 'New Name', slug: 'fc' });
     setupPostCommitRead(updatedSnap);
 
@@ -600,6 +604,7 @@ describe('GroupService.update()', () => {
   });
 
   it('propagates batch.commit() error even when group.users is undefined', async () => {
+    setupFindOne(makeDocSnap({ id: 'g-1', slug: 'fc' }));
     const commitErr = new Error('Batch commit failed');
     mockBatch.commit.mockRejectedValue(commitErr);
 

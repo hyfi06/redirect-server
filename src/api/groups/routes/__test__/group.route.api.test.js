@@ -442,6 +442,40 @@ describe('PATCH /groups/:id', () => {
       .send({});
     expect(res.status).toBe(200);
   });
+
+  // B5 regression: before the fix, PATCH without a `users` field skipped the
+  // findOne() guard inside GroupService.update() and crashed with 500 when the
+  // document didn't exist. The guard now runs unconditionally, so the service
+  // must throw 404 regardless of which fields are present in the body.
+  it('[B5] returns 404 when ID does not exist and body has no `users` field', async () => {
+    const notFoundErr = {
+      isBoom: true,
+      output: {
+        statusCode: 404,
+        payload: { statusCode: 404, error: 'Not Found', message: 'Resource not found' },
+      },
+    };
+    mockGroupMethods.update.mockRejectedValue(notFoundErr);
+    const res = await request(app)
+      .patch('/groups/nonexistent-id')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ name: 'Ghost Group' });
+    expect(res.status).toBe(404);
+  });
+
+  // B5 regression: the happy path for a name-only update (no `users`) must
+  // still return 200 after the unconditional findOne() guard was introduced.
+  it('[B5] returns 200 when ID exists and body has only `name` (no `users` field)', async () => {
+    const updated = { ...SAMPLE_GROUP, name: 'Renamed Faculty' };
+    mockGroupMethods.update.mockResolvedValue(updated);
+    const res = await request(app)
+      .patch('/groups/group-1')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ name: 'Renamed Faculty' });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('group updated');
+    expect(res.body.data).toEqual(updated);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
