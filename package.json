@@ -38,7 +38,7 @@
     "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.1",
     "node-cache": "^5.1.2",
-    "passport": "^0.6.0",
+    "passport": "^0.7.0",
     "passport-google-oauth2": "^0.2.0"
   },
   "devDependencies": {
