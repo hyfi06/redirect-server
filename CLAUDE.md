@@ -316,10 +316,12 @@ GroupService              src/api/groups/services/group.service.js
                          verify the group exists in Firestore before constructing the path.
                          Admin users bypass this check (they can create root-level paths).
   • .create()          — enforces slug uniqueness before insert
-  • .update(id, group) — fetch-first diff of users array; builds a WriteBatch with
-                         one update per added/removed member plus the group itself;
-                         commits atomically. Does NOT call super.update() — bypasses
-                         FireStoreAdapter entirely; Timestamps are set manually.
+  • .update(id, group) — fetch-first (findOne) unconditionally; throws 404 if the group does not exist,
+                         regardless of whether `users` is in the payload. If `users` is present,
+                         diffs old vs new membership and builds a WriteBatch with one update per
+                         added/removed member plus the group itself; commits atomically.
+                         Does NOT call super.update() — bypasses FireStoreAdapter entirely;
+                         Timestamps are set manually.
   • .delete(id)        — fetch-first (findOne) to read group.users and group.slug; builds a
                          WriteBatch with FieldValue.arrayRemove(slug) on each member's
                          User.groups field (no fetch per user — server-side op); adds the

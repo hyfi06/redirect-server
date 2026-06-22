@@ -80,6 +80,7 @@ class GroupService extends CrudService {
    * @param {string} id
    * @param {import('../models/group.model')} group
    * @returns {Promise<import('../models/group.model')>}
+   * @throws {import('@hapi/boom').Boom} 404 if the group does not exist
    * @throws {import('@hapi/boom').Boom} 400 if any user in the membership diff does not exist
    */
   async update(id, group) {
