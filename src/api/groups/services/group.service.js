@@ -83,11 +83,11 @@ class GroupService extends CrudService {
    * @throws {import('@hapi/boom').Boom} 400 if any user in the membership diff does not exist
    */
   async update(id, group) {
+    const current = await this.findOne(id);
     const batch = firestoreClient.batch();
     const now = Firestore.Timestamp.fromMillis(Date.now());
 
     if (group.users !== undefined) {
-      const current = await this.findOne(id);
       const oldUsers = current.users || [];
       const newUsers = group.users;
 
