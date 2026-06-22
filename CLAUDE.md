@@ -318,11 +318,12 @@ GroupService              src/api/groups/services/group.service.js
   • .create()          — enforces slug uniqueness before insert
   • .update(id, group) — fetch-first (findOne) unconditionally; throws 404 if the group does not exist,
                          regardless of whether `users` is in the payload. If `users` is present,
-                         diffs old vs new membership and builds a WriteBatch with one update per
+                         diffs old vs new membership (comparing user IDs — Firestore document IDs,
+                         not email strings) and builds a WriteBatch with one update per
                          added/removed member plus the group itself; commits atomically.
                          Does NOT call super.update() — bypasses FireStoreAdapter entirely;
                          Timestamps are set manually.
-  • .delete(id)        — fetch-first (findOne) to read group.users and group.slug; builds a
+  • .delete(id)        — fetch-first (findOne) to read group.users (user IDs) and group.slug; builds a
                          WriteBatch with FieldValue.arrayRemove(slug) on each member's
                          User.groups field (no fetch per user — server-side op); adds the
                          group delete to the batch; commits atomically. Timestamps set manually.
@@ -384,7 +385,7 @@ Filter.or(
 Filter.where('owner', '==', email)
 ```
 
-Groups are Firestore documents (collection `groups`) with a `users: string[]` array.
+Groups are Firestore documents (collection `groups`) with a `users: string[]` array of user IDs (Firestore document IDs, not email strings).
 Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/models/scope.model.js`.
 
 ---
