@@ -6,6 +6,11 @@ const User = require('../../models/user.model');
 jest.mock('../../../../lib/firestore');
 const FireStoreAdapter = require('../../../../lib/firestore');
 
+// firestoreClient singleton is imported directly by user.service.js to create
+// WriteBatch instances for atomic deletes. Mock it so batch() is controllable.
+jest.mock('../../../../lib/firestore-client');
+const firestoreClient = require('../../../../lib/firestore-client');
+
 // Use real boom — errors are verified by message / isBoom shape, matching the
 // pattern established in src/lib/__test__/firestore.test.js.
 
@@ -35,6 +40,7 @@ function makeDocSnap(overrides = {}) {
 describe('UserService', () => {
   let service;
   let mockDb;
+  let mockBatch;
 
   beforeEach(() => {
     mockDb = {
@@ -51,6 +57,18 @@ describe('UserService', () => {
       },
     };
     FireStoreAdapter.mockImplementation(() => mockDb);
+
+    // Batch mock for atomic delete path (firestoreClient.batch())
+    mockBatch = {
+      delete: jest.fn(),
+      update: jest.fn(),
+      commit: jest.fn().mockResolvedValue(undefined),
+    };
+    firestoreClient.batch = jest.fn().mockReturnValue(mockBatch);
+    firestoreClient.collection = jest.fn().mockReturnValue({
+      doc: jest.fn().mockReturnValue({}),
+    });
+
     service = new UserService();
   });
 
@@ -287,7 +305,7 @@ describe('UserService', () => {
   // delete — overrides CrudService: fetch-first, then delete, then group sync
   // -------------------------------------------------------------------------
   describe('delete', () => {
-    it('returns the deleted document id when the document exists', async () => {
+    it('returns the deleted document id when the document exists and user has no groups', async () => {
       mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-del', groups: [] }));
       mockDb.delete.mockResolvedValue('user-del');
 
@@ -313,39 +331,86 @@ describe('UserService', () => {
       expect(mockDb.delete).not.toHaveBeenCalled();
     });
 
-    it('returns the deleted user id when no membershipService is provided', async () => {
-      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: [] }));
+    // [B2] Fallback — no membershipService
+    it('uses super.delete() when no membershipService is provided, even if the user has groups', async () => {
+      // service from outer beforeEach has no membershipService
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc'] }));
       mockDb.delete.mockResolvedValue('user-1');
 
       const result = await service.delete('user-1');
 
       expect(result).toBe('user-1');
+      expect(mockDb.delete).toHaveBeenCalledWith('user-1');
+      expect(firestoreClient.batch).not.toHaveBeenCalled();
     });
 
-    it('calls membershipService.removeUserFromAllGroups with the user id and groups', async () => {
-      const mockMembershipService = { removeUserFromAllGroups: jest.fn().mockResolvedValue(undefined) };
+    // [B2] Fallback — user has no groups
+    it('uses super.delete() when membershipService is present but user has no groups', async () => {
+      const mockMembershipService = { addOpsToRemoveUserFromGroups: jest.fn() };
       const serviceWithMembership = new UserService(mockMembershipService);
 
-      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc', 'cs'] }));
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: [] }));
       mockDb.delete.mockResolvedValue('user-1');
 
       const result = await serviceWithMembership.delete('user-1');
 
-      expect(mockMembershipService.removeUserFromAllGroups).toHaveBeenCalledTimes(1);
-      expect(mockMembershipService.removeUserFromAllGroups).toHaveBeenCalledWith('user-1', ['fc', 'cs']);
       expect(result).toBe('user-1');
+      expect(mockDb.delete).toHaveBeenCalledWith('user-1');
+      expect(firestoreClient.batch).not.toHaveBeenCalled();
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).not.toHaveBeenCalled();
     });
 
-    it('skips membershipService when not provided', async () => {
-      // service in the outer beforeEach is constructed without membershipService
+    // [B2] Atomicidad — happy path
+    it('[B2] calls addOpsToRemoveUserFromGroups with the batch and user groups, then commits once', async () => {
+      const mockMembershipService = {
+        addOpsToRemoveUserFromGroups: jest.fn().mockResolvedValue(undefined),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc', 'cs'] }));
+
+      const result = await serviceWithMembership.delete('user-1');
+
+      expect(result).toBe('user-1');
+
+      // The atomic path must NOT call super.delete (mockDb.delete)
+      expect(mockDb.delete).not.toHaveBeenCalled();
+
+      // A single batch is created
+      expect(firestoreClient.batch).toHaveBeenCalledTimes(1);
+
+      // addOpsToRemoveUserFromGroups receives the batch as first arg, plus id and groups
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).toHaveBeenCalledTimes(1);
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).toHaveBeenCalledWith(
+        mockBatch,
+        'user-1',
+        ['fc', 'cs'],
+      );
+
+      // batch.commit() is called exactly once
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    // [B2] Atomicidad — error before commit
+    it('[B2] does not call batch.commit() when addOpsToRemoveUserFromGroups throws', async () => {
+      const groupError = new Error('Group lookup failed');
+      const mockMembershipService = {
+        addOpsToRemoveUserFromGroups: jest.fn().mockRejectedValue(groupError),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
       mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc'] }));
-      mockDb.delete.mockResolvedValue('user-1');
 
-      await expect(service.delete('user-1')).resolves.toBe('user-1');
+      await expect(serviceWithMembership.delete('user-1')).rejects.toThrow('Group lookup failed');
+
+      // commit must not have been called — the user document was not deleted
+      expect(mockBatch.commit).not.toHaveBeenCalled();
+      // super.delete must not have been called either
+      expect(mockDb.delete).not.toHaveBeenCalled();
     });
 
-    it('does not call super.delete or membershipService when findOne throws 404', async () => {
-      const mockMembershipService = { removeUserFromAllGroups: jest.fn() };
+    it('does not call batch.commit() or addOpsToRemoveUserFromGroups when findOne throws 404', async () => {
+      const mockMembershipService = { addOpsToRemoveUserFromGroups: jest.fn() };
       const serviceWithMembership = new UserService(mockMembershipService);
 
       const notFound = Object.assign(new Error('Resource not found'), {
@@ -360,7 +425,8 @@ describe('UserService', () => {
       });
 
       expect(mockDb.delete).not.toHaveBeenCalled();
-      expect(mockMembershipService.removeUserFromAllGroups).not.toHaveBeenCalled();
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).not.toHaveBeenCalled();
+      expect(mockBatch.commit).not.toHaveBeenCalled();
     });
   });
 });
