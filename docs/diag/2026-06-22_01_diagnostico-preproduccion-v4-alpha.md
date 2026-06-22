@@ -15,12 +15,12 @@
 |---|---|---|
 | Tests / Cobertura | Verde | 708 tests, 99.6% statements, 98.1% branches, 100% functions |
 | Seguridad | Rojo | B1: CORS abierto en producción |
-| Integridad de datos | Rojo | B2: `UserService.delete()` no atómico; B3: campo `users` en grupos inconsistente |
+| Integridad de datos | Verde | ~~B2: `UserService.delete()` no atómico~~ [RESUELTO]; ~~B3: campo `users` en grupos inconsistente~~ [RESUELTO] |
 | Configuración de producción | Rojo | B4: índices Firestore deben desplegarse antes del servidor |
-| Corrección del código | Rojo | B5: `GroupService.update()` retorna 500 en lugar de 404 sin `users` |
+| Corrección del código | Verde | ~~B5: `GroupService.update()` retorna 500 en lugar de 404 sin `users`~~ [RESUELTO] |
 | Issues menores | Amarillo | M1–M5: validación de rol, orden de middleware, dependencias |
 
-Hay **cinco bloqueantes** que deben resolverse antes del despliegue. Los tests son sólidos y no son la causa del bloqueo.
+Hay **cinco bloqueantes** que deben resolverse antes del despliegue. Los tests son sólidos y no son la causa del bloqueo. B2, B3 y B5 han sido resueltos (commits `e6d848f`, `356b3ed`). Quedan pendientes B1 (CORS en `app.yaml`) y B4 (orden de deploy).
 
 ---
 
@@ -68,36 +68,27 @@ La API maneja tokens JWT y datos privados de usuarios. Un origen malicioso puede
 
 ---
 
-### B2 — `UserService.delete()` no es atómico
+### ~~B2 — `UserService.delete()` no es atómico~~ [RESUELTO]
 
 **Archivo:** `src/api/users/services/user.service.js`  
 **Agente:** software-architect  
 **Severidad:** Alta
 
-`UserService.delete()` realiza dos operaciones Firestore separadas y no atómicas:
+~~`UserService.delete()` realiza dos operaciones Firestore separadas y no atómicas.~~
 
-1. `super.delete(id)` — elimina el documento del usuario.
-2. `membershipService.removeUserFromAllGroups(id, user.groups)` — elimina el `userId` del array `users` de cada grupo al que pertenecía.
-
-Si la segunda operación falla (timeout de Firestore, grupo eliminado concurrentemente, cuota excedida), el usuario ya no existe en la colección `users` pero su `userId` permanece en el campo `users` de los grupos afectados. El estado resultante es inconsistente y no hay mecanismo de reconciliación automática.
-
-`GroupService.delete()` resuelve el problema simétrico de forma correcta usando un `WriteBatch` único que incluye la eliminación del documento de grupo y el `FieldValue.arrayRemove` sobre cada usuario miembro.
-
-**Fix requerido:** Refactorizar `UserService.delete()` para construir un `WriteBatch` combinado que incluya la eliminación del documento de usuario y el `FieldValue.arrayRemove(userId)` sobre cada grupo afectado, comprometiendo ambas operaciones de forma atómica. Alternativamente, documentar la inconsistencia potencial con un runbook de reconciliación manual y aceptar la deuda explícitamente.
+**Resolución:** `UserService.delete()` ahora construye un único `WriteBatch` que incluye la delete del documento de usuario y todas las ops `FieldValue.arrayRemove(userId)` sobre los grupos afectados, comprometiendo ambas operaciones de forma atómica. El nuevo método `MembershipService.addOpsToRemoveUserFromGroups(batch, userId, userGroups)` añade las ops al batch sin hacer commit, permitiendo que el caller (UserService) controle el commit. Implementado en commits `e6d848f`/`356b3ed`.
 
 ---
 
-### B3 — Campo `users` en documentos de grupo almacena emails en lugar de IDs
+### ~~B3 — Campo `users` en documentos de grupo almacena emails en lugar de IDs~~ [RESUELTO]
 
 **Archivo:** `src/api/groups/parsers/group.parser.js` / `src/api/groups/services/group.service.js`  
 **Agente:** software-architect  
 **Severidad:** Alta
 
-`createGroupParser` escribe en Firestore lo que recibe del request body. El schema Joi del grupo espera emails en el campo `users` (según la validación actual). Sin embargo, `GroupService.delete()` trata los valores de `group.users` como user IDs al construir el `WriteBatch` con `FieldValue.arrayRemove(userId)`. De forma análoga, la limpieza de grupos al eliminar un usuario (`MembershipService.removeUserFromAllGroups`) recibe `userGroups` como slugs y luego usa el `userId` del argumento para el `arrayRemove`.
+~~El campo `users` de los documentos de grupo almacenaba emails en lugar de IDs, causando que la lógica de delete fallara silenciosamente.~~
 
-Esta inconsistencia de representación — emails en el campo `users` de los documentos Firestore, IDs esperados en la lógica de delete — hace que la limpieza de grupos al eliminar un grupo falle silenciosamente: el `FieldValue.arrayRemove` busca el ID pero el array contiene emails, por lo que no elimina ninguna entrada.
-
-**Fix requerido:** Establecer una representación canónica única para el campo `users` de los documentos de grupo (preferiblemente IDs de Firestore, que son estables e independientes del email) y asegurar que el schema Joi, los parsers de creación y actualización, y toda la lógica de delete sean coherentes con esa representación.
+**Resolución:** La representación canónica del campo `users` es ahora IDs de Firestore (document IDs) en todos los niveles: schema Joi, parsers de creación y actualización, y lógica de delete/update. `GroupService.update()` compara IDs en el diff de membresía. `GroupService.delete()` y `MembershipService` operan sobre IDs. Implementado en commit `e6d848f`.
 
 ---
 
@@ -118,17 +109,15 @@ El error es silencioso desde el punto de vista del operador: el servidor arranca
 
 ---
 
-### B5 — `GroupService.update()` retorna 500 en lugar de 404 cuando el grupo no existe y el body no incluye `users`
+### ~~B5 — `GroupService.update()` retorna 500 en lugar de 404 cuando el grupo no existe y el body no incluye `users`~~ [RESUELTO]
 
 **Archivo:** `src/api/groups/services/group.service.js` línea ~129  
 **Agente:** backend-engineer  
 **Severidad:** Alta
 
-En `GroupService.update()`, el guard `findOne(id)` que verifica la existencia del grupo solo se ejecuta dentro del bloque `if (group.users !== undefined)`. Si el request body contiene únicamente `name` (sin `users`), la función salta directamente a `batch.update(groupRef, ...)`. Firestore lanza un error gRPC con código 5 (NOT_FOUND) cuando el `batch.commit()` intenta actualizar un documento inexistente. Este error no es capturado por el guard de `FireStoreAdapter.update()` (que no interviene aquí, ya que el batch bypasea el adaptador), y llega al cliente como 500 en lugar de 404.
+~~El guard `findOne(id)` solo se ejecutaba dentro del bloque `if (group.users !== undefined)`, causando un 500 gRPC cuando el grupo no existía y el body no incluía `users`.~~
 
-El comportamiento esperado según el contrato REST del endpoint `PATCH /api/v1/groups/:id` es retornar 404 cuando el recurso no existe, independientemente del contenido del body.
-
-**Fix requerido:** Añadir `await this.findOne(id)` incondicionalmente al inicio de `GroupService.update()`, antes del bloque `if (group.users !== undefined)`. Esto garantiza que la existencia del grupo se verifica siempre, y el `boom.notFound` lanzado por `CrudService.findOne()` propagará un 404 correcto al cliente.
+**Resolución:** `await this.findOne(id)` se ejecuta incondicionalmente al inicio de `GroupService.update()`, antes de cualquier bloque condicional. El `boom.notFound` lanzado por `CrudService.findOne()` produce un 404 correcto al cliente en todos los casos. Implementado en commit `e6d848f`.
 
 ---
 
@@ -226,10 +215,10 @@ Las siguientes observaciones tienen impacto en la estabilidad y mantenibilidad a
 ### Bloqueantes — deben resolverse antes del despliegue
 
 - [ ] **B1:** Definir `CORS` en `app.yaml` o en el pipeline de deploy con los orígenes permitidos explícitos
-- [ ] **B2:** Refactorizar `UserService.delete()` para usar un `WriteBatch` atómico, o documentar la inconsistencia potencial con runbook de reconciliación
-- [ ] **B3:** Establecer representación canónica del campo `users` en documentos de grupo (IDs vs emails) y hacer coherentes los parsers, schema Joi y lógica de delete
+- [x] **B2:** ~~Refactorizar `UserService.delete()` para usar un `WriteBatch` atómico~~ — resuelto en commit `e6d848f`
+- [x] **B3:** ~~Establecer representación canónica del campo `users` en documentos de grupo (IDs vs emails)~~ — resuelto en commit `e6d848f`
 - [ ] **B4:** Documentar y enforcer el orden de deploy: `npm run indexes` primero, `npm run deploy` después; verificar que los índices estén en estado `READY` antes de recibir tráfico
-- [ ] **B5:** Añadir `await this.findOne(id)` incondicional al inicio de `GroupService.update()` (`src/api/groups/services/group.service.js`)
+- [x] **B5:** ~~Añadir `await this.findOne(id)` incondicional al inicio de `GroupService.update()`~~ — resuelto en commit `e6d848f`
 
 ### Issues menores — primer sprint post-lanzamiento
 

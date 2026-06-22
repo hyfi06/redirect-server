@@ -300,12 +300,12 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.js
 UserService               src/api/users/services/user.service.js
   • .getByEmail(email) — Firestore where('email', '==', email)
   • .create()          — enforces email uniqueness before insert
-  • .delete(id)        — fetch-first (findOne) to capture user.groups before deletion;
-                         calls super.delete(id) to remove the user document; then delegates
-                         group cleanup to membershipService.removeUserFromAllGroups(id, user.groups).
-                         The two Firestore operations are not atomic with each other — user doc
-                         is deleted first. If membershipService is absent (bare instance), the
-                         group cleanup step is skipped.
+  • .delete(id)        — fetch-first (findOne) to capture user.groups before deletion.
+                         When membershipService is available and the user has groups: builds a
+                         single WriteBatch with the user doc delete and all group arrayRemove ops
+                         (via membershipService.addOpsToRemoveUserFromGroups), then commits
+                         atomically. Falls back to super.delete(id) when membershipService is
+                         absent or the user belongs to no groups (no group cleanup needed).
   Note: User constructor accepts email as optional (guard: email ? ... : undefined).
         PATCH handlers do not supply email — it is immutable post-creation and
         discarded by updateParser before any Firestore write.
@@ -332,9 +332,13 @@ GroupService              src/api/groups/services/group.service.js
 MembershipService         src/api/users/services/membership.service.js
   Does NOT extend CrudService. Breaks the circular dependency UserService ↔ GroupService.
   Receives userService and groupService by constructor injection.
-  • .removeUserFromAllGroups(userId, userGroups) — for each slug in userGroups, resolves the
-    group document via GroupService.getBySlug(slug), then builds a WriteBatch with
-    FieldValue.arrayRemove(userId) on each group's users field; commits atomically.
+  • .addOpsToRemoveUserFromGroups(batch, userId, userGroups) — for each slug in userGroups,
+    resolves the group via GroupService.getBySlug(slug) and adds a batch.update with
+    FieldValue.arrayRemove(userId) to the provided WriteBatch. Does NOT commit — caller
+    is responsible for committing. No-op when userGroups is empty or absent.
+  • .removeUserFromAllGroups(userId, userGroups) — creates its own WriteBatch, delegates
+    to addOpsToRemoveUserFromGroups, then commits atomically. Standalone use only;
+    UserService.delete() calls addOpsToRemoveUserFromGroups directly to share the batch.
     No-op when userGroups is empty or absent.
   Wired in src/api/users/routes/user.route.api.js: userServiceForGroup (bare, no membershipService)
   → GroupService → MembershipService(userServiceForGroup, groupService) → UserService(membershipService).
