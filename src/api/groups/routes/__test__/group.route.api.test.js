@@ -487,6 +487,17 @@ describe('PATCH /groups/:id', () => {
     expect(res.body.message).toBe('group updated');
     expect(res.body.data).toEqual(updated);
   });
+
+  // [M2] authorize('admin') runs before validatorHandler — a non-admin must
+  // receive 403 before any param validation occurs.
+  it('[M2] returns 403 (not 400) for a non-admin user — authorize runs before param validation', async () => {
+    const res = await request(app)
+      .patch('/groups/some-group-id')
+      .set('x-test-user', userHeader(REGULAR_USER))
+      .send({ name: 'Hacked' });
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.update).not.toHaveBeenCalled();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -529,5 +540,15 @@ describe('DELETE /groups/:id', () => {
       .delete('/groups/group-42')
       .set('x-test-user', userHeader(ADMIN_USER));
     expect(mockGroupMethods.delete).toHaveBeenCalledWith('group-42');
+  });
+
+  // [M2] authorize('admin') runs before validatorHandler — a non-admin must
+  // receive 403 before any param validation occurs.
+  it('[M2] returns 403 (not 400) for a non-admin user — authorize runs before param validation', async () => {
+    const res = await request(app)
+      .delete('/groups/some-group-id')
+      .set('x-test-user', userHeader(REGULAR_USER));
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.delete).not.toHaveBeenCalled();
   });
 });
