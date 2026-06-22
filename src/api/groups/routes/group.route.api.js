@@ -87,8 +87,8 @@ groupRouterApi.post(
 
 groupRouterApi.patch(
   '/:id',
-  validatorHandler(idParamSchema, 'params'),
   authorize('admin'),
+  validatorHandler(idParamSchema, 'params'),
   async (req, res, next) => {
     // slug is immutable (D14): check here, not in Joi, to return an explicit message
     if (req.body.slug !== undefined) {
@@ -111,8 +111,8 @@ groupRouterApi.patch(
 
 groupRouterApi.delete(
   '/:id',
-  validatorHandler(idParamSchema, 'params'),
   authorize('admin'),
+  validatorHandler(idParamSchema, 'params'),
   async (req, res, next) => {
     const { id } = req.params;
     try {
