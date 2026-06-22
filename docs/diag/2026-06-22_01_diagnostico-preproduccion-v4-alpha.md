@@ -18,7 +18,7 @@
 | Integridad de datos | Verde | ~~B2: `UserService.delete()` no atómico~~ [RESUELTO]; ~~B3: campo `users` en grupos inconsistente~~ [RESUELTO] |
 | Configuración de producción | Rojo | B4: índices Firestore deben desplegarse antes del servidor |
 | Corrección del código | Verde | ~~B5: `GroupService.update()` retorna 500 en lugar de 404 sin `users`~~ [RESUELTO] |
-| Issues menores | Amarillo | M1–M5: validación de rol, orden de middleware, dependencias |
+| Issues menores | Verde | ~~M1–M4: resueltos~~ [RESUELTO]; M5: CVEs altos resueltos, 24 moderados pendientes (breaking changes) [PARCIALMENTE RESUELTO] |
 
 Hay **cinco bloqueantes** que deben resolverse antes del despliegue. Los tests son sólidos y no son la causa del bloqueo. B2, B3 y B5 han sido resueltos (commits `e6d848f`, `356b3ed`). Quedan pendientes B1 (CORS en `app.yaml`) y B4 (orden de deploy).
 
@@ -125,52 +125,56 @@ El error es silencioso desde el punto de vista del operador: el servidor arranca
 
 Los siguientes ítems no bloquean el despliegue pero deben planificarse para el primer sprint post-lanzamiento.
 
-### M1 — `createUserSchema` permite valores arbitrarios en el campo `role`
+### ~~M1 — `createUserSchema` permite valores arbitrarios en el campo `role`~~ [RESUELTO]
 
 **Archivo:** `src/api/users/schemas/user.schema.js` línea 9  
 **Agente:** backend-engineer
 
-El campo `role` no tiene `.valid('user', 'admin')`. Un admin podría crear un usuario con `role: 'superadmin'` u otro string arbitrario. No existe escalada de privilegios inmediata (el código de autorización solo compara contra `'admin'`), pero corrompe datos y hace el sistema frágil ante futuros checks de rol.
+~~El campo `role` no tiene `.valid('user', 'admin')`. Un admin podría crear un usuario con `role: 'superadmin'` u otro string arbitrario.~~
 
-**Fix recomendado:** Añadir `.valid('user', 'admin').default('user')` al campo `role` en `createUserSchema`.
+**Resolución:** `role` es ahora `Joi.string().valid('user', 'admin')` en `createUserSchema` (y también en `updateUserByAdminSchema`). Valores fuera del enum son rechazados con 400.
 
 ---
 
-### M2 — `validatorHandler(idParamSchema, 'params')` precede a `authorize('admin')` en PATCH/DELETE de grupos
+### ~~M2 — `validatorHandler(idParamSchema, 'params')` precede a `authorize('admin')` en PATCH/DELETE de grupos~~ [RESUELTO]
 
 **Archivo:** `src/api/groups/routes/group.route.api.js`  
 **Agente:** backend-engineer
 
-El middleware de validación de params corre antes del middleware de autorización. Un atacante no-admin que envíe un `id` inválido recibirá un 400 de validación en lugar de un 403 de autorización, lo que confirma implícitamente que el endpoint existe y qué formato acepta el parámetro `id`.
+~~El middleware de validación de params corre antes del middleware de autorización.~~
 
-**Fix recomendado:** Invertir el orden: `authorize('admin')` antes de `validatorHandler(idParamSchema, 'params')` en las rutas `PATCH /:id` y `DELETE /:id` del router de grupos.
-
----
-
-### M3 — `passport` 0.6.0 pendiente de actualizar a 0.7.0
-
-**Agente:** backend-engineer
-
-`passport` 0.7.0 incluye un fix relevante para el comportamiento de `req.user` en escenarios de session-adjacent. Aunque el proyecto usa `session: false` en el callback de OAuth2 (que mitiga el vector afectado), actualizar a 0.7.x es la práctica recomendada. No es un blocker para el despliegue actual.
+**Resolución:** `authorize('admin')` precede a `validatorHandler(idParamSchema, 'params')` en las rutas `PATCH /:id` y `DELETE /:id`. Un no-admin recibe 403 antes de que se valide el formato del parámetro `id`.
 
 ---
 
-### M4 — `CrudService.getAll()` y `find()` sin `options = {}` por defecto
+### ~~M3 — `passport` 0.6.0 pendiente de actualizar a 0.7.0~~ [RESUELTO]
 
-**Archivo:** `src/utils/crud.service.js` líneas 37 y 72  
 **Agente:** backend-engineer
 
-Si `getAll()` o `find()` se invocan sin argumento (o con `options = undefined`), el destructuring interno lanza `TypeError: Cannot destructure property 'orderBy' of undefined`. En la base de código actual, todos los call sites pasan opciones explícitas, pero es una trampa para futuros consumidores de `CrudService`.
+~~`passport` 0.7.0 incluye un fix relevante para el comportamiento de `req.user` en escenarios de session-adjacent.~~
 
-**Fix recomendado:** Cambiar la firma a `getAll(options = {})` y `find(query, options = {})`.
+**Resolución:** `passport` actualizado a `^0.7.0` en `package.json`.
 
 ---
 
-### M5 — `npm audit` pendiente
+### ~~M4 — `CrudService.getAll()` y `find()` sin `options = {}` por defecto~~ [RESUELTO]
+
+**Archivo:** `src/utils/crud.service.js` líneas 36 y 71  
+**Agente:** backend-engineer
+
+~~Si `getAll()` o `find()` se invocan sin argumento, el destructuring interno lanza `TypeError`.~~
+
+**Resolución:** Firmas actualizadas a `getAll(options = {})` y `find(query, options = {})`. Invocar sin argumento ya no lanza excepción.
+
+---
+
+### M5 — CVEs altos resueltos; 24 moderados pendientes [PARCIALMENTE RESUELTO]
 
 **Agente:** backend-engineer
 
-No se ejecutó `npm audit` durante esta revisión. Antes del despliegue en producción, verificar que no existan CVEs de severidad alta o crítica en el lockfile actual.
+~~No se ejecutó `npm audit` durante esta revisión.~~
+
+**Resolución parcial:** `npm audit fix` resolvió 2 CVEs de severidad alta (`@grpc/grpc-js`, `form-data`). El audit actual reporta: 0 críticos, 0 altos, 24 moderados. Los 24 moderados restantes requieren breaking changes en dependencias y se posponen para un sprint posterior al lanzamiento.
 
 ---
 
@@ -222,8 +226,8 @@ Las siguientes observaciones tienen impacto en la estabilidad y mantenibilidad a
 
 ### Issues menores — primer sprint post-lanzamiento
 
-- [ ] **M1:** Añadir `.valid('user', 'admin')` al campo `role` en `createUserSchema`
-- [ ] **M2:** Invertir orden `authorize('admin')` antes de `validatorHandler` en PATCH/DELETE de grupos
-- [ ] **M3:** Actualizar `passport` de 0.6.0 a 0.7.x
-- [ ] **M4:** Añadir `options = {}` como valor por defecto en `CrudService.getAll()` y `find()`
-- [ ] **M5:** Ejecutar `npm audit` y resolver CVEs de severidad alta o crítica
+- [x] **M1:** ~~Añadir `.valid('user', 'admin')` al campo `role` en `createUserSchema`~~ — resuelto
+- [x] **M2:** ~~Invertir orden `authorize('admin')` antes de `validatorHandler` en PATCH/DELETE de grupos~~ — resuelto
+- [x] **M3:** ~~Actualizar `passport` de 0.6.0 a 0.7.x~~ — resuelto (`^0.7.0`)
+- [x] **M4:** ~~Añadir `options = {}` como valor por defecto en `CrudService.getAll()` y `find()`~~ — resuelto
+- [~] **M5:** CVEs altos resueltos con `npm audit fix`; 24 moderados pendientes (breaking changes) — parcialmente resuelto
