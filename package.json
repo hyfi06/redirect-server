@@ -1,6 +1,6 @@
 {
   "name": "redirect-server",
-  "version": "4.0.0-beta",
+  "version": "4.0.0-alpha",
   "description": "Express redirect server",
   "main": "src/app.js",
   "scripts": {
