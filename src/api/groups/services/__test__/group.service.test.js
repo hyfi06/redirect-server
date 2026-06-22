@@ -105,7 +105,7 @@ beforeEach(() => {
   });
 
   mockUserService = {
-    getByEmail: jest.fn(),
+    findOne: jest.fn(),
     update: jest.fn(),
   };
 });
@@ -294,7 +294,7 @@ describe('GroupService.update()', () => {
 
     await service.update('g-1', group);
 
-    expect(mockUserService.getByEmail).not.toHaveBeenCalled();
+    expect(mockUserService.findOne).not.toHaveBeenCalled();
     // Only the group entry itself goes into the batch
     expect(mockBatch.update).toHaveBeenCalledTimes(1);
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
@@ -305,13 +305,13 @@ describe('GroupService.update()', () => {
     setupFindOne(currentSnap);
 
     const userObj = { id: 'u-1', email: 'new@test.com', groups: [], role: 'user', firstName: 'New', lastName: 'User' };
-    mockUserService.getByEmail.mockResolvedValue(userObj);
+    mockUserService.findOne.mockResolvedValue(userObj);
 
-    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['new@test.com'] });
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupPostCommitRead(updatedSnap);
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['new@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-1'] });
 
     await service.update('g-1', group);
 
@@ -319,20 +319,38 @@ describe('GroupService.update()', () => {
   });
 
   it('skips user sync when diff is empty — users array unchanged', async () => {
-    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupFindOne(currentSnap);
-    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupPostCommitRead(updatedSnap);
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-1'] });
 
     await service.update('g-1', group);
 
-    expect(mockUserService.getByEmail).not.toHaveBeenCalled();
+    expect(mockUserService.findOne).not.toHaveBeenCalled();
     // Only the group entry in the batch — no user entries
     expect(mockBatch.update).toHaveBeenCalledTimes(1);
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('[B3] calls userService.findOne() with user IDs — not emails', async () => {
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: [] });
+    setupFindOne(currentSnap);
+
+    const userObj = { id: 'user-id-1', email: 'a@test.com', groups: [], role: 'user', firstName: 'A', lastName: 'B' };
+    mockUserService.findOne.mockResolvedValue(userObj);
+
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['user-id-1'] });
+    setupPostCommitRead(updatedSnap);
+
+    const service = new GroupService(mockUserService);
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['user-id-1'] });
+
+    await service.update('g-1', group);
+
+    expect(mockUserService.findOne).toHaveBeenCalledWith('user-id-1');
   });
 
   it('adds one batch.update entry per user added', async () => {
@@ -341,15 +359,15 @@ describe('GroupService.update()', () => {
 
     const userA = { id: 'u-1', email: 'a@test.com', groups: [], role: 'user', firstName: '', lastName: '' };
     const userB = { id: 'u-2', email: 'b@test.com', groups: [], role: 'user', firstName: '', lastName: '' };
-    mockUserService.getByEmail.mockImplementation((email) =>
-      Promise.resolve(email === 'a@test.com' ? userA : userB)
+    mockUserService.findOne.mockImplementation((userId) =>
+      Promise.resolve(userId === 'u-1' ? userA : userB)
     );
 
-    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['a@test.com', 'b@test.com'] });
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1', 'u-2'] });
     setupPostCommitRead(updatedSnap);
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['a@test.com', 'b@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-1', 'u-2'] });
 
     await service.update('g-1', group);
 
@@ -359,13 +377,13 @@ describe('GroupService.update()', () => {
   });
 
   it('adds one batch.update entry per user removed', async () => {
-    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['a@test.com', 'b@test.com'] });
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1', 'u-2'] });
     setupFindOne(currentSnap);
 
     const userA = { id: 'u-1', email: 'a@test.com', groups: ['fc'], role: 'user', firstName: '', lastName: '' };
     const userB = { id: 'u-2', email: 'b@test.com', groups: ['fc'], role: 'user', firstName: '', lastName: '' };
-    mockUserService.getByEmail.mockImplementation((email) =>
-      Promise.resolve(email === 'a@test.com' ? userA : userB)
+    mockUserService.findOne.mockImplementation((userId) =>
+      Promise.resolve(userId === 'u-1' ? userA : userB)
     );
 
     const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: [] });
@@ -386,13 +404,13 @@ describe('GroupService.update()', () => {
     setupFindOne(currentSnap);
 
     const userObj = { id: 'u-1', email: 'new@test.com', groups: [], role: 'user', firstName: 'New', lastName: 'User' };
-    mockUserService.getByEmail.mockResolvedValue(userObj);
+    mockUserService.findOne.mockResolvedValue(userObj);
 
-    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['new@test.com'] });
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupPostCommitRead(updatedSnap);
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['new@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-1'] });
 
     await service.update('g-1', group);
 
@@ -402,11 +420,11 @@ describe('GroupService.update()', () => {
   });
 
   it('removes fc from groups of a removed member', async () => {
-    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['leaving@test.com'] });
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-2'] });
     setupFindOne(currentSnap);
 
     const userObj = { id: 'u-2', email: 'leaving@test.com', groups: ['fc'], role: 'user', firstName: 'Leaving', lastName: 'User' };
-    mockUserService.getByEmail.mockResolvedValue(userObj);
+    mockUserService.findOne.mockResolvedValue(userObj);
 
     const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: [] });
     setupPostCommitRead(updatedSnap);
@@ -428,9 +446,9 @@ describe('GroupService.update()', () => {
     setupFindOne(currentSnap);
 
     const userObj = { id: 'u-1', email: 'a@test.com', groups: [], role: 'user', firstName: '', lastName: '' };
-    mockUserService.getByEmail.mockResolvedValue(userObj);
+    mockUserService.findOne.mockResolvedValue(userObj);
 
-    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupPostCommitRead(updatedSnap);
 
     // Track which ref is passed to batch.update to distinguish user vs group entries
@@ -456,7 +474,7 @@ describe('GroupService.update()', () => {
     });
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-1'] });
 
     await service.update('g-1', group);
 
@@ -470,9 +488,9 @@ describe('GroupService.update()', () => {
     setupFindOne(currentSnap);
 
     const userObj = { id: 'u-1', email: 'a@test.com', groups: [], role: 'user', firstName: '', lastName: '' };
-    mockUserService.getByEmail.mockResolvedValue(userObj);
+    mockUserService.findOne.mockResolvedValue(userObj);
 
-    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupPostCommitRead(updatedSnap);
 
     mockBatch.update.mockImplementation(() => {
@@ -484,7 +502,7 @@ describe('GroupService.update()', () => {
     });
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-1'] });
 
     await service.update('g-1', group);
 
@@ -494,16 +512,16 @@ describe('GroupService.update()', () => {
     expect(commitCallCount.atCommit).toBe(2);
   });
 
-  it('throws boom 400 when a user in the diff does not exist — fetch-first guard', async () => {
+  it('throws boom 400 when a user ID in the diff does not exist — fetch-first guard', async () => {
     const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: [] });
     setupFindOne(currentSnap);
 
-    // getByEmail throws boom 404
+    // findOne throws boom 404
     const notFoundErr = { output: { statusCode: 404 }, message: 'User not found' };
-    mockUserService.getByEmail.mockRejectedValue(notFoundErr);
+    mockUserService.findOne.mockRejectedValue(notFoundErr);
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['ghost@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['ghost-user-id'] });
 
     let err;
     try {
@@ -513,7 +531,7 @@ describe('GroupService.update()', () => {
     }
     expect(err).toBeDefined();
     expect(err.output.statusCode).toBe(400);
-    expect(err.message).toBe('User not found: ghost@test.com');
+    expect(err.message).toBe('User not found: ghost-user-id');
   });
 
   it('does not call batch.commit() when fetch-first guard fails', async () => {
@@ -521,25 +539,25 @@ describe('GroupService.update()', () => {
     setupFindOne(currentSnap);
 
     const notFoundErr = { output: { statusCode: 404 }, message: 'User not found' };
-    mockUserService.getByEmail.mockRejectedValue(notFoundErr);
+    mockUserService.findOne.mockRejectedValue(notFoundErr);
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['ghost@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['ghost-user-id'] });
 
     try { await service.update('g-1', group); } catch (_) { /* expected */ }
 
     expect(mockBatch.commit).not.toHaveBeenCalled();
   });
 
-  it('rethrows non-404 errors from getByEmail', async () => {
+  it('rethrows non-404 errors from findOne (userService)', async () => {
     const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: [] });
     setupFindOne(currentSnap);
 
     const serverErr = { output: { statusCode: 500 }, message: 'DB error' };
-    mockUserService.getByEmail.mockRejectedValue(serverErr);
+    mockUserService.findOne.mockRejectedValue(serverErr);
 
     const service = new GroupService(mockUserService);
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-1'] });
 
     let err;
     try {
@@ -551,41 +569,41 @@ describe('GroupService.update()', () => {
   });
 
   it('fetches all users in the diff before any batch entries are queued', async () => {
-    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['old@test.com'] });
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupFindOne(currentSnap);
 
     const fetchOrder = [];
     const oldUser = { id: 'u-1', email: 'old@test.com', groups: ['fc'], role: 'user', firstName: '', lastName: '' };
     const newUser = { id: 'u-2', email: 'new@test.com', groups: [], role: 'user', firstName: '', lastName: '' };
 
-    mockUserService.getByEmail.mockImplementation((email) => {
-      fetchOrder.push(`fetch:${email}`);
-      return Promise.resolve(email === 'old@test.com' ? oldUser : newUser);
+    mockUserService.findOne.mockImplementation((userId) => {
+      fetchOrder.push(`fetch:${userId}`);
+      return Promise.resolve(userId === 'u-1' ? oldUser : newUser);
     });
 
-    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['new@test.com'] });
+    const updatedSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-2'] });
     setupPostCommitRead(updatedSnap);
 
     const service = new GroupService(mockUserService);
-    // old@test.com removed, new@test.com added
-    const group = new Group({ id: 'g-1', slug: 'fc', users: ['new@test.com'] });
+    // u-1 removed, u-2 added
+    const group = new Group({ id: 'g-1', slug: 'fc', users: ['u-2'] });
 
     await service.update('g-1', group);
 
-    // Both users should be fetched
-    expect(fetchOrder).toContain('fetch:new@test.com');
-    expect(fetchOrder).toContain('fetch:old@test.com');
+    // Both users should be fetched by ID
+    expect(fetchOrder).toContain('fetch:u-2');
+    expect(fetchOrder).toContain('fetch:u-1');
     // Both fetches complete before batch entries are queued, so batch.update was
     // not called during the fetch phase
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
   });
 
   it('propagates error from batch.commit() and does not swallow it', async () => {
-    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['a@test.com'] });
+    const currentSnap = makeDocSnap({ id: 'g-1', slug: 'fc', users: ['u-1'] });
     setupFindOne(currentSnap);
 
     const userObj = { id: 'u-1', email: 'a@test.com', groups: ['fc'], role: 'user', firstName: '', lastName: '' };
-    mockUserService.getByEmail.mockResolvedValue(userObj);
+    mockUserService.findOne.mockResolvedValue(userObj);
 
     const commitErr = new Error('Batch commit failed');
     mockBatch.commit.mockRejectedValue(commitErr);

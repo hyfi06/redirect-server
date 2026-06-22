@@ -83,7 +83,7 @@ const SAMPLE_GROUP = {
   id: 'group-1',
   name: 'Facultad de Ciencias',
   slug: 'fc',
-  users: ['user@test.com'],
+  users: ['user-id-1'],
 };
 
 afterEach(() => jest.clearAllMocks());
@@ -372,15 +372,15 @@ describe('PATCH /groups/:id', () => {
     expect(res.body.data).toEqual(updated);
   });
 
-  it('admin updates users and returns 200', async () => {
-    const updated = { ...SAMPLE_GROUP, users: ['a@test.com', 'b@test.com'] };
+  it('admin updates users with ID strings and returns 200', async () => {
+    const updated = { ...SAMPLE_GROUP, users: ['user-id-1', 'user-id-2'] };
     mockGroupMethods.update.mockResolvedValue(updated);
     const res = await request(app)
       .patch('/groups/group-1')
       .set('x-test-user', userHeader(ADMIN_USER))
-      .send({ users: ['a@test.com', 'b@test.com'] });
+      .send({ users: ['user-id-1', 'user-id-2'] });
     expect(res.status).toBe(200);
-    expect(res.body.data.users).toEqual(['a@test.com', 'b@test.com']);
+    expect(res.body.data.users).toEqual(['user-id-1', 'user-id-2']);
   });
 
   it('returns 400 with "slug is immutable" when slug is in the body', async () => {
@@ -411,11 +411,22 @@ describe('PATCH /groups/:id', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns 400 when body contains an invalid email in users', async () => {
+  it('accepts arbitrary strings in users — users stores IDs, not emails', async () => {
+    const updated = { ...SAMPLE_GROUP, users: ['not-an-email'] };
+    mockGroupMethods.update.mockResolvedValue(updated);
     const res = await request(app)
       .patch('/groups/group-1')
       .set('x-test-user', userHeader(ADMIN_USER))
       .send({ users: ['not-an-email'] });
+    expect(res.status).toBe(200);
+    expect(mockGroupMethods.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 400 when users contains a non-string item', async () => {
+    const res = await request(app)
+      .patch('/groups/group-1')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ users: [42] });
     expect(res.status).toBe(400);
     expect(mockGroupMethods.update).not.toHaveBeenCalled();
   });
