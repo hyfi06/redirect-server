@@ -13,7 +13,7 @@ El constructor de `User` asigna `this.groups = groups || []`. Cuando `PATCH /api
 
 El patrón correcto ya existe en el mismo constructor para `role` (decisión D20): el constructor no pone default; el default vive en `createUserParser`. `groups` debe seguir exactamente ese mismo patrón.
 
-El impacto en producción fue la pérdida de las membresías de grupo del usuario `DDrSZJel8fee3C9uW8aA`, restauradas manualmente el 2026-06-23.
+El impacto en producción fue la pérdida de las membresías de grupo de un usuario afectado, restauradas manualmente el 2026-06-23.
 
 ---
 

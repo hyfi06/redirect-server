@@ -14,7 +14,7 @@ Toda solicitud a `PATCH /api/v1/users/:id` que actualice cualquier campo distint
 **Comportamiento observado:**
 
 ```
-PATCH /api/v1/users/DDrSZJel8fee3C9uW8aA
+PATCH /api/v1/users/{USER_ID}
 Body: { "lastName": "Facultad de Ciencias UNAM" }
 
 Antes: { lastName: "Facultad", groups: ["fc", "sae"] }
@@ -84,7 +84,7 @@ Cuando `role` no está en el body del PATCH, el constructor asigna `this.role = 
 
 ### Impacto en datos
 
-- **Afectado en producción:** usuario `DDrSZJel8fee3C9uW8aA` perdió sus membresías de grupo (`["fc","sae"]`) al procesar `PATCH` con `{"lastName":"Facultad de Ciencias UNAM"}`.
+- **Afectado en producción:** un usuario perdió sus membresías de grupo (`["fc","sae"]`) al procesar `PATCH` con `{"lastName":"Facultad de Ciencias UNAM"}`.
 - **Restauración:** campo `groups` recuperado manualmente.
 - **Usuarios potencialmente afectados:** cualquier usuario al que se le haya aplicado un `PATCH` sin el campo `groups` desde que el endpoint estuvo activo en producción.
 
