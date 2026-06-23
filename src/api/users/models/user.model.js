@@ -5,7 +5,7 @@ class User {
    * @param {string} data.email
    * @param {string} data.firstName
    * @param {string} data.lastName
-   * @param {string[]} data.groups
+   * @param {string[]} [data.groups] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
    * @param {string} data.role
    * @param {string} data.googleToken
    * @param {string} data.googleRefreshToken
@@ -33,7 +33,8 @@ class User {
     this.email = email ? email.toLowerCase().trim() : undefined;
     this.firstName = firstName?.trim() || '';
     this.lastName = lastName?.trim() || '';
-    this.groups = groups || [];
+    // No default — groups: undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
+    this.groups = groups;
     // No default — role: undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
     this.role = role;
     this.auth = {

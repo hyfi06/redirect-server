@@ -216,3 +216,82 @@ describe('PATCH /api/v1/users/:id — real User constructor (regression: email u
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: PATCH without groups must not overwrite groups field
+// ---------------------------------------------------------------------------
+// Bug: User constructor used `this.groups = groups || []`. When PATCH body had
+// no `groups` field, the constructor materialised undefined as [], which the
+// updateUserParser could not strip (cleanDocObject ignores arrays). Firestore
+// received groups: [] and overwrote the user's real group membership.
+//
+// Fix: `this.groups = groups` (no default). The default [] now lives in
+// createUserParser. cleanDocObject strips undefined keys, so a missing groups
+// field no longer reaches Firestore.
+//
+// Strategy: UserService is mocked; User model is intentionally NOT mocked so
+// the real constructor runs. We inspect the User instance passed to
+// userService.update() and assert groups is undefined — the upstream check
+// that guarantees cleanDocObject will omit the key.
+
+describe('PATCH /api/v1/users/:id — groups not overwritten when groups absent from body', () => {
+  it('user instance passed to userService.update has groups=undefined when PATCH body contains only lastName', async () => {
+    UserService.prototype.update.mockResolvedValue(
+      stubServiceUser({ id: ADMIN_USER.userId, lastName: 'Nuevo' }),
+    );
+
+    await request(app)
+      .patch('/api/v1/users/other-user')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ lastName: 'Nuevo' });
+
+    expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    const userArg = UserService.prototype.update.mock.calls[0][0];
+    expect(userArg.groups).toBeUndefined();
+  });
+
+  it('user instance passed to userService.update has groups=undefined when PATCH body contains only firstName', async () => {
+    UserService.prototype.update.mockResolvedValue(
+      stubServiceUser({ id: 'other-user', firstName: 'Nuevo' }),
+    );
+
+    await request(app)
+      .patch('/api/v1/users/other-user')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ firstName: 'Nuevo' });
+
+    expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    const userArg = UserService.prototype.update.mock.calls[0][0];
+    expect(userArg.groups).toBeUndefined();
+  });
+
+  it('user instance passed to userService.update has groups=undefined when PATCH body contains only role', async () => {
+    UserService.prototype.update.mockResolvedValue(
+      stubServiceUser({ id: 'other-user', role: 'admin' }),
+    );
+
+    await request(app)
+      .patch('/api/v1/users/other-user')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ role: 'admin' });
+
+    expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    const userArg = UserService.prototype.update.mock.calls[0][0];
+    expect(userArg.groups).toBeUndefined();
+  });
+
+  it('user instance passed to userService.update has groups set when groups is explicitly in the PATCH body', async () => {
+    UserService.prototype.update.mockResolvedValue(
+      stubServiceUser({ id: 'other-user', groups: ['fc', 'cs'] }),
+    );
+
+    await request(app)
+      .patch('/api/v1/users/other-user')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ groups: ['fc', 'cs'] });
+
+    expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    const userArg = UserService.prototype.update.mock.calls[0][0];
+    expect(userArg.groups).toEqual(['fc', 'cs']);
+  });
+});
