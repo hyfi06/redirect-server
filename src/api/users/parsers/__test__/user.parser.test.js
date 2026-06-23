@@ -162,6 +162,38 @@ describe('updateUserParser', () => {
     expect(data).not.toHaveProperty('groups');
   });
 
+  // Regression guard: PATCH body with only firstName must not write lastName to Firestore.
+  // Before the fix, User constructor defaulted firstName/lastName to '' even when absent,
+  // so updateUserParser passed lastName: '' to Firestore — erasing the existing value.
+  it('omits lastName key when user.lastName is undefined — PATCH with only firstName must not touch Firestore lastName field', () => {
+    // Simulate new User({ id, firstName: 'Becas' }) after the hotfix:
+    // lastName is not in the PATCH body, so the constructor sets this.lastName = undefined.
+    const user = makeUserWithNoTokens({ firstName: 'Becas', lastName: undefined });
+
+    const data = updateUserParser(user);
+
+    expect(data).not.toHaveProperty('lastName');
+  });
+
+  it('omits firstName key when user.firstName is undefined — PATCH with only lastName must not touch Firestore firstName field', () => {
+    // Simulate new User({ id, lastName: 'Ciencias' }) after the hotfix:
+    // firstName is not in the PATCH body, so the constructor sets this.firstName = undefined.
+    const user = makeUserWithNoTokens({ firstName: undefined, lastName: 'Ciencias' });
+
+    const data = updateUserParser(user);
+
+    expect(data).not.toHaveProperty('firstName');
+  });
+
+  it('preserves both firstName and lastName when both are present in the PATCH body (control positive)', () => {
+    const user = makeUserWithNoTokens({ firstName: 'Ana', lastName: 'Torres' });
+
+    const data = updateUserParser(user);
+
+    expect(data.firstName).toBe('Ana');
+    expect(data.lastName).toBe('Torres');
+  });
+
   it('keeps only defined token fields when auth has a mix of defined and undefined values', () => {
     const user = makeUserWithNoTokens({
       auth: {
@@ -265,6 +297,25 @@ describe('createUserParser', () => {
     const data = createUserParser(user);
 
     expect(data.groups).toEqual([]);
+  });
+
+  // Regression guard: createUserParser is the correct place for the firstName/lastName '' defaults.
+  // The constructor no longer defaults these fields (hotfix), so createUserParser must supply them
+  // so that new users always have string values in Firestore.
+  it("defaults firstName to '' when user.firstName is undefined — the default lives here, not in the constructor", () => {
+    const user = makeUserWithNoTokens({ firstName: undefined });
+
+    const data = createUserParser(user);
+
+    expect(data.firstName).toBe('');
+  });
+
+  it("defaults lastName to '' when user.lastName is undefined — the default lives here, not in the constructor", () => {
+    const user = makeUserWithNoTokens({ lastName: undefined });
+
+    const data = createUserParser(user);
+
+    expect(data.lastName).toBe('');
   });
 
   it('returns auth as an empty object when all token fields are undefined', () => {
