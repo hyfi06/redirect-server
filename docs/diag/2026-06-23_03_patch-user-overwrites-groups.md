@@ -1,7 +1,7 @@
 # Bug Report — `PATCH /api/v1/users/:id` sobreescribe `groups` con `[]` cuando el body no incluye el campo
 
 **Fecha:** 2026-06-23
-**Estado:** PENDIENTE (se cerrará en el commit `[docs]` de §3 del plan de corrección)
+**Estado:** RESUELTO
 **Severidad:** Crítica — corrupción silenciosa de datos en producción; sin error visible para el cliente
 **Relacionado con:** `docs/diag/2026-06-09_04_patch-user-email-undefined-crash.md` (mismo archivo, mismo patrón de constructor)
 
@@ -144,4 +144,8 @@ El plan de corrección está en `docs/plan/2026-06-23_02_hotfix-patch-user-group
 
 ## 8. Resolución
 
-**Estado:** PENDIENTE — se actualizará a RESUELTO en el commit `[docs]` de §3 del plan de corrección una vez que el fix, los tests y la documentación estén completados.
+**Estado:** RESUELTO
+
+Fix aplicado en commit `155e32d` ([fix] User.groups defaults to undefined; createUserParser sets []).  
+Tests de regresión añadidos en commit `b1248ac` ([test] groups not overwritten on PATCH without groups field).  
+Documentación cerrada en el commit `[docs]` de §3 de `docs/plan/2026-06-23_02_hotfix-patch-user-groups.md`.

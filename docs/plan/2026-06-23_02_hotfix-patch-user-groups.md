@@ -1,7 +1,7 @@
 # Plan — Hotfix: `PATCH /users/:id` sobreescribe `groups` con `[]`
 
 **Fecha:** 2026-06-23
-**Estado:** ABIERTO
+**Estado:** CERRADO
 **Rama:** `hotfix-patch-user-groups-overwrite`
 **Diagnóstico de referencia:** `docs/diag/2026-06-23_03_patch-user-overwrites-groups.md`
 
@@ -17,7 +17,7 @@ El impacto en producción fue la pérdida de las membresías de grupo del usuari
 
 ---
 
-## §1 — Fix en el constructor `User` y en `createUserParser`
+## §1 ✅ — Fix en el constructor `User` y en `createUserParser`
 
 **Archivos:**
 
@@ -48,7 +48,7 @@ Used agents: backend-engineer
 
 ---
 
-## §2 — Tests de regresión
+## §2 ✅ — Tests de regresión
 
 **Archivos:**
 
@@ -86,7 +86,7 @@ Used agents: test-engineer
 
 ---
 
-## §3 — Docs: JSDoc del constructor, cierre del plan y diagnóstico, bump de versión
+## §3 ✅ — Docs: JSDoc del constructor, cierre del plan y diagnóstico, bump de versión
 
 **Archivos:**
 
