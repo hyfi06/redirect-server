@@ -420,9 +420,10 @@ any next(err) in a route handler
 wrapErrors   — non-Boom errors → boom.badImplementation() [500]
   ↓
 errorHandler:
-  404  → serves src/views/NoFound/NotFound.html
-  500 (prod) → serves src/views/errorServer/serverError.html
-  other → JSON { statusCode, error, message }  (+stack in dev)
+  /api/** routes → JSON { statusCode, error, message }  (+stack in dev) — always, regardless of status code
+  browser 404   → serves src/views/NoFound/NotFound.html
+  browser 500 (prod) → serves src/views/errorServer/serverError.html
+  browser other → JSON { statusCode, error, message }  (+stack in dev)
 ```
 
 ---
