@@ -1,7 +1,7 @@
 # Bug Report — `errorHandler` sirve HTML en lugar de JSON para rutas `/api/**`
 
 **Fecha:** 2026-06-23
-**Estado:** PENDIENTE
+**Estado:** RESUELTO
 **Severidad:** Alta — rompe el contrato de `docs/api/v1.md` para todos los clientes API
 **Relacionado con:** `docs/diag/2026-06-10_05_error-handler-404-wrong-status.md` (bug distinto, mismo archivo)
 
@@ -118,3 +118,11 @@ Los endpoints de la catch-all redirect (`GET /*`) deben mantener el comportamien
 |---|---|
 | `src/middleware/error.handler.js` | Error handler — lógica de formato sin distinción API/browser |
 | `src/middleware/__test__/error.handler.test.js` | Tests del error handler — cobertura incompleta: no prueba comportamiento distinto por ruta |
+
+---
+
+## 7. Resolución
+
+**Fecha:** 2026-06-23
+**Commit del fix:** `a350b8b` — [fix] errorHandler returns JSON for /api/** routes
+**Descripción:** Se añadió detección de ruta API (`req.path?.startsWith('/api/')`) al inicio de `errorHandler`; las rutas API siempre reciben JSON Boom independientemente del status code; las rutas browser mantienen la lógica HTML preexistente.
