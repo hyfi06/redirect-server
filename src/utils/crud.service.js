@@ -33,14 +33,14 @@ class CrudService {
    * @param {number} [options.limit]
    * @returns {Promise<T[]>}
    */
-  async getAll(options) {
+  async getAll(options = {}) {
     const { orderBy, offset, limit } = options;
     const fsCollection = this.db.collection;
     let fsFilter;
     if (orderBy) {
       fsFilter = /^-/.test(orderBy)
         ? fsCollection.orderBy(orderBy.replace(/^-/, ''), 'desc')
-        : fsCollection.orderBy(orderBy);
+        : fsCollection.orderBy(orderBy, 'asc');
     } else {
       fsFilter = fsCollection.orderBy('updated', 'desc');
     }
@@ -68,7 +68,7 @@ class CrudService {
    * @param {number} [options.limit]
    * @returns {Promise<T[]>}
    */
-  async find(query, options) {
+  async find(query, options = {}) {
     const { orderBy, offset, limit } = options;
     let fsQuery = this.db.collection;
     if (query) {

@@ -5,6 +5,8 @@ const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
 const User = require('../models/user.model');
 const UserService = require('../services/user.service');
+const GroupService = require('../../groups/services/group.service');
+const MembershipService = require('../services/membership.service');
 const { apiKeyRouter } = require('./api-key.route');
 const {
   idSchema,
@@ -13,7 +15,12 @@ const {
   selectUpdateSchema,
 } = require('../schemas/user.schema');
 
-const userService = new UserService();
+// userServiceForGroup is a bare instance passed to GroupService for its fetch-first membership
+// checks in update(). It must not carry a membershipService to avoid a circular dependency.
+const userServiceForGroup = new UserService();
+const groupService = new GroupService(userServiceForGroup);
+const membershipService = new MembershipService(userServiceForGroup, groupService);
+const userService = new UserService(membershipService);
 
 const userRouterApi = express.Router();
 
@@ -48,8 +55,8 @@ userRouterApi.get(
     const { offset, limit } = req.query;
     try {
       const data = await userService.find(null, {
-        offset: parseInt(offset),
-        limit: parseInt(limit),
+        offset: offset ? parseInt(offset) : undefined,
+        limit: limit ? parseInt(limit) : undefined,
       });
       res.status(200).json({
         message: 'users retrieved',

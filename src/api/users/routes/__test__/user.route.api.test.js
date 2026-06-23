@@ -530,6 +530,43 @@ describe('POST /api/v1/users', () => {
 
     expect(res.status).toBe(201);
   });
+
+  // [M1] createUserSchema now enforces role as valid('user', 'admin')
+  it('[M1] returns 400 when role is an arbitrary string not in the allowed set', async () => {
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ ...validBody, role: 'superadmin' });
+
+    expect(res.status).toBe(400);
+    expect(UserService.prototype.create).not.toHaveBeenCalled();
+  });
+
+  it('[M1] returns 201 when role is "admin"', async () => {
+    const mockUser = mockUserWithPublic({ id: 'new-user', email: 'new@example.com', role: 'admin' });
+    UserService.prototype.create.mockResolvedValue(mockUser);
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ ...validBody, role: 'admin' });
+
+    expect(res.status).toBe(201);
+    expect(UserService.prototype.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('[M1] returns 201 when role is "user"', async () => {
+    const mockUser = mockUserWithPublic({ id: 'new-user', email: 'new@example.com', role: 'user' });
+    UserService.prototype.create.mockResolvedValue(mockUser);
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ ...validBody, role: 'user' });
+
+    expect(res.status).toBe(201);
+    expect(UserService.prototype.create).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

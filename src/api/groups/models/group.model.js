@@ -4,7 +4,7 @@ class Group {
    * @param {string} data.id
    * @param {string} data.name
    * @param {string} data.slug
-   * @param {string[]} [data.users]
+   * @param {string[]} [data.users] — Firestore document IDs of member User documents
    * @param {Date} [data.created]
    * @param {Date} [data.updated]
    */

@@ -38,7 +38,7 @@ function createRedirectParser(redirect) {
 }
 
 /**
- * Prepares a Redirect for Firestore update — strips id, owner, created, updated and removes undefined keys.
+ * Prepares a Redirect for Firestore update — strips id, owner, path, created, updated and removes undefined keys.
  * @param {Redirect} redirect
  * @returns {Object}
  */
@@ -46,6 +46,9 @@ function updateRedirectParser(redirect) {
   const docData = { ...redirect };
   deleteRegData(docData);
   delete docData.owner;
+  // path is immutable post-creation — strip here regardless of schema to prevent
+  // privilege escalation and uniqueness bypass if schema changes in the future
+  delete docData.path;
   cleanDocObject(docData);
   return docData;
 }

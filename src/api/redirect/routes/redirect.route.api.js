@@ -7,7 +7,7 @@ const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorizeApiKeyScope } = require('../../../middleware/authorize-api-key-scope.middleware');
 const GroupService = require('../../groups/services/group.service');
-const UserServices = require('../../users/services/user.service');
+const UserService = require('../../users/services/user.service');
 const {
   getRedirectQuerySchema,
   getRedirectSchema,
@@ -17,8 +17,7 @@ const {
 } = require('../schemas/redirect.schema');
 
 const redirectServicieApi = new RedirectServiceApi();
-const userService = new UserServices();
-const groupService = new GroupService(userService);
+const groupService = new GroupService(new UserService());
 const redirectRouterApi = express.Router();
 
 // All redirect routes require a valid JWT — owner and group membership are derived
@@ -32,7 +31,7 @@ redirectRouterApi.get(
   async (req, res, next) => {
     const { orderBy, offset, limit } = req.query;
     const { email, groups } = req.user;
-    const options = { orderBy, offset: parseInt(offset), limit: parseInt(limit) };
+    const options = { orderBy, offset: offset ? parseInt(offset) : undefined, limit: limit ? parseInt(limit) : undefined };
 
     if (req.user.role === 'admin') {
       try {

@@ -23,14 +23,18 @@
         { "fieldPath": "slug", "order": "ASCENDING" },
         { "fieldPath": "updated", "order": "DESCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "apiKeys",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "keyHash", "order": "ASCENDING" }
-      ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "apiKeys",
+      "fieldPath": "keyHash",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "arrayConfig": "CONTAINS", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    }
+  ]
 }

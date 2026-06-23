@@ -3,10 +3,10 @@ const boom = require('@hapi/boom');
 const { verify } = require('../utils/auth/jwt');
 const { nodeCache } = require('../utils/cache');
 const ApiKeyService = require('../api/users/services/api-key.service');
-const UserServices = require('../api/users/services/user.service');
+const UserService = require('../api/users/services/user.service');
 
 const apiKeyService = new ApiKeyService();
-const userService = new UserServices();
+const userService = new UserService();
 
 /**
  * @param {string} token

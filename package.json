@@ -1,6 +1,6 @@
 {
   "name": "redirect-server",
-  "version": "3.0.1",
+  "version": "4.0.1",
   "description": "Express redirect server",
   "main": "src/app.js",
   "scripts": {
@@ -38,7 +38,7 @@
     "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.1",
     "node-cache": "^5.1.2",
-    "passport": "^0.6.0",
+    "passport": "^0.7.0",
     "passport-google-oauth2": "^0.2.0"
   },
   "devDependencies": {

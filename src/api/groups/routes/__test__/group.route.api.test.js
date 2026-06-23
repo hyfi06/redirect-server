@@ -4,7 +4,7 @@
  * Strategy:
  * - `authenticate` is mocked at module level. The mock reads an x-test-user
  *   header to inject req.user, or calls next(boom.unauthorized()) when absent.
- * - GroupService and UserServices are fully mocked before the router is imported.
+ * - GroupService and UserService are fully mocked before the router is imported.
  * - A single Express app is built once for the whole suite.
  * - The error handler mirrors the one in the real app pipeline.
  */
@@ -46,7 +46,7 @@ jest.mock('../../services/group.service', () => {
   return jest.fn().mockImplementation(() => mockGroupMethods);
 });
 
-// ---- Mock UserServices (only instantiated in the route module, never called directly in routes) ----
+// ---- Mock UserService (only instantiated in the route module, never called directly in routes) ----
 jest.mock('../../../users/services/user.service', () => {
   return jest.fn().mockImplementation(() => ({}));
 });
@@ -83,7 +83,7 @@ const SAMPLE_GROUP = {
   id: 'group-1',
   name: 'Facultad de Ciencias',
   slug: 'fc',
-  users: ['user@test.com'],
+  users: ['user-id-1'],
 };
 
 afterEach(() => jest.clearAllMocks());
@@ -372,15 +372,15 @@ describe('PATCH /groups/:id', () => {
     expect(res.body.data).toEqual(updated);
   });
 
-  it('admin updates users and returns 200', async () => {
-    const updated = { ...SAMPLE_GROUP, users: ['a@test.com', 'b@test.com'] };
+  it('admin updates users with ID strings and returns 200', async () => {
+    const updated = { ...SAMPLE_GROUP, users: ['user-id-1', 'user-id-2'] };
     mockGroupMethods.update.mockResolvedValue(updated);
     const res = await request(app)
       .patch('/groups/group-1')
       .set('x-test-user', userHeader(ADMIN_USER))
-      .send({ users: ['a@test.com', 'b@test.com'] });
+      .send({ users: ['user-id-1', 'user-id-2'] });
     expect(res.status).toBe(200);
-    expect(res.body.data.users).toEqual(['a@test.com', 'b@test.com']);
+    expect(res.body.data.users).toEqual(['user-id-1', 'user-id-2']);
   });
 
   it('returns 400 with "slug is immutable" when slug is in the body', async () => {
@@ -411,11 +411,22 @@ describe('PATCH /groups/:id', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns 400 when body contains an invalid email in users', async () => {
+  it('accepts arbitrary strings in users — users stores IDs, not emails', async () => {
+    const updated = { ...SAMPLE_GROUP, users: ['not-an-email'] };
+    mockGroupMethods.update.mockResolvedValue(updated);
     const res = await request(app)
       .patch('/groups/group-1')
       .set('x-test-user', userHeader(ADMIN_USER))
       .send({ users: ['not-an-email'] });
+    expect(res.status).toBe(200);
+    expect(mockGroupMethods.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 400 when users contains a non-string item', async () => {
+    const res = await request(app)
+      .patch('/groups/group-1')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ users: [42] });
     expect(res.status).toBe(400);
     expect(mockGroupMethods.update).not.toHaveBeenCalled();
   });
@@ -441,6 +452,51 @@ describe('PATCH /groups/:id', () => {
       .set('x-test-user', userHeader(ADMIN_USER))
       .send({});
     expect(res.status).toBe(200);
+  });
+
+  // B5 regression: before the fix, PATCH without a `users` field skipped the
+  // findOne() guard inside GroupService.update() and crashed with 500 when the
+  // document didn't exist. The guard now runs unconditionally, so the service
+  // must throw 404 regardless of which fields are present in the body.
+  it('[B5] returns 404 when ID does not exist and body has no `users` field', async () => {
+    const notFoundErr = {
+      isBoom: true,
+      output: {
+        statusCode: 404,
+        payload: { statusCode: 404, error: 'Not Found', message: 'Resource not found' },
+      },
+    };
+    mockGroupMethods.update.mockRejectedValue(notFoundErr);
+    const res = await request(app)
+      .patch('/groups/nonexistent-id')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ name: 'Ghost Group' });
+    expect(res.status).toBe(404);
+  });
+
+  // B5 regression: the happy path for a name-only update (no `users`) must
+  // still return 200 after the unconditional findOne() guard was introduced.
+  it('[B5] returns 200 when ID exists and body has only `name` (no `users` field)', async () => {
+    const updated = { ...SAMPLE_GROUP, name: 'Renamed Faculty' };
+    mockGroupMethods.update.mockResolvedValue(updated);
+    const res = await request(app)
+      .patch('/groups/group-1')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ name: 'Renamed Faculty' });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('group updated');
+    expect(res.body.data).toEqual(updated);
+  });
+
+  // [M2] authorize('admin') runs before validatorHandler — a non-admin must
+  // receive 403 before any param validation occurs.
+  it('[M2] returns 403 (not 400) for a non-admin user — authorize runs before param validation', async () => {
+    const res = await request(app)
+      .patch('/groups/some-group-id')
+      .set('x-test-user', userHeader(REGULAR_USER))
+      .send({ name: 'Hacked' });
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.update).not.toHaveBeenCalled();
   });
 });
 
@@ -484,5 +540,15 @@ describe('DELETE /groups/:id', () => {
       .delete('/groups/group-42')
       .set('x-test-user', userHeader(ADMIN_USER));
     expect(mockGroupMethods.delete).toHaveBeenCalledWith('group-42');
+  });
+
+  // [M2] authorize('admin') runs before validatorHandler — a non-admin must
+  // receive 403 before any param validation occurs.
+  it('[M2] returns 403 (not 400) for a non-admin user — authorize runs before param validation', async () => {
+    const res = await request(app)
+      .delete('/groups/some-group-id')
+      .set('x-test-user', userHeader(REGULAR_USER));
+    expect(res.status).toBe(403);
+    expect(mockGroupMethods.delete).not.toHaveBeenCalled();
   });
 });

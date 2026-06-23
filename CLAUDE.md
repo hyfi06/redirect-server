@@ -297,9 +297,15 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.js
   • .create()         — enforces path uniqueness before insert
                         (throws boom.badRequest if path already taken)
 
-UserServices              src/api/users/services/user.service.js
+UserService               src/api/users/services/user.service.js
   • .getByEmail(email) — Firestore where('email', '==', email)
   • .create()          — enforces email uniqueness before insert
+  • .delete(id)        — fetch-first (findOne) to capture user.groups before deletion.
+                         When membershipService is available and the user has groups: builds a
+                         single WriteBatch with the user doc delete and all group arrayRemove ops
+                         (via membershipService.addOpsToRemoveUserFromGroups), then commits
+                         atomically. Falls back to super.delete(id) when membershipService is
+                         absent or the user belongs to no groups (no group cleanup needed).
   Note: User constructor accepts email as optional (guard: email ? ... : undefined).
         PATCH handlers do not supply email — it is immutable post-creation and
         discarded by updateParser before any Firestore write.
@@ -310,12 +316,33 @@ GroupService              src/api/groups/services/group.service.js
                          verify the group exists in Firestore before constructing the path.
                          Admin users bypass this check (they can create root-level paths).
   • .create()          — enforces slug uniqueness before insert
-  • .update(id, group) — fetch-first diff of users array; builds a WriteBatch with
-                         one update per added/removed member plus the group itself;
-                         commits atomically. Does NOT call super.update() — bypasses
-                         FireStoreAdapter entirely; Timestamps are set manually.
-  Receives UserServices via constructor injection (D12).
-  If UserServices ever needs GroupService, extract sync to a MembershipService.
+  • .update(id, group) — fetch-first (findOne) unconditionally; throws 404 if the group does not exist,
+                         regardless of whether `users` is in the payload. If `users` is present,
+                         diffs old vs new membership (comparing user IDs — Firestore document IDs,
+                         not email strings) and builds a WriteBatch with one update per
+                         added/removed member plus the group itself; commits atomically.
+                         Does NOT call super.update() — bypasses FireStoreAdapter entirely;
+                         Timestamps are set manually.
+  • .delete(id)        — fetch-first (findOne) to read group.users (user IDs) and group.slug; builds a
+                         WriteBatch with FieldValue.arrayRemove(slug) on each member's
+                         User.groups field (no fetch per user — server-side op); adds the
+                         group delete to the batch; commits atomically. Timestamps set manually.
+  Receives UserService via constructor injection (D12).
+
+MembershipService         src/api/users/services/membership.service.js
+  Does NOT extend CrudService. Breaks the circular dependency UserService ↔ GroupService.
+  Receives userService and groupService by constructor injection.
+  • .addOpsToRemoveUserFromGroups(batch, userId, userGroups) — for each slug in userGroups,
+    resolves the group via GroupService.getBySlug(slug) and adds a batch.update with
+    FieldValue.arrayRemove(userId) to the provided WriteBatch. Does NOT commit — caller
+    is responsible for committing. No-op when userGroups is empty or absent.
+  • .removeUserFromAllGroups(userId, userGroups) — creates its own WriteBatch, delegates
+    to addOpsToRemoveUserFromGroups, then commits atomically. Standalone use only;
+    UserService.delete() calls addOpsToRemoveUserFromGroups directly to share the batch.
+    No-op when userGroups is empty or absent.
+  Wired in src/api/users/routes/user.route.api.js: userServiceForGroup (bare, no membershipService)
+  → GroupService → MembershipService(userServiceForGroup, groupService) → UserService(membershipService).
+  userServiceForGroup must not carry a membershipService to avoid a circular dependency.
 
 ApiKeyService             src/api/users/services/api-key.service.js
   Does NOT extend CrudService — the subcollection path includes a dynamic userId segment
@@ -342,7 +369,7 @@ Each resource defines three parser functions:
 |---|---|---|
 | `docParser` | `DocumentSnapshot → Model` | Reads from Firestore; converts Timestamps to Date |
 | `createParser` | `Model → plain object` | Strips `id`; sets defaults (`permission: []`, `categories: []`) |
-| `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`); removes `undefined` keys via `cleanDocObject` |
+| `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`/`path`); removes `undefined` keys via `cleanDocObject` |
 
 Parsers live alongside their resource: `src/api/{resource}/parsers/`.
 
@@ -362,7 +389,7 @@ Filter.or(
 Filter.where('owner', '==', email)
 ```
 
-Groups are Firestore documents (collection `groups`) with a `users: string[]` array.
+Groups are Firestore documents (collection `groups`) with a `users: string[]` array of user IDs (Firestore document IDs, not email strings).
 Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/models/scope.model.js`.
 
 ---

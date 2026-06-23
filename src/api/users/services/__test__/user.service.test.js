@@ -1,10 +1,15 @@
 'use strict';
 
-const UserServices = require('../user.service');
+const UserService = require('../user.service');
 const User = require('../../models/user.model');
 
 jest.mock('../../../../lib/firestore');
 const FireStoreAdapter = require('../../../../lib/firestore');
+
+// firestoreClient singleton is imported directly by user.service.js to create
+// WriteBatch instances for atomic deletes. Mock it so batch() is controllable.
+jest.mock('../../../../lib/firestore-client');
+const firestoreClient = require('../../../../lib/firestore-client');
 
 // Use real boom — errors are verified by message / isBoom shape, matching the
 // pattern established in src/lib/__test__/firestore.test.js.
@@ -32,9 +37,10 @@ function makeDocSnap(overrides = {}) {
 // ---------------------------------------------------------------------------
 // Suite
 // ---------------------------------------------------------------------------
-describe('UserServices', () => {
+describe('UserService', () => {
   let service;
   let mockDb;
+  let mockBatch;
 
   beforeEach(() => {
     mockDb = {
@@ -51,7 +57,19 @@ describe('UserServices', () => {
       },
     };
     FireStoreAdapter.mockImplementation(() => mockDb);
-    service = new UserServices();
+
+    // Batch mock for atomic delete path (firestoreClient.batch())
+    mockBatch = {
+      delete: jest.fn(),
+      update: jest.fn(),
+      commit: jest.fn().mockResolvedValue(undefined),
+    };
+    firestoreClient.batch = jest.fn().mockReturnValue(mockBatch);
+    firestoreClient.collection = jest.fn().mockReturnValue({
+      doc: jest.fn().mockReturnValue({}),
+    });
+
+    service = new UserService();
   });
 
   afterEach(() => {
@@ -124,6 +142,26 @@ describe('UserServices', () => {
         isBoom: true,
         output: { statusCode: 400 },
         message: 'User already created',
+      });
+
+      expect(mockDb.create).not.toHaveBeenCalled();
+    });
+
+    it('propagates non-404 errors from getByEmail without calling db.create', async () => {
+      // Simulate a Firestore / network error surfaced as a Boom 503
+      const serviceUnavailableError = {
+        isBoom: true,
+        output: { statusCode: 503 },
+        message: 'Service Unavailable',
+      };
+      mockDb.collection.get.mockRejectedValue(serviceUnavailableError);
+
+      const input = new User({ email: 'any@example.com', firstName: 'Any', lastName: 'User' });
+
+      await expect(service.create(input)).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 503 },
+        message: 'Service Unavailable',
       });
 
       expect(mockDb.create).not.toHaveBeenCalled();
@@ -264,30 +302,131 @@ describe('UserServices', () => {
   });
 
   // -------------------------------------------------------------------------
-  // delete (inherited from CrudService)
+  // delete — overrides CrudService: fetch-first, then delete, then group sync
   // -------------------------------------------------------------------------
   describe('delete', () => {
-    it('returns the deleted document id when the document exists', async () => {
+    it('returns the deleted document id when the document exists and user has no groups', async () => {
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-del', groups: [] }));
       mockDb.delete.mockResolvedValue('user-del');
 
       const result = await service.delete('user-del');
 
       expect(result).toBe('user-del');
+      expect(mockDb.get).toHaveBeenCalledWith('user-del');
       expect(mockDb.delete).toHaveBeenCalledWith('user-del');
     });
 
     it('propagates boom.notFound when the document does not exist', async () => {
-      mockDb.delete.mockRejectedValue({
+      const notFound = Object.assign(new Error('Resource not found'), {
         isBoom: true,
         output: { statusCode: 404 },
-        message: 'Resource not found',
       });
+      mockDb.get.mockRejectedValue(notFound);
 
       await expect(service.delete('ghost')).rejects.toMatchObject({
         isBoom: true,
         output: { statusCode: 404 },
         message: 'Resource not found',
       });
+      expect(mockDb.delete).not.toHaveBeenCalled();
+    });
+
+    // [B2] Fallback — no membershipService
+    it('uses super.delete() when no membershipService is provided, even if the user has groups', async () => {
+      // service from outer beforeEach has no membershipService
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc'] }));
+      mockDb.delete.mockResolvedValue('user-1');
+
+      const result = await service.delete('user-1');
+
+      expect(result).toBe('user-1');
+      expect(mockDb.delete).toHaveBeenCalledWith('user-1');
+      expect(firestoreClient.batch).not.toHaveBeenCalled();
+    });
+
+    // [B2] Fallback — user has no groups
+    it('uses super.delete() when membershipService is present but user has no groups', async () => {
+      const mockMembershipService = { addOpsToRemoveUserFromGroups: jest.fn() };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: [] }));
+      mockDb.delete.mockResolvedValue('user-1');
+
+      const result = await serviceWithMembership.delete('user-1');
+
+      expect(result).toBe('user-1');
+      expect(mockDb.delete).toHaveBeenCalledWith('user-1');
+      expect(firestoreClient.batch).not.toHaveBeenCalled();
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).not.toHaveBeenCalled();
+    });
+
+    // [B2] Atomicidad — happy path
+    it('[B2] calls addOpsToRemoveUserFromGroups with the batch and user groups, then commits once', async () => {
+      const mockMembershipService = {
+        addOpsToRemoveUserFromGroups: jest.fn().mockResolvedValue(undefined),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc', 'cs'] }));
+
+      const result = await serviceWithMembership.delete('user-1');
+
+      expect(result).toBe('user-1');
+
+      // The atomic path must NOT call super.delete (mockDb.delete)
+      expect(mockDb.delete).not.toHaveBeenCalled();
+
+      // A single batch is created
+      expect(firestoreClient.batch).toHaveBeenCalledTimes(1);
+
+      // addOpsToRemoveUserFromGroups receives the batch as first arg, plus id and groups
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).toHaveBeenCalledTimes(1);
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).toHaveBeenCalledWith(
+        mockBatch,
+        'user-1',
+        ['fc', 'cs'],
+      );
+
+      // batch.commit() is called exactly once
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    // [B2] Atomicidad — error before commit
+    it('[B2] does not call batch.commit() when addOpsToRemoveUserFromGroups throws', async () => {
+      const groupError = new Error('Group lookup failed');
+      const mockMembershipService = {
+        addOpsToRemoveUserFromGroups: jest.fn().mockRejectedValue(groupError),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc'] }));
+
+      await expect(serviceWithMembership.delete('user-1')).rejects.toThrow('Group lookup failed');
+
+      // commit must not have been called — the user document was not deleted
+      expect(mockBatch.commit).not.toHaveBeenCalled();
+      // super.delete must not have been called either
+      expect(mockDb.delete).not.toHaveBeenCalled();
+    });
+
+    it('does not call batch.commit() or addOpsToRemoveUserFromGroups when findOne throws 404', async () => {
+      const mockMembershipService = { addOpsToRemoveUserFromGroups: jest.fn() };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      const notFound = Object.assign(new Error('Resource not found'), {
+        isBoom: true,
+        output: { statusCode: 404 },
+      });
+      mockDb.get.mockRejectedValue(notFound);
+
+      await expect(serviceWithMembership.delete('nonexistent')).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: 404 },
+      });
+
+      expect(mockDb.delete).not.toHaveBeenCalled();
+      expect(mockMembershipService.addOpsToRemoveUserFromGroups).not.toHaveBeenCalled();
+      expect(mockBatch.commit).not.toHaveBeenCalled();
     });
   });
 });

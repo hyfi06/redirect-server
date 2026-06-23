@@ -15,7 +15,7 @@ jest.mock('../../utils/cache', () => ({
 
 const jwt = require('../../utils/auth/jwt');
 const ApiKeyService = require('../../api/users/services/api-key.service');
-const UserServices = require('../../api/users/services/user.service');
+const UserService = require('../../api/users/services/user.service');
 const { nodeCache } = require('../../utils/cache');
 const { authenticate } = require('../authenticate.middleware');
 
@@ -23,7 +23,7 @@ const { authenticate } = require('../authenticate.middleware');
 // require()-time. These are the exact objects that authenticate() calls at
 // runtime. Must be captured once, before any afterEach clearAllMocks() runs.
 const apiKeyServiceInstance = ApiKeyService.mock.instances[0];
-const userServiceInstance = UserServices.mock.instances[0];
+const userServiceInstance = UserService.mock.instances[0];
 
 describe('authenticate middleware', () => {
   let mockNext;

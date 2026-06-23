@@ -5,7 +5,7 @@ const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
 const { Group } = require('../models/group.model');
 const GroupService = require('../services/group.service');
-const UserServices = require('../../users/services/user.service');
+const UserService = require('../../users/services/user.service');
 const {
   createGroupSchema,
   updateGroupSchema,
@@ -13,7 +13,7 @@ const {
   getGroupQuerySchema,
 } = require('../schemas/group.schema');
 
-const userService = new UserServices();
+const userService = new UserService();
 const groupService = new GroupService(userService);
 
 const groupRouterApi = express.Router();
@@ -87,8 +87,8 @@ groupRouterApi.post(
 
 groupRouterApi.patch(
   '/:id',
-  validatorHandler(idParamSchema, 'params'),
   authorize('admin'),
+  validatorHandler(idParamSchema, 'params'),
   async (req, res, next) => {
     // slug is immutable (D14): check here, not in Joi, to return an explicit message
     if (req.body.slug !== undefined) {
@@ -111,8 +111,8 @@ groupRouterApi.patch(
 
 groupRouterApi.delete(
   '/:id',
-  validatorHandler(idParamSchema, 'params'),
   authorize('admin'),
+  validatorHandler(idParamSchema, 'params'),
   async (req, res, next) => {
     const { id } = req.params;
     try {
