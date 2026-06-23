@@ -18,11 +18,11 @@ describe('createGroupSchema', () => {
     expect(error).toBeUndefined();
   });
 
-  it('accepts object with name, slug, and users array', () => {
+  it('accepts object with name, slug, and users array of arbitrary ID strings', () => {
     const { error } = validate(createGroupSchema, {
       name: 'Facultad de Ciencias',
       slug: 'fc',
-      users: ['user@test.com'],
+      users: ['user-id-1', 'user-id-2'],
     });
     expect(error).toBeUndefined();
   });
@@ -70,11 +70,20 @@ describe('createGroupSchema', () => {
     expect(error).toBeDefined();
   });
 
-  it('rejects an invalid email in the users array', () => {
+  it('accepts arbitrary non-email strings in users — users field stores IDs, not emails', () => {
     const { error } = validate(createGroupSchema, {
       name: 'Test',
       slug: 'test',
-      users: ['not-an-email'],
+      users: ['not-an-email', 'some-opaque-id'],
+    });
+    expect(error).toBeUndefined();
+  });
+
+  it('rejects non-string items in the users array', () => {
+    const { error } = validate(createGroupSchema, {
+      name: 'Test',
+      slug: 'test',
+      users: [123],
     });
     expect(error).toBeDefined();
   });
@@ -99,8 +108,8 @@ describe('updateGroupSchema', () => {
     expect(error).toBeUndefined();
   });
 
-  it('accepts object with only users', () => {
-    const { error } = validate(updateGroupSchema, { users: ['user@test.com'] });
+  it('accepts object with only users — arbitrary ID strings', () => {
+    const { error } = validate(updateGroupSchema, { users: ['user-id-1'] });
     expect(error).toBeUndefined();
   });
 
@@ -109,8 +118,8 @@ describe('updateGroupSchema', () => {
     expect(error).toBeUndefined();
   });
 
-  it('accepts both name and users', () => {
-    const { error } = validate(updateGroupSchema, { name: 'New Name', users: ['a@test.com'] });
+  it('accepts both name and users — arbitrary ID strings', () => {
+    const { error } = validate(updateGroupSchema, { name: 'New Name', users: ['user-id-1'] });
     expect(error).toBeUndefined();
   });
 
@@ -119,8 +128,13 @@ describe('updateGroupSchema', () => {
     expect(error).toBeDefined();
   });
 
-  it('rejects an invalid email in users array', () => {
-    const { error } = validate(updateGroupSchema, { users: ['not-an-email'] });
+  it('accepts arbitrary non-email strings in users — users field stores IDs, not emails', () => {
+    const { error } = validate(updateGroupSchema, { users: ['not-an-email', 'some-opaque-id'] });
+    expect(error).toBeUndefined();
+  });
+
+  it('rejects non-string items in the users array', () => {
+    const { error } = validate(updateGroupSchema, { users: [42] });
     expect(error).toBeDefined();
   });
 
@@ -165,7 +179,7 @@ describe('getGroupQuerySchema', () => {
   });
 
   it('accepts offset alone', () => {
-    const { error } = validate(getGroupQuerySchema, { offset: 0 });
+    const { error } = validate(getGroupQuerySchema, { offset: 1 });
     expect(error).toBeUndefined();
   });
 
@@ -184,9 +198,9 @@ describe('getGroupQuerySchema', () => {
     expect(error).toBeDefined();
   });
 
-  it('accepts offset: 0 — minimum is 0', () => {
+  it('rejects offset: 0 — minimum is 1', () => {
     const { error } = validate(getGroupQuerySchema, { offset: 0 });
-    expect(error).toBeUndefined();
+    expect(error).toBeDefined();
   });
 
   it('rejects unknown fields', () => {

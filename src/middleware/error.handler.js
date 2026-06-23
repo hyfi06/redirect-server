@@ -32,6 +32,8 @@ function wrapErrors(err, req, res, next) {
 }
 
 /**
+ * Serves HTML error pages for 404 and production 500; returns JSON for all other errors.
+ * The 500 HTML branch is suppressed in dev so stack traces reach the JSON response.
  * @param {import('@hapi/boom').Boom} err
  * @param {import('express').Request} req
  * @param {import('express').Response} res
@@ -44,9 +46,9 @@ function errorHandler(err, req, res, next) {
     output: { statusCode, payload },
   } = err;
   if (statusCode == 404) {
-    res.sendFile(path.join(__dirname, '../views/NoFound/NotFound.html'));
+    res.status(statusCode).sendFile(path.join(__dirname, '../views/NoFound/NotFound.html'));
   } else if (statusCode == 500 && !config.dev) {
-    res.sendFile(path.join(__dirname, '../views/errorServer/serverError.html'));
+    res.status(statusCode).sendFile(path.join(__dirname, '../views/errorServer/serverError.html'));
   } else {
     res.status(statusCode).json(withErrorStack(payload, err.stack));
   }

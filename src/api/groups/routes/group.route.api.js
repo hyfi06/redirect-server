@@ -3,9 +3,9 @@ const boom = require('@hapi/boom');
 const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
-const { Group } = require('../models/group.model.api');
-const GroupService = require('../services/group.service.api');
-const UserServices = require('../../users/services/user.service.api');
+const { Group } = require('../models/group.model');
+const GroupService = require('../services/group.service');
+const UserService = require('../../users/services/user.service');
 const {
   createGroupSchema,
   updateGroupSchema,
@@ -13,12 +13,18 @@ const {
   getGroupQuerySchema,
 } = require('../schemas/group.schema');
 
-const userService = new UserServices();
+const userService = new UserService();
 const groupService = new GroupService(userService);
 
 const groupRouterApi = express.Router();
 
 groupRouterApi.use(authenticate);
+
+// API Keys are scoped to redirects only — group management requires a full JWT session
+groupRouterApi.use((req, res, next) => {
+  if (req.user.apiKey !== undefined) return next(boom.forbidden('API Keys cannot be used on this resource'));
+  next();
+});
 
 groupRouterApi.get(
   '/',
@@ -81,8 +87,8 @@ groupRouterApi.post(
 
 groupRouterApi.patch(
   '/:id',
-  validatorHandler(idParamSchema, 'params'),
   authorize('admin'),
+  validatorHandler(idParamSchema, 'params'),
   async (req, res, next) => {
     // slug is immutable (D14): check here, not in Joi, to return an explicit message
     if (req.body.slug !== undefined) {
@@ -105,8 +111,8 @@ groupRouterApi.patch(
 
 groupRouterApi.delete(
   '/:id',
-  validatorHandler(idParamSchema, 'params'),
   authorize('admin'),
+  validatorHandler(idParamSchema, 'params'),
   async (req, res, next) => {
     const { id } = req.params;
     try {

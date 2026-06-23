@@ -23,6 +23,11 @@ const mockMethods = {
   delete: jest.fn(),
 };
 
+// ---- Shared GroupService mock methods ----
+const mockGroupMethods = {
+  getBySlug: jest.fn(),
+};
+
 // ---- Mock authenticate before any require of the route ----
 jest.mock('../../../../middleware/authenticate.middleware', () => ({
   authenticate: (req, res, next) => {
@@ -38,8 +43,15 @@ jest.mock('../../../../middleware/authenticate.middleware', () => ({
 }));
 
 // ---- Mock RedirectServiceApi ----
-jest.mock('../../services/redirect.service.api', () => {
+jest.mock('../../services/redirect.service', () => {
   return jest.fn().mockImplementation(() => mockMethods);
+});
+
+// ---- Mock GroupService ----
+// The route instantiates GroupService at module level, so this mock must be
+// registered before the router is required (same ordering constraint as RedirectServiceApi).
+jest.mock('../../../groups/services/group.service', () => {
+  return jest.fn().mockImplementation(() => mockGroupMethods);
 });
 
 // ---- Import the router after mocks are in place ----
@@ -354,6 +366,7 @@ describe('POST /redirects — namespace and owner', () => {
   });
 
   it('non-admin with a valid group creates redirect with fullPath = /<group>/<path>', async () => {
+    mockGroupMethods.getBySlug.mockResolvedValue({ id: 'group-1', slug: 'fc', name: 'Facultad de Ciencias' });
     mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
     const res = await request(app)
       .post('/redirects')
@@ -396,10 +409,47 @@ describe('POST /redirects — namespace and owner', () => {
       .send({ path: 'promo', url: 'https://example.com' });
     expect(res.status).toBe(400);
   });
+
+  // §2.3 — GroupService.getBySlug validation
+  it('returns 404 when non-admin provides a group slug that does not exist in Firestore', async () => {
+    const boomErr = {
+      isBoom: true,
+      output: { statusCode: 404, payload: { statusCode: 404, error: 'Not Found', message: 'Group not found' } },
+    };
+    mockGroupMethods.getBySlug.mockRejectedValue(boomErr);
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(REGULAR_USER))
+      .send({ group: 'fc', path: 'seminar', url: 'https://example.com' });
+    expect(res.status).toBe(404);
+    expect(mockMethods.create).not.toHaveBeenCalled();
+  });
+
+  it('does not call groupService.getBySlug when the user is admin', async () => {
+    mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ path: 'promo', url: 'https://example.com' });
+    expect(res.status).toBe(201);
+    expect(mockGroupMethods.getBySlug).not.toHaveBeenCalled();
+  });
+
+  it('returns 201 when non-admin provides a group slug that resolves successfully in Firestore', async () => {
+    mockGroupMethods.getBySlug.mockResolvedValue({ id: 'group-1', slug: 'fc', name: 'Facultad de Ciencias' });
+    mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(REGULAR_USER))
+      .send({ group: 'fc', path: 'seminar', url: 'https://example.com' });
+    expect(res.status).toBe(201);
+    expect(mockGroupMethods.getBySlug).toHaveBeenCalledWith('fc');
+    expect(mockMethods.create).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// PATCH /:id — ownership check (§2.3)
+// PATCH /:id — ownership check (§2.3) and edit-permission check (§2.1)
 // ---------------------------------------------------------------------------
 
 describe('PATCH /redirects/:id — ownership', () => {
@@ -451,6 +501,50 @@ describe('PATCH /redirects/:id — ownership', () => {
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /:id — edit-permission check (§2.1 — Paso 9)
+// ---------------------------------------------------------------------------
+
+describe('PATCH /redirects/:id — edit permission', () => {
+  it('returns 200 when user group has edit:{slug} in redirect.permission', async () => {
+    const editorUser = { userId: 'user-10', email: 'editor@test.com', role: 'user', groups: ['fc'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['edit:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    mockMethods.update.mockResolvedValue({ ...redirect, url: 'https://new.example.com' });
+    const res = await request(app)
+      .patch('/redirects/redirect-1')
+      .set('x-test-user', userHeader(editorUser))
+      .send({ url: 'https://new.example.com' });
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('redirect updated');
+    expect(mockMethods.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 403 when user group is not in redirect.permission with edit: scope', async () => {
+    const wrongGroupUser = { userId: 'user-11', email: 'wronggroup@test.com', role: 'user', groups: ['cs'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['edit:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .patch('/redirects/redirect-1')
+      .set('x-test-user', userHeader(wrongGroupUser))
+      .send({ url: 'https://new.example.com' });
+    expect(res.status).toBe(403);
+    expect(mockMethods.update).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when user has no groups, is not owner, and is not admin', async () => {
+    const noGroupUser = { userId: 'user-12', email: 'nogroup2@test.com', role: 'user', groups: [] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['edit:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .patch('/redirects/redirect-1')
+      .set('x-test-user', userHeader(noGroupUser))
+      .send({ url: 'https://new.example.com' });
+    expect(res.status).toBe(403);
+    expect(mockMethods.update).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // DELETE /:id — ownership check (§2.3)
 // ---------------------------------------------------------------------------
 
@@ -495,5 +589,95 @@ describe('DELETE /redirects/:id — ownership', () => {
       .set('x-test-user', userHeader(REGULAR_USER));
     expect(res.status).toBe(404);
     expect(mockMethods.delete).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /:id — delete-permission check (§2.2 — Paso 10)
+// ---------------------------------------------------------------------------
+
+describe('DELETE /redirects/:id — delete permission', () => {
+  it('returns 200 when user group has delete:{slug} in redirect.permission', async () => {
+    const deleterUser = { userId: 'user-20', email: 'deleter@test.com', role: 'user', groups: ['fc'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['delete:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    mockMethods.delete.mockResolvedValue('redirect-1');
+    const res = await request(app)
+      .delete('/redirects/redirect-1')
+      .set('x-test-user', userHeader(deleterUser));
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('redirect deleted');
+    expect(mockMethods.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 403 when user group is not in redirect.permission with delete: scope', async () => {
+    const wrongGroupUser = { userId: 'user-21', email: 'wronggroup2@test.com', role: 'user', groups: ['cs'] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: 'owner@test.com', permission: ['delete:fc'] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .delete('/redirects/redirect-1')
+      .set('x-test-user', userHeader(wrongGroupUser));
+    expect(res.status).toBe(403);
+    expect(mockMethods.delete).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §3.4 — API Key scope enforcement on redirect routes
+// ---------------------------------------------------------------------------
+// The authorizeApiKeyScope middleware runs as real code here (not mocked).
+// The authenticate mock injects req.user from the x-test-user header, so we
+// simulate API Key auth by including apiKey: { id, scopes } in the user header.
+// JWT auth (no apiKey field) passes through authorizeApiKeyScope unconditionally.
+
+describe('API Key scope enforcement', () => {
+  it('GET / with API Key having read:redirects scope returns 200', async () => {
+    mockMethods.getAll.mockResolvedValue([SAMPLE_REDIRECT]);
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-1', scopes: ['read:redirects'] } };
+    const res = await request(app)
+      .get('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin));
+    expect(res.status).toBe(200);
+  });
+
+  it('GET / with API Key missing read:redirects scope returns 403', async () => {
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-2', scopes: ['write:redirects'] } };
+    const res = await request(app)
+      .get('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin));
+    expect(res.status).toBe(403);
+    expect(mockMethods.find).not.toHaveBeenCalled();
+    expect(mockMethods.getAll).not.toHaveBeenCalled();
+  });
+
+  it('POST / with API Key having write:redirects scope returns 201', async () => {
+    mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-3', scopes: ['write:redirects'] } };
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin))
+      .send({ path: 'promo', url: 'https://example.com' });
+    expect(res.status).toBe(201);
+    expect(mockMethods.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('POST / with API Key missing write:redirects scope returns 403', async () => {
+    const apiKeyAdmin = { ...ADMIN_USER, apiKey: { id: 'key-4', scopes: ['read:redirects'] } };
+    const res = await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(apiKeyAdmin))
+      .send({ path: 'promo', url: 'https://example.com' });
+    expect(res.status).toBe(403);
+    expect(mockMethods.create).not.toHaveBeenCalled();
+  });
+
+  it('GET / with JWT (no apiKey field in req.user) passes through scope check and returns 200', async () => {
+    // ADMIN_USER has no apiKey property — simulates a standard JWT session.
+    // authorizeApiKeyScope treats apiKey === undefined as a no-op (pass through).
+    mockMethods.getAll.mockResolvedValue([SAMPLE_REDIRECT]);
+    const res = await request(app)
+      .get('/redirects')
+      .set('x-test-user', userHeader(ADMIN_USER));
+    expect(res.status).toBe(200);
   });
 });

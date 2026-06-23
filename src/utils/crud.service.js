@@ -33,14 +33,14 @@ class CrudService {
    * @param {number} [options.limit]
    * @returns {Promise<T[]>}
    */
-  async getAll(options) {
+  async getAll(options = {}) {
     const { orderBy, offset, limit } = options;
     const fsCollection = this.db.collection;
     let fsFilter;
     if (orderBy) {
       fsFilter = /^-/.test(orderBy)
         ? fsCollection.orderBy(orderBy.replace(/^-/, ''), 'desc')
-        : fsCollection.orderBy(orderBy);
+        : fsCollection.orderBy(orderBy, 'asc');
     } else {
       fsFilter = fsCollection.orderBy('updated', 'desc');
     }
@@ -58,20 +58,23 @@ class CrudService {
   }
 
   /**
-   * find docs by query
+   * Find docs matching a Firestore where() filter. Always applies
+   * orderBy('updated', 'desc') unless options.orderBy is provided.
    * @template T
-   * @param {string[]} query
-   * @param {string} options.orderBy
-   * @param {number} options.offset
-   * @param {number} options.limit
-   * @return {T[]}
+   * @param {Array} [query] - Arguments spread into collection.where(); omit to match all docs
+   * @param {object} [options]
+   * @param {string} [options.orderBy] - Field to sort by; prefix "-" for descending
+   * @param {number} [options.offset]
+   * @param {number} [options.limit]
+   * @returns {Promise<T[]>}
    */
-  async find(query, options) {
+  async find(query, options = {}) {
     const { orderBy, offset, limit } = options;
     let fsQuery = this.db.collection;
     if (query) {
       fsQuery = fsQuery.where(...query);
-    } else if (!orderBy) {
+    }
+    if (!orderBy) {
       fsQuery = fsQuery.orderBy('updated', 'desc');
     }
     let fsFilter = fsQuery;

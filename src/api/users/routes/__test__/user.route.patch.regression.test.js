@@ -40,8 +40,8 @@ jest.mock('../../../../middleware/authenticate.middleware', () => ({
 }));
 
 // ---- Mock UserService only — User model is intentionally NOT mocked ----
-jest.mock('../../services/user.service.api');
-const UserService = require('../../services/user.service.api');
+jest.mock('../../services/user.service');
+const UserService = require('../../services/user.service');
 
 // ---- Import the router AFTER mocks — User constructor is real ----
 const { userRouterApi } = require('../user.route.api');
@@ -197,7 +197,7 @@ describe('PATCH /api/v1/users/:id — real User constructor (regression: email u
   describe('User constructor called with correct id and no email', () => {
     it('passes the route :id param to the User constructor (real constructor, email absent)', async () => {
       // Spy on the real User constructor to verify what the handler passes to it.
-      const User = require('../../models/user');
+      const User = require('../../models/user.model');
       const spy = jest.spyOn(User.prototype, 'constructor');
 
       UserService.prototype.update.mockResolvedValue(

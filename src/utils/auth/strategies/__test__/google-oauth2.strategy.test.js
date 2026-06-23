@@ -4,7 +4,7 @@
  * Tests for src/utils/auth/strategies/google-oauth2.strategy.js
  *
  * The module registers a GoogleStrategy with passport at require-time and
- * instantiates UserServices at module level. We use jest.resetModules()
+ * instantiates UserService at module level. We use jest.resetModules()
  * before each group so that each require gets a fresh module with fresh mocks.
  *
  * Extraction pattern:
@@ -14,7 +14,7 @@
  */
 
 jest.mock('passport');
-jest.mock('../../../../api/users/services/user.service.api');
+jest.mock('../../../../api/users/services/user.service');
 jest.mock('../../../../config', () => ({
   oauthGoogle: {
     clientId: 'test-client-id',
@@ -25,7 +25,7 @@ jest.mock('../../../../config', () => ({
 }));
 
 const passport = require('passport');
-const UserServices = require('../../../../api/users/services/user.service.api');
+const UserService = require('../../../../api/users/services/user.service');
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -77,10 +77,10 @@ describe('google-oauth2 strategy verify callback', () => {
     mockGetByEmail = jest.fn();
     mockUpdate = jest.fn();
 
-    // UserServices is mocked at the top of the file.
+    // UserService is mocked at the top of the file.
     // After resetModules we re-require it and set the prototype mock impl.
-    const UserServicesMock = require('../../../../api/users/services/user.service.api');
-    UserServicesMock.mockImplementation(() => ({
+    const UserServiceMock = require('../../../../api/users/services/user.service');
+    UserServiceMock.mockImplementation(() => ({
       getByEmail: mockGetByEmail,
       update: mockUpdate,
     }));

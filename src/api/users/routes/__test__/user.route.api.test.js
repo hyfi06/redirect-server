@@ -37,16 +37,16 @@ jest.mock('../../../../middleware/authenticate.middleware', () => ({
 
 // ---- Mock the service before any require of the router ----
 // (The router instantiates the service at module-evaluation time via `new UserService()`.)
-jest.mock('../../services/user.service.api');
-const UserService = require('../../services/user.service.api');
+jest.mock('../../services/user.service');
+const UserService = require('../../services/user.service');
 
 // ---- Mock the User model ----
 // PATCH handler does `new User({ id, ...req.body })` but updateUserSelfSchema
 // forbids email — so any PATCH body will miss email, causing the real User
 // constructor to throw. Mocking User lets us test the route handler contract
 // (toPublic(), status codes) in isolation.
-jest.mock('../../models/user');
-const User = require('../../models/user');
+jest.mock('../../models/user.model');
+const User = require('../../models/user.model');
 
 // ---- Import the router after mocks are in place ----
 const { userRouterApi } = require('../user.route.api');
@@ -497,6 +497,76 @@ describe('POST /api/v1/users', () => {
 
     expect(res.status).toBe(400);
   });
+
+  // §0.1 — group limit guard: Firestore array-contains-any supports max 10 values
+  it('returns 400 when groups array has 11 elements (exceeds Firestore limit)', async () => {
+    const body = {
+      ...validBody,
+      groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11'],
+    };
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send(body);
+
+    expect(res.status).toBe(400);
+    expect(UserService.prototype.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts groups array of exactly 10 elements', async () => {
+    const mockUser = mockUserWithPublic({ id: 'new-user', email: 'new@example.com' });
+    UserService.prototype.create.mockResolvedValue(mockUser);
+
+    const body = {
+      ...validBody,
+      groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'],
+    };
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send(body);
+
+    expect(res.status).toBe(201);
+  });
+
+  // [M1] createUserSchema now enforces role as valid('user', 'admin')
+  it('[M1] returns 400 when role is an arbitrary string not in the allowed set', async () => {
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ ...validBody, role: 'superadmin' });
+
+    expect(res.status).toBe(400);
+    expect(UserService.prototype.create).not.toHaveBeenCalled();
+  });
+
+  it('[M1] returns 201 when role is "admin"', async () => {
+    const mockUser = mockUserWithPublic({ id: 'new-user', email: 'new@example.com', role: 'admin' });
+    UserService.prototype.create.mockResolvedValue(mockUser);
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ ...validBody, role: 'admin' });
+
+    expect(res.status).toBe(201);
+    expect(UserService.prototype.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('[M1] returns 201 when role is "user"', async () => {
+    const mockUser = mockUserWithPublic({ id: 'new-user', email: 'new@example.com', role: 'user' });
+    UserService.prototype.create.mockResolvedValue(mockUser);
+
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ ...validBody, role: 'user' });
+
+    expect(res.status).toBe(201);
+    expect(UserService.prototype.create).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -541,6 +611,30 @@ describe('PATCH /api/v1/users/:id', () => {
         .patch('/api/v1/users/user-upd')
         .set('x-test-user', userHeader(ADMIN_USER))
         .send({ groups: ['fc', 'cs'] });
+
+      expect(res.status).toBe(200);
+      expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    });
+
+    // §0.1 — group limit guard: Firestore array-contains-any supports max 10 values
+    it('returns 400 when admin sets groups to an array of 11 elements (exceeds Firestore limit)', async () => {
+      const res = await request(app)
+        .patch('/api/v1/users/user-upd')
+        .set('x-test-user', userHeader(ADMIN_USER))
+        .send({ groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10', 'g11'] });
+
+      expect(res.status).toBe(400);
+      expect(UserService.prototype.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts groups array of exactly 10 elements when admin updates a user', async () => {
+      const mockUser = mockUserWithPublic({ id: 'user-upd', groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'] });
+      UserService.prototype.update.mockResolvedValue(mockUser);
+
+      const res = await request(app)
+        .patch('/api/v1/users/user-upd')
+        .set('x-test-user', userHeader(ADMIN_USER))
+        .send({ groups: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'] });
 
       expect(res.status).toBe(200);
       expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
@@ -682,6 +776,74 @@ describe('PATCH /api/v1/users/:id', () => {
 
       expect(res.status).toBe(404);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §3.4 — API Key rejection on user routes
+// ---------------------------------------------------------------------------
+// The userRouterApi middleware (after authenticate) checks req.user.apiKey and
+// rejects any API Key request with 403. This covers every user route because
+// the check is a router-level middleware that runs before any route handler.
+
+describe('API Key rejection on user routes', () => {
+  const API_KEY_ADMIN = {
+    ...ADMIN_USER,
+    apiKey: { id: 'key-1', scopes: ['read:redirects', 'write:redirects'] },
+  };
+  const API_KEY_USER = {
+    ...REGULAR_USER,
+    apiKey: { id: 'key-2', scopes: ['read:redirects'] },
+  };
+
+  it('GET / returns 403 when req.user.apiKey is defined (API Key auth)', async () => {
+    const res = await request(app)
+      .get('/api/v1/users')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.find).not.toHaveBeenCalled();
+  });
+
+  it('GET /me returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .get('/api/v1/users/me')
+      .set('x-test-user', userHeader(API_KEY_USER));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.findOne).not.toHaveBeenCalled();
+  });
+
+  it('GET /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .get('/api/v1/users/user-abc')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.findOne).not.toHaveBeenCalled();
+  });
+
+  it('POST / returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .post('/api/v1/users')
+      .set('x-test-user', userHeader(API_KEY_ADMIN))
+      .send({ email: 'new@example.com', firstName: 'New', lastName: 'User' });
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.create).not.toHaveBeenCalled();
+  });
+
+  it('PATCH /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/users/${REGULAR_USER.userId}`)
+      .set('x-test-user', userHeader(API_KEY_USER))
+      .send({ firstName: 'Hacker' });
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.update).not.toHaveBeenCalled();
+  });
+
+  it('DELETE /:id returns 403 when req.user.apiKey is defined', async () => {
+    const res = await request(app)
+      .delete('/api/v1/users/user-abc')
+      .set('x-test-user', userHeader(API_KEY_ADMIN));
+    expect(res.status).toBe(403);
+    expect(UserService.prototype.delete).not.toHaveBeenCalled();
   });
 });
 

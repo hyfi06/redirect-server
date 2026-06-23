@@ -1,0 +1,139 @@
+const Firestore = require('@google-cloud/firestore');
+const boom = require('@hapi/boom');
+const CrudService = require('../../../utils/crud.service');
+const config = require('../../../config');
+const firestoreClient = require('../../../lib/firestore-client');
+const { groupDocParser, createGroupParser, updateGroupParser } = require('../parsers/group.parser');
+
+class GroupService extends CrudService {
+  /**
+   * @param {import('../../users/services/user.service')} userService
+   * Depends on UserService for membership sync. If UserService ever needs GroupService,
+   * extract the sync logic to a MembershipService.
+   */
+  constructor(userService) {
+    super(config.firestore.collections.groups, groupDocParser, createGroupParser, updateGroupParser);
+    this.userService = userService;
+    this.groupsCollection = config.firestore.collections.groups;
+    this.usersCollection = config.firestore.collections.users;
+  }
+
+  /**
+   * @param {string} slug
+   * @returns {Promise<Group>}
+   */
+  async getBySlug(slug) {
+    const query = this.db.collection.where('slug', '==', slug);
+    const snapshot = await query.get();
+    if (snapshot.empty) throw boom.notFound('Group not found');
+    return this.docParser(snapshot.docs[0]);
+  }
+
+  /**
+   * @param {import('../models/group.model')} group
+   * @returns {Promise<import('../models/group.model')>}
+   */
+  async create(group) {
+    try {
+      await this.getBySlug(group.slug);
+    } catch (e) {
+      if (e.output?.statusCode !== 404) throw e;
+      return this.docParser(await this.db.create(this.createParser(group)));
+    }
+    throw boom.badRequest('Slug already taken');
+  }
+
+  /**
+   * Deletes a group and atomically removes its slug from all member User.groups arrays.
+   * Uses a WriteBatch — auto-timestamping does not apply; updated is set manually.
+   * @param {string} id
+   * @returns {Promise<string>} the deleted document id
+   * @throws {import('@hapi/boom').Boom} 404 if the group does not exist
+   */
+  async delete(id) {
+    const current = await this.findOne(id);
+    const groupRef = firestoreClient.collection(this.groupsCollection).doc(id);
+    const batch = firestoreClient.batch();
+    const now = Firestore.Timestamp.fromMillis(Date.now());
+
+    for (const userId of (current.users ?? [])) {
+      const userRef = firestoreClient.collection(this.usersCollection).doc(userId);
+      batch.update(userRef, { groups: Firestore.FieldValue.arrayRemove(current.slug), updated: now });
+    }
+
+    batch.delete(groupRef);
+    await batch.commit();
+    return id;
+  }
+
+  /**
+   * Updates the group and atomically syncs User.groups for added/removed members
+   * using a Firestore WriteBatch. Fetch-first: all users in the diff are fetched
+   * before any write. If any user does not exist, the request fails with 400 and
+   * nothing is written.
+   *
+   * Timestamp must be set manually on every batch entry — WriteBatch bypasses
+   * FireStoreAdapter, so auto-timestamping does not apply.
+   *
+   * The post-commit get() is required to return the updated document: batch.commit()
+   * returns void and does not provide the updated field values.
+   * @param {string} id
+   * @param {import('../models/group.model')} group
+   * @returns {Promise<import('../models/group.model')>}
+   * @throws {import('@hapi/boom').Boom} 404 if the group does not exist
+   * @throws {import('@hapi/boom').Boom} 400 if any user in the membership diff does not exist
+   */
+  async update(id, group) {
+    const current = await this.findOne(id);
+    const batch = firestoreClient.batch();
+    const now = Firestore.Timestamp.fromMillis(Date.now());
+
+    if (group.users !== undefined) {
+      const oldUsers = current.users || [];
+      const newUsers = group.users;
+
+      const added = newUsers.filter((userId) => !oldUsers.includes(userId));
+      const removed = oldUsers.filter((userId) => !newUsers.includes(userId));
+      const diffIds = [...added, ...removed];
+
+      // Fetch-first: verify all users in the diff exist before writing anything
+      const userMap = new Map();
+      for (const userId of diffIds) {
+        try {
+          const user = await this.userService.findOne(userId);
+          userMap.set(userId, user);
+        } catch (e) {
+          if (e.output?.statusCode === 404) {
+            throw boom.badRequest(`User not found: ${userId}`);
+          }
+          throw e;
+        }
+      }
+
+      // Queue batch updates for added members
+      for (const userId of added) {
+        const user = userMap.get(userId);
+        const userRef = firestoreClient.collection(this.usersCollection).doc(userId);
+        batch.update(userRef, { groups: [...user.groups, current.slug], updated: now });
+      }
+
+      // Queue batch updates for removed members
+      for (const userId of removed) {
+        const user = userMap.get(userId);
+        const userRef = firestoreClient.collection(this.usersCollection).doc(userId);
+        batch.update(userRef, { groups: user.groups.filter((g) => g !== current.slug), updated: now });
+      }
+    }
+
+    // Include the group document itself in the batch
+    const groupRef = firestoreClient.collection(this.groupsCollection).doc(id);
+    batch.update(groupRef, { ...updateGroupParser(group), updated: now });
+
+    await batch.commit();
+
+    const updatedSnap = await groupRef.get();
+    return this.docParser(updatedSnap);
+  }
+}
+
+module.exports = GroupService;
