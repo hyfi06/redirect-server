@@ -149,6 +149,19 @@ describe('updateUserParser', () => {
     expect(data.groups).toEqual(['team-a']);
   });
 
+  // Regression guard: PATCH body without groups must not write groups to Firestore.
+  // Before the fix, User constructor defaulted groups to [] even when absent, so
+  // updateUserParser passed groups: [] to Firestore — overwriting real group membership.
+  it('omits groups key when user.groups is undefined — PATCH without groups must not touch Firestore groups field', () => {
+    // Simulate new User({ id, lastName: 'X' }) after the D20 fix:
+    // groups is not in the PATCH body, so the constructor sets this.groups = undefined.
+    const user = makeUserWithNoTokens({ groups: undefined });
+
+    const data = updateUserParser(user);
+
+    expect(data).not.toHaveProperty('groups');
+  });
+
   it('keeps only defined token fields when auth has a mix of defined and undefined values', () => {
     const user = makeUserWithNoTokens({
       auth: {
@@ -242,6 +255,16 @@ describe('createUserParser', () => {
     const data = createUserParser(user);
 
     expect(data.groups).toEqual(['team-b']);
+  });
+
+  // Regression guard: createUserParser is the correct place for the groups: [] default.
+  // The constructor no longer provides the default (D20), so createUserParser must supply it.
+  it('defaults groups to [] when user.groups is undefined — the default lives here, not in the constructor', () => {
+    const user = makeUserWithNoTokens({ groups: undefined });
+
+    const data = createUserParser(user);
+
+    expect(data.groups).toEqual([]);
   });
 
   it('returns auth as an empty object when all token fields are undefined', () => {

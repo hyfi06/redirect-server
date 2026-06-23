@@ -34,9 +34,9 @@ describe('User model', () => {
       expect(user.lastName).toBe('');
     });
 
-    it('defaults groups to empty array when not provided', () => {
+    it('leaves groups undefined when not provided (D20: no default in constructor)', () => {
       const user = new User({ email: 'a@example.com' });
-      expect(user.groups).toEqual([]);
+      expect(user.groups).toBeUndefined();
     });
 
     it('sets groups from data when provided', () => {
