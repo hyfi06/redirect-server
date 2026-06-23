@@ -3,8 +3,8 @@ class User {
    * User model
    * @param {Object} data
    * @param {string} data.email
-   * @param {string} data.firstName
-   * @param {string} data.lastName
+   * @param {string} [data.firstName] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
+   * @param {string} [data.lastName] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
    * @param {string[]} [data.groups] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
    * @param {string} data.role
    * @param {string} data.googleToken
@@ -31,8 +31,10 @@ class User {
     } = data;
     this.id = id || null;
     this.email = email ? email.toLowerCase().trim() : undefined;
-    this.firstName = firstName?.trim() || '';
-    this.lastName = lastName?.trim() || '';
+    // No default — undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
+    this.firstName = firstName?.trim() || undefined;
+    // No default — undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
+    this.lastName = lastName?.trim() || undefined;
     // No default — groups: undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
     this.groups = groups;
     // No default — role: undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)

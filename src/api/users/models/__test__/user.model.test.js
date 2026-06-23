@@ -28,10 +28,10 @@ describe('User model', () => {
       expect(user.lastName).toBe('Pérez');
     });
 
-    it('defaults firstName and lastName to empty string when absent', () => {
+    it('leaves firstName and lastName undefined when absent (D20: no default in constructor)', () => {
       const user = new User({ email: 'a@example.com' });
-      expect(user.firstName).toBe('');
-      expect(user.lastName).toBe('');
+      expect(user.firstName).toBeUndefined();
+      expect(user.lastName).toBeUndefined();
     });
 
     it('leaves groups undefined when not provided (D20: no default in constructor)', () => {
