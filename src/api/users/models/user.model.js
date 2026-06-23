@@ -33,7 +33,7 @@ class User {
     this.email = email ? email.toLowerCase().trim() : undefined;
     this.firstName = firstName?.trim() || '';
     this.lastName = lastName?.trim() || '';
-    this.groups = groups || [];
+    this.groups = groups;
     // No default — role: undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
     this.role = role;
     this.auth = {
