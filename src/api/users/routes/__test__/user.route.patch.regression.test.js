@@ -295,3 +295,68 @@ describe('PATCH /api/v1/users/:id — groups not overwritten when groups absent 
     expect(userArg.groups).toEqual(['fc', 'cs']);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: PATCH without lastName/firstName must not overwrite the other field
+// ---------------------------------------------------------------------------
+// Bug: User constructor used `this.firstName = firstName?.trim() || ''` and
+// `this.lastName = lastName?.trim() || ''`. When a PATCH body contained only
+// `firstName`, the constructor materialised undefined as '', which updateUserParser
+// could not strip (cleanDocObject only removes undefined, not ''). Firestore
+// received lastName: '' and overwrote the user's existing last name.
+//
+// Fix: `this.firstName = firstName?.trim() || undefined` (and same for lastName).
+// cleanDocObject strips undefined keys, so a missing field no longer reaches Firestore.
+//
+// Strategy: UserService is mocked; User model is intentionally NOT mocked so
+// the real constructor runs. We inspect the User instance passed to
+// userService.update() and assert the absent field is undefined — the upstream
+// guarantee that cleanDocObject will omit it.
+
+describe('PATCH /api/v1/users/:id — firstName/lastName not overwritten when only one is in body', () => {
+  it('user instance passed to userService.update has lastName=undefined when PATCH body contains only firstName', async () => {
+    UserService.prototype.update.mockResolvedValue(
+      stubServiceUser({ id: 'other-user', firstName: 'Becas' }),
+    );
+
+    await request(app)
+      .patch('/api/v1/users/other-user')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ firstName: 'Becas' });
+
+    expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    const userArg = UserService.prototype.update.mock.calls[0][0];
+    expect(userArg.lastName).toBeUndefined();
+  });
+
+  it('user instance passed to userService.update has firstName=undefined when PATCH body contains only lastName', async () => {
+    UserService.prototype.update.mockResolvedValue(
+      stubServiceUser({ id: 'other-user', lastName: 'Ciencias' }),
+    );
+
+    await request(app)
+      .patch('/api/v1/users/other-user')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ lastName: 'Ciencias' });
+
+    expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    const userArg = UserService.prototype.update.mock.calls[0][0];
+    expect(userArg.firstName).toBeUndefined();
+  });
+
+  it('user instance passed to userService.update has both firstName and lastName when both are in PATCH body (control positive)', async () => {
+    UserService.prototype.update.mockResolvedValue(
+      stubServiceUser({ id: 'other-user', firstName: 'A', lastName: 'B' }),
+    );
+
+    await request(app)
+      .patch('/api/v1/users/other-user')
+      .set('x-test-user', userHeader(ADMIN_USER))
+      .send({ firstName: 'A', lastName: 'B' });
+
+    expect(UserService.prototype.update).toHaveBeenCalledTimes(1);
+    const userArg = UserService.prototype.update.mock.calls[0][0];
+    expect(userArg.firstName).toBe('A');
+    expect(userArg.lastName).toBe('B');
+  });
+});

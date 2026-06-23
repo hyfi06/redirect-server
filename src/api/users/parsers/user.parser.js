@@ -29,10 +29,10 @@ function userParser(docSnap) {
 function createUserParser(user) {
   return {
     email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
+    // Defaults live here, not in the constructor — D20: constructors never default optional fields
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
     groups: user.groups || [],
-    // Default lives here, not in the constructor — D20: constructors never default optional fields
     role: user.role || 'user',
     auth: cleanDocObject(user.auth),
   };
