@@ -87,11 +87,11 @@ function userHeader(user) {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns a mock object that behaves like a User instance for route purposes:
- * it has a `toPublic()` method that returns only the safe public fields.
+ * Returns a mock object that behaves like a User instance for route purposes.
+ * Fields are accessible directly — the route's local toPublic() helper reads them.
  */
 function mockUserWithPublic(overrides = {}) {
-  const pub = {
+  return {
     id: overrides.id || 'user-1',
     email: overrides.email || 'test@example.com',
     firstName: overrides.firstName || 'Test',
@@ -101,7 +101,6 @@ function mockUserWithPublic(overrides = {}) {
     created: overrides.created,
     updated: overrides.updated,
   };
-  return { toPublic: () => pub };
 }
 
 // ---------------------------------------------------------------------------

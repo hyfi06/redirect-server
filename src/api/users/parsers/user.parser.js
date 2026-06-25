@@ -34,7 +34,6 @@ function createUserParser(user) {
     lastName: user.lastName || '',
     groups: user.groups || [],
     role: user.role || 'user',
-    auth: cleanDocObject(user.auth),
   };
 }
 
@@ -47,12 +46,6 @@ function updateUserParser(user) {
   const data = { ...user };
   deleteRegData(data);
   delete data.email;
-  if (data.auth) {
-    cleanDocObject(data.auth);
-    if (Object.keys(data.auth).length === 0) {
-      delete data.auth;
-    }
-  }
   cleanDocObject(data);
   return data;
 }

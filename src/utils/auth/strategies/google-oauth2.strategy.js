@@ -2,9 +2,10 @@ const passport = require('passport');
 const config = require('../../../config');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth2');
 const UserService = require('../../../api/users/services/user.service');
-const User = require('../../../api/users/models/user.model');
+const AuthTokenService = require('../../../api/users/services/auth-token.service');
 
 const userService = new UserService();
+const authTokenService = new AuthTokenService();
 
 passport.use(
   new GoogleStrategy(
@@ -27,14 +28,11 @@ passport.use(
           }
           throw error;
         }
-        const updatedUser = new User({
-          ...user,
-          ...user.auth,
+        await authTokenService.write(user.id, {
           googleToken: accessToken,
           googleRefreshToken: refreshToken,
         });
-        const saved = await userService.update(updatedUser);
-        return done(null, saved);
+        return done(null, user);
       } catch (error) {
         return done(error);
       }

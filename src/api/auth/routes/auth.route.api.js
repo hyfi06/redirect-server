@@ -20,13 +20,13 @@ authRouterApi.get(
     if (!req.user) {
       return next(boom.unauthorized('User not registered'));
     }
-    const { id, email, role, groups } = req.user;
+    const { id, email, firstName, lastName, groups, role, created, updated } = req.user;
     const token = sign({ userId: id, email, role, groups });
     res.status(200).json({
       message: 'login successful',
       data: {
         token,
-        user: req.user.toPublic(),
+        user: { id, email, firstName, lastName, groups, role, created, updated },
       },
     });
   },

@@ -22,6 +22,23 @@ const groupService = new GroupService(userServiceForGroup);
 const membershipService = new MembershipService(userServiceForGroup, groupService);
 const userService = new UserService(membershipService);
 
+/**
+ * @param {import('../models/user.model')} user
+ * @returns {Object}
+ */
+function toPublic(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    groups: user.groups,
+    role: user.role,
+    created: user.created,
+    updated: user.updated,
+  };
+}
+
 const userRouterApi = express.Router();
 
 // All user routes require a valid JWT
@@ -37,7 +54,7 @@ userRouterApi.use((req, res, next) => {
 userRouterApi.get('/me', async (req, res, next) => {
   try {
     const user = await userService.findOne(req.user.userId);
-    res.status(200).json({ message: 'profile retrieved', data: user.toPublic() });
+    res.status(200).json({ message: 'profile retrieved', data: toPublic(user) });
   } catch (error) {
     next(error);
   }
@@ -60,7 +77,7 @@ userRouterApi.get(
       });
       res.status(200).json({
         message: 'users retrieved',
-        data: data.map((u) => u.toPublic()),
+        data: data.map((u) => toPublic(u)),
       });
     } catch (error) {
       next(error);
@@ -77,7 +94,7 @@ userRouterApi.get(
     const { id } = req.params;
     try {
       const data = await userService.findOne(id);
-      res.status(200).json({ message: 'user retrieved', data: data.toPublic() });
+      res.status(200).json({ message: 'user retrieved', data: toPublic(data) });
     } catch (error) {
       next(error);
     }
@@ -92,7 +109,7 @@ userRouterApi.post(
     const user = new User(req.body);
     try {
       const data = await userService.create(user);
-      res.status(201).json({ message: 'user created', data: data.toPublic() });
+      res.status(201).json({ message: 'user created', data: toPublic(data) });
     } catch (error) {
       next(error);
     }
@@ -119,7 +136,7 @@ userRouterApi.patch(
     const user = new User({ id, ...value });
     try {
       const data = await userService.update(user);
-      res.status(200).json({ message: 'user updated', data: data.toPublic() });
+      res.status(200).json({ message: 'user updated', data: toPublic(data) });
     } catch (error) {
       next(error);
     }
