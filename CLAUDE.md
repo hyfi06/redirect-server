@@ -219,12 +219,14 @@ Google App Engine (Node.js 24). Config in `app.yaml`. Scales from 0 to 3 instanc
 
 ### Router mount order (`src/app.js`)
 
-Three surfaces registered in strict order — order matters because the redirect router is a catch-all:
+Four surfaces plus one middleware registered in strict order — order matters because the redirect router is a catch-all:
 
 ```
-rootRouter      →  GET /          Static HTML home page + public assets
-apiV1           →  /api/v1/**     CRUD REST API
-redirectRoute   →  GET /*         Catch-all: URL shortener redirect
+rootRouter      →  GET /           Static HTML home page + public assets
+apiV1           →  /api/v1/**      CRUD REST API
+healthRouter    →  GET /_ah/health App Engine health check (Firestore ping)
+botReject       →  (middleware)    Rejects known bot path patterns with 404 before Firestore
+redirectRoute   →  GET /*          Catch-all: URL shortener redirect
 ```
 
 ---
