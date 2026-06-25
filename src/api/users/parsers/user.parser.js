@@ -18,6 +18,7 @@ function userParser(docSnap) {
     id,
     created: new Date(data.created.toMillis()),
     updated: new Date(data.updated.toMillis()),
+    deletedAt: data.deletedAt ? new Date(data.deletedAt.toMillis()) : null,
   });
 }
 
@@ -34,6 +35,7 @@ function createUserParser(user) {
     lastName: user.lastName || '',
     groups: user.groups || [],
     role: user.role || 'user',
+    deletedAt: null,
   };
 }
 
@@ -46,6 +48,7 @@ function updateUserParser(user) {
   const data = { ...user };
   deleteRegData(data);
   delete data.email;
+  delete data.deletedAt; // immutable via API — managed only by delete()
   cleanDocObject(data);
   return data;
 }

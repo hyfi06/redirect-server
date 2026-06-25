@@ -30,7 +30,7 @@ redirectRouterApi.get(
   validatorHandler(getRedirectQuerySchema, 'query'),
   async (req, res, next) => {
     const { orderBy, offset, limit } = req.query;
-    const { email, groups } = req.user;
+    const { userId, groups } = req.user;
     const options = { orderBy, offset: offset ? parseInt(offset) : undefined, limit: limit ? parseInt(limit) : undefined };
 
     if (req.user.role === 'admin') {
@@ -46,10 +46,10 @@ redirectRouterApi.get(
     const filter =
       readPermissions.length > 0
         ? Filter.or(
-            Filter.where('owner', '==', email),
+            Filter.where('owner', '==', userId),
             Filter.where('permission', 'array-contains-any', readPermissions),
           )
-        : Filter.where('owner', '==', email);
+        : Filter.where('owner', '==', userId);
 
     try {
       const redirectArray = await redirectServicieApi.find([filter], options);
@@ -76,7 +76,7 @@ redirectRouterApi.get(
       const readPermissions = req.user.groups.map(g => `read:${g}`);
       const canRead =
         req.user.role === 'admin' ||
-        data.owner === req.user.email ||
+        data.owner === req.user.userId ||
         (data.permission || []).some(p => readPermissions.includes(p));
       if (!canRead) return next(boom.forbidden('Insufficient permissions'));
       res.status(200).json({ message: 'redirect retrieved', data });
@@ -113,7 +113,7 @@ redirectRouterApi.post(
     // Leading "/" is required: the catch-all redirect handler uses req.path which
     // Express always delivers with a leading slash, so stored paths must match that form.
     const fullPath = group ? `/${group}/${path}` : `/${path}`;
-    const redirect = new Redirect({ path: fullPath, url, permission, categories, owner: req.user.email });
+    const redirect = new Redirect({ path: fullPath, url, permission, categories, owner: req.user.userId });
 
     try {
       const data = await redirectServicieApi.create(redirect);
@@ -141,7 +141,7 @@ redirectRouterApi.patch(
       const editPermissions = req.user.groups.map(g => `edit:${g}`);
       const canEdit =
         req.user.role === 'admin' ||
-        existing.owner === req.user.email ||
+        existing.owner === req.user.userId ||
         (existing.permission || []).some(p => editPermissions.includes(p));
       if (!canEdit) return next(boom.forbidden('Insufficient permissions'));
       const redirect = new Redirect({ id, ...req.body });
@@ -169,7 +169,7 @@ redirectRouterApi.delete(
       const deletePermissions = req.user.groups.map(g => `delete:${g}`);
       const canDelete =
         req.user.role === 'admin' ||
-        existing.owner === req.user.email ||
+        existing.owner === req.user.userId ||
         (existing.permission || []).some(p => deletePermissions.includes(p));
       if (!canDelete) return next(boom.forbidden('Insufficient permissions'));
       const deletedId = await redirectServicieApi.delete(id);

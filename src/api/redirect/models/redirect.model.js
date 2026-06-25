@@ -5,7 +5,7 @@ class Redirect {
    * @param {string} [data.id]
    * @param {string} data.path
    * @param {string} data.url
-   * @param {string} data.owner
+   * @param {string} data.owner — Firestore document ID of the owning User (userId, not email)
    * @param {string[]} [data.permission]
    * @param {string[]} [data.categories]
    * @param {Date} [data.created]

@@ -14,6 +14,7 @@ function groupDocParser(docSnap) {
     id,
     created: new Date(data.created.toMillis()),
     updated: new Date(data.updated.toMillis()),
+    deletedAt: data.deletedAt ? new Date(data.deletedAt.toMillis()) : null,
   });
 }
 
@@ -28,6 +29,7 @@ function createGroupParser(group) {
     // Default [] on create: a new group always has an explicit users array in Firestore.
     // Distinct from the model, which preserves undefined so cleanDocObject skips the field in PATCH.
     users: group.users !== undefined ? group.users : [],
+    deletedAt: null,
   };
 }
 
@@ -38,7 +40,8 @@ function createGroupParser(group) {
 function updateGroupParser(group) {
   const data = { ...group };
   deleteRegData(data);
-  delete data.slug; // slug is immutable after creation (D14); strip before write
+  delete data.slug;      // immutable after creation (D14)
+  delete data.deletedAt; // immutable via API — managed only by delete()
   cleanDocObject(data);
   return data;
 }

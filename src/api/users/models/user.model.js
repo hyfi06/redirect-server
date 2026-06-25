@@ -7,11 +7,12 @@ class User {
    * @param {string} [data.lastName] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
    * @param {string[]} [data.groups] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
    * @param {string} [data.role]
+   * @param {Date | null} [data.deletedAt] — null means active; Date means soft-deleted
    * @param {Date} [data.created]
    * @param {Date} [data.updated]
    */
   constructor(data) {
-    const { id, email, firstName, lastName, groups, role, created, updated } = data;
+    const { id, email, firstName, lastName, groups, role, deletedAt, created, updated } = data;
     this.id = id || null;
     this.email = email ? email.toLowerCase().trim() : undefined;
     // No default — undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
@@ -22,6 +23,7 @@ class User {
     this.groups = groups;
     // No default — role: undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
     this.role = role;
+    this.deletedAt = deletedAt ?? null;
     if (created) this.created = created;
     if (updated) this.updated = updated;
   }

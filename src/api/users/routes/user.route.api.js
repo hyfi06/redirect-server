@@ -34,6 +34,7 @@ function toPublic(user) {
     lastName: user.lastName,
     groups: user.groups,
     role: user.role,
+    deletedAt: user.deletedAt,
     created: user.created,
     updated: user.updated,
   };
@@ -69,12 +70,21 @@ userRouterApi.get(
   authorize('admin'),
   validatorHandler(getUsersQuerySchema, 'query'),
   async (req, res, next) => {
-    const { offset, limit } = req.query;
+    const { offset, limit, inactive } = req.query;
+    const options = {
+      offset: offset ? parseInt(offset) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    };
     try {
-      const data = await userService.find(null, {
-        offset: offset ? parseInt(offset) : undefined,
-        limit: limit ? parseInt(limit) : undefined,
-      });
+      if (inactive) {
+        const data = await userService.findInactive(options);
+        return res.status(200).json({
+          message: 'users retrieved',
+          data: data.map((u) => toPublic(u)),
+        });
+      }
+
+      const data = await userService.find(['deletedAt', '==', null], options);
       res.status(200).json({
         message: 'users retrieved',
         data: data.map((u) => toPublic(u)),

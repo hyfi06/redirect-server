@@ -22,6 +22,7 @@ const getGroupQuerySchema = Joi.object({
   orderBy: Joi.string(),
   offset: Joi.number().integer().min(1),
   limit: Joi.number().integer().min(1),
+  inactive: Joi.boolean(),
 }).options({ allowUnknown: false });
 
 module.exports = {

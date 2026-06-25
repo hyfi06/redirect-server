@@ -160,7 +160,7 @@ describe('GET /redirects — filter construction', () => {
     // Filter.where serializes as { field: string, operator: string, value: any }
     expect(filter.field).toBe('owner');
     expect(filter.operator).toBe('==');
-    expect(filter.value).toBe(NO_GROUP_USER.email);
+    expect(filter.value).toBe(NO_GROUP_USER.userId);
   });
 
   it('wraps owner and permissions in a Filter.or when user belongs to one group', async () => {
@@ -248,7 +248,7 @@ describe('GET /redirects/:id', () => {
   });
 
   it('owner can read their own redirect regardless of permission list', async () => {
-    const redirect = { ...SAMPLE_REDIRECT, owner: REGULAR_USER.email, permission: [] };
+    const redirect = { ...SAMPLE_REDIRECT, owner: REGULAR_USER.userId, permission: [] };
     mockMethods.findOne.mockResolvedValue(redirect);
     const res = await request(app)
       .get('/redirects/redirect-1')
@@ -328,14 +328,14 @@ describe('POST /redirects — namespace and owner', () => {
     expect(createdRedirect.path).toBe('/fc/seminar');
   });
 
-  it('sets owner from req.user.email — not from the request body', async () => {
+  it('sets owner from req.user.userId — not from the request body', async () => {
     mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
     await request(app)
       .post('/redirects')
       .set('x-test-user', userHeader(ADMIN_USER))
       .send({ path: 'promo', url: 'https://example.com' });
     const createdRedirect = mockMethods.create.mock.calls[0][0];
-    expect(createdRedirect.owner).toBe(ADMIN_USER.email);
+    expect(createdRedirect.owner).toBe(ADMIN_USER.userId);
   });
 
   it('returns 400 when the request body includes an owner field (schema disallows it)', async () => {
@@ -375,7 +375,7 @@ describe('POST /redirects — namespace and owner', () => {
     expect(res.status).toBe(201);
     const createdRedirect = mockMethods.create.mock.calls[0][0];
     expect(createdRedirect.path).toBe('/fc/seminar');
-    expect(createdRedirect.owner).toBe(REGULAR_USER.email);
+    expect(createdRedirect.owner).toBe(REGULAR_USER.userId);
   });
 
   it('returns 400 when path contains a leading slash (Joi schema rejects it)', async () => {
@@ -465,7 +465,7 @@ describe('PATCH /redirects/:id — ownership', () => {
   });
 
   it('owner can modify their own redirect', async () => {
-    mockMethods.findOne.mockResolvedValue({ ...SAMPLE_REDIRECT, owner: REGULAR_USER.email });
+    mockMethods.findOne.mockResolvedValue({ ...SAMPLE_REDIRECT, owner: REGULAR_USER.userId });
     mockMethods.update.mockResolvedValue({ ...SAMPLE_REDIRECT, url: 'https://new.example.com' });
     const res = await request(app)
       .patch('/redirects/redirect-1')
@@ -560,7 +560,7 @@ describe('DELETE /redirects/:id — ownership', () => {
   });
 
   it('owner can delete their own redirect', async () => {
-    mockMethods.findOne.mockResolvedValue({ ...SAMPLE_REDIRECT, owner: REGULAR_USER.email });
+    mockMethods.findOne.mockResolvedValue({ ...SAMPLE_REDIRECT, owner: REGULAR_USER.userId });
     mockMethods.delete.mockResolvedValue('redirect-1');
     const res = await request(app)
       .delete('/redirects/redirect-1')

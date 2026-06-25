@@ -23,31 +23,32 @@ class GroupService extends CrudService {
    * @returns {Promise<Group>}
    */
   async getBySlug(slug) {
-    const query = this.db.collection.where('slug', '==', slug);
+    const query = this.db.collection
+      .where('slug', '==', slug)
+      .where('deletedAt', '==', null);
     const snapshot = await query.get();
     if (snapshot.empty) throw boom.notFound('Group not found');
     return this.docParser(snapshot.docs[0]);
   }
 
   /**
+   * Creates a new group, enforcing slug uniqueness across all docs (active and inactive).
+   * Uses a direct query without a deletedAt filter so deleted slugs cannot be reused.
    * @param {import('../models/group.model')} group
    * @returns {Promise<import('../models/group.model')>}
    */
   async create(group) {
-    try {
-      await this.getBySlug(group.slug);
-    } catch (e) {
-      if (e.output?.statusCode !== 404) throw e;
-      return this.docParser(await this.db.create(this.createParser(group)));
-    }
-    throw boom.badRequest('Slug already taken');
+    const slugSnap = await this.db.collection.where('slug', '==', group.slug).get();
+    if (!slugSnap.empty) throw boom.badRequest('Slug already taken');
+    return this.docParser(await this.db.create(this.createParser(group)));
   }
 
   /**
-   * Deletes a group and atomically removes its slug from all member User.groups arrays.
+   * Soft-deletes a group and atomically removes its slug from all member User.groups arrays.
+   * Sets deletedAt and updated; slug remains in Firestore to prevent future reuse.
    * Uses a WriteBatch — auto-timestamping does not apply; updated is set manually.
    * @param {string} id
-   * @returns {Promise<string>} the deleted document id
+   * @returns {Promise<string>} the soft-deleted document id
    * @throws {import('@hapi/boom').Boom} 404 if the group does not exist
    */
   async delete(id) {
@@ -61,9 +62,29 @@ class GroupService extends CrudService {
       batch.update(userRef, { groups: Firestore.FieldValue.arrayRemove(current.slug), updated: now });
     }
 
-    batch.delete(groupRef);
+    batch.update(groupRef, { deletedAt: now, updated: now });
     await batch.commit();
     return id;
+  }
+
+  /**
+   * Returns all soft-deleted groups, ordered by deletedAt descending.
+   * Firestore requires ordering by the inequality field first.
+   * @param {object} [options]
+   * @param {number} [options.offset]
+   * @param {number} [options.limit]
+   * @returns {Promise<Group[]>}
+   */
+  async findInactive(options = {}) {
+    const { offset, limit } = options;
+    let fsQuery = this.db.collection
+      .where('deletedAt', '!=', null)
+      .orderBy('deletedAt', 'desc');
+    if (offset) fsQuery = fsQuery.offset(offset);
+    if (limit) fsQuery = fsQuery.limit(limit);
+    const snap = await fsQuery.get();
+    if (snap.empty) return [];
+    return snap.docs.map(doc => this.docParser(doc));
   }
 
   /**

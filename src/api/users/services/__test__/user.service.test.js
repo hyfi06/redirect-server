@@ -305,15 +305,21 @@ describe('UserService', () => {
   // delete — overrides CrudService: fetch-first, then delete, then group sync
   // -------------------------------------------------------------------------
   describe('delete', () => {
-    it('returns the deleted document id when the document exists and user has no groups', async () => {
+    it('soft-deletes the user when the document exists and user has no groups', async () => {
       mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-del', groups: [] }));
-      mockDb.delete.mockResolvedValue('user-del');
 
       const result = await service.delete('user-del');
 
       expect(result).toBe('user-del');
       expect(mockDb.get).toHaveBeenCalledWith('user-del');
-      expect(mockDb.delete).toHaveBeenCalledWith('user-del');
+      // Soft-delete: batch.update — no hard batch.delete or adapter delete
+      expect(mockDb.delete).not.toHaveBeenCalled();
+      expect(firestoreClient.batch).toHaveBeenCalledTimes(1);
+      expect(mockBatch.update).toHaveBeenCalledTimes(1);
+      const [, payload] = mockBatch.update.mock.calls[0];
+      expect(payload.deletedAt).toBeDefined();
+      expect(payload.updated).toBeDefined();
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
     });
 
     it('propagates boom.notFound when the document does not exist', async () => {
@@ -331,32 +337,35 @@ describe('UserService', () => {
       expect(mockDb.delete).not.toHaveBeenCalled();
     });
 
-    // [B2] Fallback — no membershipService
-    it('uses super.delete() when no membershipService is provided, even if the user has groups', async () => {
+    // Soft-delete path — no membershipService
+    it('soft-deletes without cascade when no membershipService is provided, even if user has groups', async () => {
       // service from outer beforeEach has no membershipService
       mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: ['fc'] }));
-      mockDb.delete.mockResolvedValue('user-1');
 
       const result = await service.delete('user-1');
 
       expect(result).toBe('user-1');
-      expect(mockDb.delete).toHaveBeenCalledWith('user-1');
-      expect(firestoreClient.batch).not.toHaveBeenCalled();
+      // Soft-delete always goes through the batch path
+      expect(mockDb.delete).not.toHaveBeenCalled();
+      expect(firestoreClient.batch).toHaveBeenCalledTimes(1);
+      expect(mockBatch.update).toHaveBeenCalledTimes(1);
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
     });
 
-    // [B2] Fallback — user has no groups
-    it('uses super.delete() when membershipService is present but user has no groups', async () => {
+    // Soft-delete path — no groups to cascade
+    it('soft-deletes without cascade when membershipService is present but user has no groups', async () => {
       const mockMembershipService = { addOpsToRemoveUserFromGroups: jest.fn() };
       const serviceWithMembership = new UserService(mockMembershipService);
 
       mockDb.get.mockResolvedValue(makeDocSnap({ id: 'user-1', groups: [] }));
-      mockDb.delete.mockResolvedValue('user-1');
 
       const result = await serviceWithMembership.delete('user-1');
 
       expect(result).toBe('user-1');
-      expect(mockDb.delete).toHaveBeenCalledWith('user-1');
-      expect(firestoreClient.batch).not.toHaveBeenCalled();
+      expect(mockDb.delete).not.toHaveBeenCalled();
+      expect(firestoreClient.batch).toHaveBeenCalledTimes(1);
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+      // No group cascade needed — user has no groups
       expect(mockMembershipService.addOpsToRemoveUserFromGroups).not.toHaveBeenCalled();
     });
 
