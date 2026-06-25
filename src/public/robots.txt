@@ -1,4 +1,6 @@
 User-agent: *
+Allow: /
+Disallow: /api/
 Disallow: /wp-admin/
 Disallow: /wp-includes/
 Disallow: /*/wp-includes/
