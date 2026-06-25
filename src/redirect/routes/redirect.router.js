@@ -1,9 +1,7 @@
 const express = require('express');
-const RedirectService = require('../../api/redirect/services/redirect.service');
 const { nodeCache, setClientCache } = require('../../utils/cache');
 const { FIVE_MINUTES_IN_SECONDS } = require('../../utils/timeConst');
-
-const redirectService = new RedirectService();
+const { redirectService } = require('../../lib/services');
 
 const redirectRouter = express.Router({ 
   caseSensitive: true,

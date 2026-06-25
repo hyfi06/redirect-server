@@ -23,7 +23,10 @@ jest.mock('../../../../config', () => ({
     clientSecret: 'test-client-secret',
     oauthRedirect: 'http://localhost/callback',
   },
-  firestore: { collections: { users: 'users' } },
+  // groups and redirects are required because loading google-oauth2.strategy.js now
+  // triggers src/lib/services.js, which instantiates GroupService and RedirectServiceApi.
+  // Both call firestoreClient.collection() with these names — undefined would throw.
+  firestore: { collections: { users: 'users', groups: 'groups', redirects: 'redirects' } },
 }));
 
 const passport = require('passport');

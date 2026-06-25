@@ -1,11 +1,7 @@
 const passport = require('passport');
 const config = require('../../../config');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth2');
-const UserService = require('../../../api/users/services/user.service');
-const AuthTokenService = require('../../../api/users/services/auth-token.service');
-
-const userService = new UserService();
-const authTokenService = new AuthTokenService();
+const { userService, authTokenService } = require('../../../lib/services');
 
 passport.use(
   new GoogleStrategy(
