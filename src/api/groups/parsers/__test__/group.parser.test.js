@@ -58,6 +58,19 @@ describe('groupDocParser', () => {
     const result = groupDocParser(snap);
     expect(result.users).toEqual([]);
   });
+
+  it('converts deletedAt Timestamp to a Date when present in the document', () => {
+    const snap = makeDocSnap({ data: { deletedAt: { toMillis: () => 3000000 } } });
+    const result = groupDocParser(snap);
+    expect(result.deletedAt).toBeInstanceOf(Date);
+    expect(result.deletedAt.getTime()).toBe(3000000);
+  });
+
+  it('assigns null to deletedAt when the field is absent from the document', () => {
+    const snap = makeDocSnap(); // no deletedAt in default data
+    const result = groupDocParser(snap);
+    expect(result.deletedAt).toBeNull();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +107,12 @@ describe('createGroupParser', () => {
     const group = new Group({ id: 'group-1', name: 'Test', slug: 'test' });
     const result = createGroupParser(group);
     expect(result.id).toBeUndefined();
+  });
+
+  it('includes deletedAt: null — new groups are always active', () => {
+    const group = new Group({ name: 'Test', slug: 'test' });
+    const result = createGroupParser(group);
+    expect(result.deletedAt).toBeNull();
   });
 });
 
@@ -156,5 +175,12 @@ describe('updateGroupParser', () => {
     updateGroupParser(group);
     expect(group.slug).toBe(originalSlug);
     expect(group.id).toBe('g-1');
+  });
+
+  it('excludes deletedAt — soft-delete is managed only by GroupService.delete()', () => {
+    const deletedDate = new Date('2025-01-01T00:00:00.000Z');
+    const group = new Group({ name: 'Test', slug: 'test', deletedAt: deletedDate });
+    const result = updateGroupParser(group);
+    expect(result).not.toHaveProperty('deletedAt');
   });
 });

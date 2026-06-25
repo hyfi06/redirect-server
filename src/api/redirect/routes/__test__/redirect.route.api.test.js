@@ -623,6 +623,63 @@ describe('DELETE /redirects/:id — delete permission', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Sprint 3 — owner is userId, not email
+// ---------------------------------------------------------------------------
+
+describe('owner field stores userId not email', () => {
+  it('POST / — owner on the created Redirect object is req.user.userId for a non-admin user', async () => {
+    mockMethods.create.mockResolvedValue(SAMPLE_REDIRECT);
+    mockGroupMethods.getBySlug.mockResolvedValue({ id: 'group-1', slug: 'fc' });
+
+    await request(app)
+      .post('/redirects')
+      .set('x-test-user', userHeader(REGULAR_USER))
+      .send({ group: 'fc', path: 'seminar', url: 'https://example.com' });
+
+    const createdRedirect = mockMethods.create.mock.calls[0][0];
+    // owner must be the userId (a document ID), not the user's email address
+    expect(createdRedirect.owner).toBe(REGULAR_USER.userId);
+    expect(createdRedirect.owner).not.toBe(REGULAR_USER.email);
+  });
+
+  it('GET / — the owner filter value inside Filter.or is userId not email', async () => {
+    mockMethods.find.mockResolvedValue([]);
+    await request(app)
+      .get('/redirects')
+      .set('x-test-user', userHeader(REGULAR_USER));
+
+    const [filters] = mockMethods.find.mock.calls[0];
+    const orFilter = filters[0];
+    // Filter.or contains a nested filters array; locate the owner leaf
+    const ownerFilter = orFilter.filters.find((f) => f.field === 'owner');
+    expect(ownerFilter).toBeDefined();
+    expect(ownerFilter.value).toBe(REGULAR_USER.userId);
+    expect(ownerFilter.value).not.toBe(REGULAR_USER.email);
+  });
+
+  it('GET /:id — returns 200 when redirect.owner matches req.user.userId', async () => {
+    const redirect = { ...SAMPLE_REDIRECT, owner: REGULAR_USER.userId, permission: [] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(REGULAR_USER));
+    expect(res.status).toBe(200);
+  });
+
+  it('GET /:id — returns 403 when redirect.owner is the user email rather than userId', async () => {
+    // Simulates a pre-Sprint-3 document where owner was stored as email.
+    // Since the access check now compares owner to req.user.userId, an email
+    // value in owner will never match and results in a 403.
+    const redirect = { ...SAMPLE_REDIRECT, owner: REGULAR_USER.email, permission: [] };
+    mockMethods.findOne.mockResolvedValue(redirect);
+    const res = await request(app)
+      .get('/redirects/redirect-1')
+      .set('x-test-user', userHeader(REGULAR_USER));
+    expect(res.status).toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // §3.4 — API Key scope enforcement on redirect routes
 // ---------------------------------------------------------------------------
 // The authorizeApiKeyScope middleware runs as real code here (not mocked).

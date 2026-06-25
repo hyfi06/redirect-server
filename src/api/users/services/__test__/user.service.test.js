@@ -109,6 +109,15 @@ describe('UserService', () => {
 
       expect(mockDb.collection.where).toHaveBeenCalledWith('email', '==', 'q@example.com');
     });
+
+    it('queries Firestore with where("deletedAt", "==", null) — only active users are returned', async () => {
+      const snap = makeDocSnap({ email: 'q@example.com' });
+      mockDb.collection.get.mockResolvedValue({ empty: false, docs: [snap] });
+
+      await service.getByEmail('q@example.com');
+
+      expect(mockDb.collection.where).toHaveBeenCalledWith('deletedAt', '==', null);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -435,6 +444,132 @@ describe('UserService', () => {
 
       expect(mockDb.delete).not.toHaveBeenCalled();
       expect(mockMembershipService.addOpsToRemoveUserFromGroups).not.toHaveBeenCalled();
+      expect(mockBatch.commit).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // update — override: batch path when groups field is present
+  // -------------------------------------------------------------------------
+  describe('update — batch path', () => {
+    it('delegates to super.update() when user.groups is undefined', async () => {
+      const updatedSnap = makeDocSnap({ id: 'u1' });
+      mockDb.update.mockResolvedValue(updatedSnap);
+
+      // No groups in the input — constructor sets this.groups = undefined
+      const input = new User({ id: 'u1', firstName: 'Test' });
+      expect(input.groups).toBeUndefined();
+
+      await service.update(input);
+
+      // super.update() uses db.update() — batch is not used
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      expect(firestoreClient.batch).not.toHaveBeenCalled();
+    });
+
+    it('delegates to super.update() when user.groups is defined but membershipService is absent', async () => {
+      const updatedSnap = makeDocSnap({ id: 'u1', groups: ['fc'] });
+      mockDb.update.mockResolvedValue(updatedSnap);
+
+      // service from outer beforeEach has no membershipService
+      const input = new User({ id: 'u1', groups: ['fc'] });
+
+      await service.update(input);
+
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      expect(firestoreClient.batch).not.toHaveBeenCalled();
+    });
+
+    it('uses a WriteBatch when user.groups is defined and membershipService is present', async () => {
+      const mockMembershipService = {
+        addOpsToSyncUserGroups: jest.fn().mockResolvedValue(undefined),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      const oldSnap = makeDocSnap({ id: 'u1', groups: ['old-group'] });
+      mockDb.get.mockResolvedValue(oldSnap);
+
+      const input = new User({ id: 'u1', groups: ['new-group'] });
+      await serviceWithMembership.update(input);
+
+      // super.update() (mockDb.update) is NOT called in the batch path
+      expect(mockDb.update).not.toHaveBeenCalled();
+      // A single WriteBatch is created
+      expect(firestoreClient.batch).toHaveBeenCalledTimes(1);
+      // batch.update writes the user document
+      expect(mockBatch.update).toHaveBeenCalledTimes(1);
+      // membershipService.addOpsToSyncUserGroups receives (batch, userId, oldGroups, newGroups)
+      expect(mockMembershipService.addOpsToSyncUserGroups).toHaveBeenCalledWith(
+        mockBatch,
+        'u1',
+        ['old-group'],
+        ['new-group'],
+      );
+      // batch is committed once after all ops are queued
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes oldUser.groups ?? [] when the old document has no groups field', async () => {
+      const mockMembershipService = {
+        addOpsToSyncUserGroups: jest.fn().mockResolvedValue(undefined),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      // Snap with no groups field in data — userParser sets groups: undefined; ?? [] → []
+      const oldSnap = {
+        ref: { id: 'u1' },
+        data: () => ({
+          email: 'test@example.com',
+          firstName: 'Test',
+          lastName: 'User',
+          role: 'user',
+          created: { toMillis: () => 1_000_000 },
+          updated: { toMillis: () => 2_000_000 },
+          // groups intentionally absent
+        }),
+      };
+      mockDb.get.mockResolvedValue(oldSnap);
+
+      const input = new User({ id: 'u1', groups: ['fc'] });
+      await serviceWithMembership.update(input);
+
+      expect(mockMembershipService.addOpsToSyncUserGroups).toHaveBeenCalledWith(
+        mockBatch,
+        'u1',
+        [], // oldUser.groups ?? [] resolves to []
+        ['fc'],
+      );
+    });
+
+    it('returns the updated user from findOne after batch.commit()', async () => {
+      const mockMembershipService = {
+        addOpsToSyncUserGroups: jest.fn().mockResolvedValue(undefined),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      const snap = makeDocSnap({ id: 'u1', groups: ['fc'] });
+      mockDb.get.mockResolvedValue(snap);
+
+      const input = new User({ id: 'u1', groups: ['fc'] });
+      const result = await serviceWithMembership.update(input);
+
+      expect(result).toBeInstanceOf(User);
+      expect(result.id).toBe('u1');
+    });
+
+    it('does not call batch.commit() when addOpsToSyncUserGroups throws', async () => {
+      const syncError = new Error('Group sync failed');
+      const mockMembershipService = {
+        addOpsToSyncUserGroups: jest.fn().mockRejectedValue(syncError),
+      };
+      const serviceWithMembership = new UserService(mockMembershipService);
+
+      const snap = makeDocSnap({ id: 'u1', groups: ['old'] });
+      mockDb.get.mockResolvedValue(snap);
+
+      const input = new User({ id: 'u1', groups: ['new'] });
+      await expect(serviceWithMembership.update(input)).rejects.toThrow('Group sync failed');
+
       expect(mockBatch.commit).not.toHaveBeenCalled();
     });
   });

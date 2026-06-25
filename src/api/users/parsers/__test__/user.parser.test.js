@@ -1,6 +1,8 @@
 'use strict';
 
+const User = require('../../models/user.model');
 const {
+  userParser,
   createUserParser,
   updateUserParser,
 } = require('../user.parser');
@@ -8,6 +10,25 @@ const {
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Builds a minimal mock DocumentSnapshot for userParser tests.
+ */
+function makeDocSnap({ id = 'user-1', overrideData = {} } = {}) {
+  return {
+    ref: { id },
+    data: () => ({
+      email: 'test@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      groups: [],
+      role: 'user',
+      created: { toMillis: () => 1_000_000 },
+      updated: { toMillis: () => 2_000_000 },
+      ...overrideData,
+    }),
+  };
+}
 
 /**
  * Returns a plain object shaped like a User instance — matching what
@@ -26,6 +47,32 @@ function makeUserWithNoTokens(overrides = {}) {
     ...overrides,
   };
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// userParser (docParser)
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('userParser', () => {
+  it('returns a User instance with the correct id from docSnap.ref.id', () => {
+    const snap = makeDocSnap({ id: 'user-42' });
+    const result = userParser(snap);
+    expect(result).toBeInstanceOf(User);
+    expect(result.id).toBe('user-42');
+  });
+
+  it('assigns null to deletedAt when the field is absent from the document', () => {
+    const snap = makeDocSnap(); // no deletedAt in default data
+    const result = userParser(snap);
+    expect(result.deletedAt).toBeNull();
+  });
+
+  it('converts deletedAt Timestamp to a Date when present in the document', () => {
+    const snap = makeDocSnap({ overrideData: { deletedAt: { toMillis: () => 9_000_000 } } });
+    const result = userParser(snap);
+    expect(result.deletedAt).toBeInstanceOf(Date);
+    expect(result.deletedAt.getTime()).toBe(9_000_000);
+  });
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // updateUserParser — spec task 0.3
@@ -163,6 +210,14 @@ describe('updateUserParser', () => {
     expect(user.email).toBe('test@example.com');
   });
 
+  it('excludes deletedAt — soft-delete is managed only by UserService.delete()', () => {
+    const user = makeUserWithNoTokens({ deletedAt: new Date('2025-01-01T00:00:00.000Z') });
+
+    const data = updateUserParser(user);
+
+    expect(data).not.toHaveProperty('deletedAt');
+  });
+
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -261,5 +316,13 @@ describe('createUserParser', () => {
     const data = createUserParser(user);
 
     expect(data).not.toHaveProperty('created');
+  });
+
+  it('includes deletedAt: null — new users are always active', () => {
+    const user = makeUserWithNoTokens();
+
+    const data = createUserParser(user);
+
+    expect(data.deletedAt).toBeNull();
   });
 });

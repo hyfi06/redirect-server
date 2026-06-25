@@ -149,6 +149,16 @@ describe('GroupService.getBySlug()', () => {
     expect(err).toBeDefined();
     expect(err.output.statusCode).toBe(404);
   });
+
+  it('queries Firestore with where("deletedAt", "==", null) — only active groups are returned', async () => {
+    const docSnap = makeDocSnap({ slug: 'fc' });
+    mockDb.collection.get.mockResolvedValue(makeQuerySnap([docSnap]));
+
+    const service = new GroupService(mockUserService);
+    await service.getBySlug('fc');
+
+    expect(mockDb.collection.where).toHaveBeenCalledWith('deletedAt', '==', null);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,6 +234,21 @@ describe('GroupService.create()', () => {
       err = e;
     }
     expect(err).toBe(unexpectedErr);
+  });
+
+  it('checks slug uniqueness with a global query — no deletedAt filter prevents reuse of soft-deleted slugs', async () => {
+    mockDb.collection.get.mockResolvedValue(makeQuerySnap([]));
+    const createdSnap = makeDocSnap({ slug: 'cs' });
+    mockDb.create.mockResolvedValue(createdSnap);
+
+    const service = new GroupService(mockUserService);
+    const group = new Group({ name: 'Ciencias', slug: 'cs' });
+    await service.create(group);
+
+    // The uniqueness query contains only the slug filter — no deletedAt filter
+    const whereCalls = mockDb.collection.where.mock.calls;
+    expect(whereCalls).toHaveLength(1);
+    expect(whereCalls[0]).toEqual(['slug', '==', 'cs']);
   });
 });
 

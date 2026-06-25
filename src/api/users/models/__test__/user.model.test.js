@@ -87,6 +87,17 @@ describe('User model', () => {
       const user = new User({ email: undefined, id: 'user-123' });
       expect(user.email).toBeUndefined();
     });
+
+    it('defaults deletedAt to null when not provided', () => {
+      const user = new User({ email: 'a@example.com' });
+      expect(user.deletedAt).toBeNull();
+    });
+
+    it('assigns deletedAt when provided as a Date', () => {
+      const date = new Date('2025-01-01T00:00:00.000Z');
+      const user = new User({ email: 'a@example.com', deletedAt: date });
+      expect(user.deletedAt).toBe(date);
+    });
   });
 
   // -------------------------------------------------------------------------
