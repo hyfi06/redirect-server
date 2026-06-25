@@ -273,9 +273,9 @@ res.redirect(302, url)
 
 ---
 
-### `src/redirect/` imports directly from `src/api/redirect/`
+### `src/redirect/` imports from the singleton container
 
-`src/redirect/routes/redirect.router.js` imports the redirect service directly from `src/api/redirect/services/`. There are no re-export intermediaries. When modifying redirect logic, always edit under `src/api/redirect/`.
+`src/redirect/routes/redirect.router.js` imports `redirectService` from `src/lib/services`, which re-exports `redirectServiceApi` under that alias — both names refer to the same singleton instance. When modifying redirect logic, always edit under `src/api/redirect/`.
 
 ---
 
@@ -354,9 +354,9 @@ MembershipService         src/api/users/services/membership.service.js
     oldSlugs and newSlugs; adds FieldValue.arrayUnion(userId) for added slugs and
     FieldValue.arrayRemove(userId) for removed slugs. Does NOT commit — caller is responsible.
     No-op when both arrays are empty. Called by UserService.update() when groups changes.
-  Wired in src/api/users/routes/user.route.api.js: userServiceForGroup (bare, no membershipService)
-  → GroupService → MembershipService(userServiceForGroup, groupService) → UserService(membershipService).
-  userServiceForGroup must not carry a membershipService to avoid a circular dependency.
+  Wired in src/lib/services.js (singleton container). `userServiceForGroup` is an internal-only
+  bare UserService (no membershipService) used to break the UserService ↔ GroupService circular
+  dependency — it is not exported. All consumers import from src/lib/services.js.
 
 ApiKeyService             src/api/users/services/api-key.service.js
   Does NOT extend CrudService — the subcollection path includes a dynamic userId segment
@@ -378,6 +378,12 @@ AuthTokenService          src/api/users/services/auth-token.service.js
   • .read(userId)          — reads users/{userId}/auth/google; returns null if doc does not exist
   • .write(userId, tokens) — set-with-merge on users/{userId}/auth/google; sets updatedAt Timestamp manually
 ```
+
+---
+
+### Service singleton container (`src/lib/services.js`)
+
+All service instances are created once in `src/lib/services.js` and exported as named constants. Node.js module caching ensures every consumer — routes, middleware, and strategy — shares the same instance without additional infrastructure. The instantiation order respects the dependency chain: `userServiceForGroup` → `groupService` → `membershipService` → `userService`. `userServiceForGroup` is internal to this module (not exported) — a bare `UserService` with no `membershipService`, required to break the `UserService ↔ GroupService` circular dependency. The public catch-all router uses the alias `redirectService`, which re-exports the same `redirectServiceApi` instance.
 
 ---
 
@@ -424,7 +430,7 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 - **Auth routes**: `src/api/auth/routes/auth.route.api.js` — mounted at `/api/v1/auth/`. Two routes: `GET /google` (initiates OAuth2 flow) and `GET /google/callback` (exchanges code, returns JWT). Auth routes are under `/api/v1/auth/` and never at root level — the catch-all `GET /*` would intercept them otherwise (D4).
 - **`passport.initialize()`** mounted in `src/app.js` before `apiV1`.
 - **`/api/v1/redirects` is fully protected**: `authenticate` is applied at router level (`redirectRouterApi.use(authenticate)`). All five routes require a valid JWT.
-- **`GET /api/v1/redirects` admin bypass**: if `req.user.role === 'admin'`, the handler calls `redirectServicieApi.getAll(options)` and returns before building the Firestore filter. Non-admin users see only redirects they own or have `read:{group}` permission on.
+- **`GET /api/v1/redirects` admin bypass**: if `req.user.role === 'admin'`, the handler calls `redirectServiceApi.getAll(options)` and returns before building the Firestore filter. Non-admin users see only redirects they own or have `read:{group}` permission on.
 - **`GET /api/v1/redirects/:id` access control**: after fetching the document, the handler checks that the requester is admin, or is the owner, or belongs to a group whose `read:{slug}` entry appears in `redirect.permission`. Returns 403 if none of the conditions are met (D3).
 - **`/api/v1/users` is fully protected**: `authenticate` is applied at router level. Both the users and groups routers reject API Key requests entirely with 403 — a `router.use()` middleware checks `req.user.apiKey !== undefined` immediately after `authenticate`. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated (JWT) user. `PATCH /:id` is accessible to admins or to the user editing their own profile.
 - **`/api/v1/users/me/api-keys`**: sub-router (`src/api/users/routes/api-key.route.js`) mounted inside the user router at `/me/api-keys`, after `GET /me` and before `GET /:id` (Express declaration order). The API key rejection middleware applies to this path as well — managing API keys requires a full JWT session; API Key bearer tokens cannot be used to create or revoke other API keys. `POST /` returns the plaintext token only once; only `keyHash` is stored. Non-admin users cannot request admin-only scopes (`read:users`, `write:users`, `read:groups`, `write:groups`).
