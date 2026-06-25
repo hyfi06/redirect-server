@@ -300,35 +300,43 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.js
                         (throws boom.badRequest if path already taken)
 
 UserService               src/api/users/services/user.service.js
-  • .getByEmail(email) — Firestore where('email', '==', email)
-  • .create()          — enforces email uniqueness before insert
-  • .delete(id)        — fetch-first (findOne) to capture user.groups before deletion.
-                         When membershipService is available and the user has groups: builds a
-                         single WriteBatch with the user doc delete and all group arrayRemove ops
-                         (via membershipService.addOpsToRemoveUserFromGroups), then commits
-                         atomically. Falls back to super.delete(id) when membershipService is
-                         absent or the user belongs to no groups (no group cleanup needed).
+  • .getByEmail(email)  — Firestore where('email', '==', email).where('deletedAt', '==', null).
+                          Only active users are returned — soft-deleted users receive 401 during OAuth2 login.
+  • .create()           — enforces email uniqueness before insert
+  • .update(user)       — if user.groups is defined and membershipService is available: fetch-first
+                          (findOne), builds a WriteBatch with the user doc update and group membership
+                          sync ops (via membershipService.addOpsToSyncUserGroups), commits atomically.
+                          Falls back to super.update(user) when groups is undefined or membershipService absent.
+  • .delete(id)         — soft-delete: fetch-first (findOne) to capture user.groups; builds a WriteBatch
+                          with { deletedAt: Timestamp.now() } on the user doc and FieldValue.arrayRemove(userId)
+                          on each group doc (via membershipService.addOpsToRemoveUserFromGroups); commits atomically.
+                          The user document is NOT deleted — redirects owned by the user remain intact.
+  • .findInactive(opts) — Firestore where('deletedAt', '!=', null), ordered by deletedAt desc. Used by
+                          GET /api/v1/users?inactive=true (admin only).
   Note: User constructor accepts email as optional (guard: email ? ... : undefined).
         PATCH handlers do not supply email — it is immutable post-creation and
         discarded by updateParser before any Firestore write.
 
 GroupService              src/api/groups/services/group.service.js
-  • .getBySlug(slug)   — Firestore where('slug', '==', slug)
-                         Also called by the redirect router (POST /api/v1/redirects) to
-                         verify the group exists in Firestore before constructing the path.
-                         Admin users bypass this check (they can create root-level paths).
-  • .create()          — enforces slug uniqueness before insert
-  • .update(id, group) — fetch-first (findOne) unconditionally; throws 404 if the group does not exist,
-                         regardless of whether `users` is in the payload. If `users` is present,
-                         diffs old vs new membership (comparing user IDs — Firestore document IDs,
-                         not email strings) and builds a WriteBatch with one update per
-                         added/removed member plus the group itself; commits atomically.
-                         Does NOT call super.update() — bypasses FireStoreAdapter entirely;
-                         Timestamps are set manually.
-  • .delete(id)        — fetch-first (findOne) to read group.users (user IDs) and group.slug; builds a
-                         WriteBatch with FieldValue.arrayRemove(slug) on each member's
-                         User.groups field (no fetch per user — server-side op); adds the
-                         group delete to the batch; commits atomically. Timestamps set manually.
+  • .getBySlug(slug)    — Firestore where('slug', '==', slug).where('deletedAt', '==', null).
+                          Only active groups are returned — blocks redirect creation under inactive slugs.
+                          Also called by the redirect router (POST /api/v1/redirects) to verify the group
+                          exists before constructing the path. Admin users bypass this check.
+  • .create()           — enforces slug uniqueness globally (active and inactive docs); queries without a
+                          deletedAt filter so deleted slugs cannot be reused.
+  • .update(id, group)  — fetch-first (findOne) unconditionally; throws 404 if the group does not exist,
+                          regardless of whether `users` is in the payload. If `users` is present,
+                          diffs old vs new membership (comparing user IDs — Firestore document IDs,
+                          not email strings) and builds a WriteBatch with one update per
+                          added/removed member plus the group itself; commits atomically.
+                          Does NOT call super.update() — bypasses FireStoreAdapter entirely;
+                          Timestamps are set manually.
+  • .delete(id)         — soft-delete: fetch-first (findOne) to read group.users and group.slug; builds a
+                          WriteBatch with { deletedAt: Timestamp.now() } on the group doc and
+                          FieldValue.arrayRemove(slug) on each member's User.groups field; commits atomically.
+                          The group document is NOT deleted — slug is permanently reserved to prevent reuse.
+  • .findInactive(opts) — Firestore where('deletedAt', '!=', null), ordered by deletedAt desc. Used by
+                          GET /api/v1/groups?inactive=true (admin only).
   Receives UserService via constructor injection (D12).
 
 MembershipService         src/api/users/services/membership.service.js
@@ -342,6 +350,10 @@ MembershipService         src/api/users/services/membership.service.js
     to addOpsToRemoveUserFromGroups, then commits atomically. Standalone use only;
     UserService.delete() calls addOpsToRemoveUserFromGroups directly to share the batch.
     No-op when userGroups is empty or absent.
+  • .addOpsToSyncUserGroups(batch, userId, oldSlugs, newSlugs) — computes the diff between
+    oldSlugs and newSlugs; adds FieldValue.arrayUnion(userId) for added slugs and
+    FieldValue.arrayRemove(userId) for removed slugs. Does NOT commit — caller is responsible.
+    No-op when both arrays are empty. Called by UserService.update() when groups changes.
   Wired in src/api/users/routes/user.route.api.js: userServiceForGroup (bare, no membershipService)
   → GroupService → MembershipService(userServiceForGroup, groupService) → UserService(membershipService).
   userServiceForGroup must not carry a membershipService to avoid a circular dependency.
@@ -390,11 +402,11 @@ Parsers live alongside their resource: `src/api/{resource}/parsers/`.
 ```js
 // When user has at least one group:
 Filter.or(
-  Filter.where('owner', '==', email),
+  Filter.where('owner', '==', userId),
   Filter.where('permission', 'array-contains-any', ['read:fc', 'read:cs', ...])
 )
 // When user has no groups:
-Filter.where('owner', '==', email)
+Filter.where('owner', '==', userId)
 ```
 
 Groups are Firestore documents (collection `groups`) with a `users: string[]` array of user IDs (Firestore document IDs, not email strings).
@@ -405,7 +417,7 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 ### Auth — JWT, OAuth2, and redirect routes protected
 
 - **JWT**: `src/utils/auth/jwt.js` — `sign()` and `verify()` implemented. Config: `config.jwt.jwtSecret` / `config.jwt.jwtTtl`.
-- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email, writes OAuth tokens to `users/{userId}/auth/google` via `AuthTokenService.write()`, calls `done(null, user)`. Returns 401 if email not in Firestore.
+- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email via `UserService.getByEmail()` (active users only), writes OAuth tokens to `users/{userId}/auth/google` via `AuthTokenService.write()`, calls `done(null, user)`. Returns 401 if email not found or user is soft-deleted.
 - **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — Bearer token dispatcher. If the token starts with `sk_1kg_`, delegates to `authenticateApiKey` (SHA-256 hash lookup via `ApiKeyService.findByHash`, with a 30s node-cache TTL). Otherwise delegates to `authenticateJwt` (JWT verify). Both paths set `req.user`. For API Key auth, `req.user` additionally contains `apiKey: { id, scopes }`. Cache TTL means a revoked key remains valid for up to 30 seconds; the `DELETE /me/api-keys/:keyId` endpoint calls `nodeCache.del(keyHash)` for best-effort same-instance invalidation.
 - **`authorize` middleware**: `src/middleware/authorize.middleware.js` — factory `authorize(...roles)` that checks `req.user.role`.
 - **`authorizeApiKeyScope` middleware**: `src/middleware/authorize-api-key-scope.middleware.js` — factory `authorizeApiKeyScope(requiredScope)`. No-op for JWT requests (`req.user.apiKey === undefined`). For API Key requests, returns 403 if the required scope is not in `req.user.apiKey.scopes`. Applied per-route on the redirect router.
