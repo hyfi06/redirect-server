@@ -180,6 +180,8 @@ Used agents: backend-engineer
 npm run dev         # Development with nodemon and DEBUG=app:* enabled
 npm test            # Run Jest with coverage (sets NODE_ENV=test)
 npm run test:watch
+npm run test:e2e        # E2E suite (requires running server + real Firestore)
+npm run test:e2e:cleanup # Hard-delete all E2E test data from Firestore
 npm run indexes     # Sync Firestore composite indexes from firestore.indexes.json to the active GCP project
 npm run deploy      # gcloud app deploy app.yaml
 ```
