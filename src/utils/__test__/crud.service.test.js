@@ -335,3 +335,61 @@ describe('CrudService — delete()', () => {
     expect(result).toBe('abc');
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// findInactive(options)
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('CrudService — findInactive()', () => {
+  let service;
+
+  beforeEach(() => {
+    service = new CrudService('items');
+    mockDb.collection.get.mockResolvedValue({ empty: true, docs: [] });
+  });
+
+  it("calls where('deletedAt', '!=', null) and orderBy('deletedAt', 'desc')", async () => {
+    await service.findInactive();
+
+    expect(mockDb.collection.where).toHaveBeenCalledWith('deletedAt', '!=', null);
+    expect(mockDb.collection.orderBy).toHaveBeenCalledWith('deletedAt', 'desc');
+  });
+
+  it('applies offset when provided in options', async () => {
+    await service.findInactive({ offset: 10 });
+
+    expect(mockDb.collection.offset).toHaveBeenCalledWith(10);
+  });
+
+  it('applies limit when provided in options', async () => {
+    await service.findInactive({ limit: 5 });
+
+    expect(mockDb.collection.limit).toHaveBeenCalledWith(5);
+  });
+
+  it('returns [] when the snapshot is empty', async () => {
+    mockDb.collection.get.mockResolvedValue({ empty: true, docs: [] });
+
+    const result = await service.findInactive();
+
+    expect(result).toEqual([]);
+  });
+
+  it('applies docParser to each document in the snapshot', async () => {
+    const docParser = jest.fn((doc) => ({ id: doc.id, deletedAt: doc.data().deletedAt }));
+    service = new CrudService('items', docParser);
+    const fakeDocs = [
+      { id: 'a', data: () => ({ deletedAt: new Date('2024-01-01') }) },
+      { id: 'b', data: () => ({ deletedAt: new Date('2024-02-01') }) },
+    ];
+    mockDb.collection.get.mockResolvedValue({ empty: false, docs: fakeDocs });
+
+    const result = await service.findInactive();
+
+    expect(docParser).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([
+      { id: 'a', deletedAt: new Date('2024-01-01') },
+      { id: 'b', deletedAt: new Date('2024-02-01') },
+    ]);
+  });
+});
