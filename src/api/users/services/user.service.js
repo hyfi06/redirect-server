@@ -81,26 +81,6 @@ class UserService extends CrudService {
   }
 
   /**
-   * Returns all soft-deleted users, ordered by deletedAt descending.
-   * Firestore requires ordering by the inequality field first.
-   * @param {object} [options]
-   * @param {number} [options.offset]
-   * @param {number} [options.limit]
-   * @returns {Promise<User[]>}
-   */
-  async findInactive(options = {}) {
-    const { offset, limit } = options;
-    let fsQuery = this.db.collection
-      .where('deletedAt', '!=', null)
-      .orderBy('deletedAt', 'desc');
-    if (offset) fsQuery = fsQuery.offset(offset);
-    if (limit) fsQuery = fsQuery.limit(limit);
-    const snap = await fsQuery.get();
-    if (snap.empty) return [];
-    return snap.docs.map(doc => this.docParser(doc));
-  }
-
-  /**
    * Creates a new user, enforcing email uniqueness.
    * @param {User} user
    * @returns {Promise<User>}

@@ -68,26 +68,6 @@ class GroupService extends CrudService {
   }
 
   /**
-   * Returns all soft-deleted groups, ordered by deletedAt descending.
-   * Firestore requires ordering by the inequality field first.
-   * @param {object} [options]
-   * @param {number} [options.offset]
-   * @param {number} [options.limit]
-   * @returns {Promise<Group[]>}
-   */
-  async findInactive(options = {}) {
-    const { offset, limit } = options;
-    let fsQuery = this.db.collection
-      .where('deletedAt', '!=', null)
-      .orderBy('deletedAt', 'desc');
-    if (offset) fsQuery = fsQuery.offset(offset);
-    if (limit) fsQuery = fsQuery.limit(limit);
-    const snap = await fsQuery.get();
-    if (snap.empty) return [];
-    return snap.docs.map(doc => this.docParser(doc));
-  }
-
-  /**
    * Updates the group and atomically syncs User.groups for added/removed members
    * using a Firestore WriteBatch. Fetch-first: all users in the diff are fetched
    * before any write. If any user does not exist, the request fails with 400 and
