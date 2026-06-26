@@ -295,6 +295,9 @@ CrudService               src/utils/crud.service.js
   constructor(collection, docParser, createParser, updateParser)
   • Wraps FireStoreAdapter; applies parsers on every read/write
   • .find(query, options) supports orderBy (prefix "-" = desc), offset, limit
+  • .findInactive(options) — Firestore where('deletedAt', '!=', null), ordered by deletedAt desc.
+                            Inherited by all soft-deletable subclasses (UserService, GroupService).
+                            Resources that do not support soft-delete never call this method.
     ↑ (extends)
 RedirectServiceApi        src/api/redirect/services/redirect.service.js
   • .getByPath(path)  — Firestore where('path', '==', path)
@@ -313,8 +316,7 @@ UserService               src/api/users/services/user.service.js
                           with { deletedAt: Timestamp.now() } on the user doc and FieldValue.arrayRemove(userId)
                           on each group doc (via membershipService.addOpsToRemoveUserFromGroups); commits atomically.
                           The user document is NOT deleted — redirects owned by the user remain intact.
-  • .findInactive(opts) — Firestore where('deletedAt', '!=', null), ordered by deletedAt desc. Used by
-                          GET /api/v1/users?inactive=true (admin only).
+  • .findInactive(opts) — inherited from CrudService. Used by GET /api/v1/users?inactive=true (admin only).
   Note: User constructor accepts email as optional (guard: email ? ... : undefined).
         PATCH handlers do not supply email — it is immutable post-creation and
         discarded by updateParser before any Firestore write.
@@ -337,8 +339,7 @@ GroupService              src/api/groups/services/group.service.js
                           WriteBatch with { deletedAt: Timestamp.now() } on the group doc and
                           FieldValue.arrayRemove(slug) on each member's User.groups field; commits atomically.
                           The group document is NOT deleted — slug is permanently reserved to prevent reuse.
-  • .findInactive(opts) — Firestore where('deletedAt', '!=', null), ordered by deletedAt desc. Used by
-                          GET /api/v1/groups?inactive=true (admin only).
+  • .findInactive(opts) — inherited from CrudService. Used by GET /api/v1/groups?inactive=true (admin only).
   Receives UserService via constructor injection (D12).
 
 MembershipService         src/api/users/services/membership.service.js
@@ -428,7 +429,8 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 - **`/api/v1/redirects` is fully protected**: `authenticate` is applied at router level (`redirectRouterApi.use(authenticate)`). All five routes require a valid JWT.
 - **`GET /api/v1/redirects` admin bypass**: if `req.user.role === 'admin'`, the handler calls `redirectServiceApi.getAll(options)` and returns before building the Firestore filter. Non-admin users see only redirects they own or have `read:{group}` permission on.
 - **`GET /api/v1/redirects/:id` access control**: after fetching the document, the handler checks that the requester is admin, or is the owner, or belongs to a group whose `read:{slug}` entry appears in `redirect.permission`. Returns 403 if none of the conditions are met (D3).
-- **`/api/v1/users` is fully protected**: `authenticate` is applied at router level. Both the users and groups routers reject API Key requests entirely with 403 — a `router.use()` middleware checks `req.user.apiKey !== undefined` immediately after `authenticate`. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated (JWT) user. `PATCH /:id` is accessible to admins or to the user editing their own profile.
+- **`requireJwt` middleware**: `src/middleware/require-jwt.middleware.js` — rejects requests authenticated with an API Key (`boom.forbidden`). Mounted via `router.use(requireJwt)` on both the users and groups routers immediately after `authenticate`. Centralises the rejection logic that was previously duplicated as inline anonymous middleware in each router.
+- **`/api/v1/users` is fully protected**: `authenticate` then `requireJwt` are applied at router level — API Key requests are rejected entirely with 403. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated (JWT) user. `PATCH /:id` is accessible to admins or to the user editing their own profile.
 - **`/api/v1/users/me/api-keys`**: sub-router (`src/api/users/routes/api-key.route.js`) mounted inside the user router at `/me/api-keys`, after `GET /me` and before `GET /:id` (Express declaration order). The API key rejection middleware applies to this path as well — managing API keys requires a full JWT session; API Key bearer tokens cannot be used to create or revoke other API keys. `POST /` returns the plaintext token only once; only `keyHash` is stored. Non-admin users cannot request admin-only scopes (`read:users`, `write:users`, `read:groups`, `write:groups`).
 - **`/api/v1/redirects` accepts API Keys**: `authorizeApiKeyScope` is applied per-route. `GET /` and `GET /:id` require scope `read:redirects`; `POST /`, `PATCH /:id`, and `DELETE /:id` require scope `write:redirects`. JWT requests pass through the scope middleware unconditionally.
 
