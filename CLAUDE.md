@@ -373,12 +373,6 @@ ApiKeyService             src/api/users/services/api-key.service.js
                             extracts userId from docSnap.ref.parent.parent.id;
                             returns {apiKey, userId} or null
   Requires COLLECTION_GROUP index on apiKeys.keyHash (see firestore.indexes.json §3.7).
-
-AuthTokenService          src/api/users/services/auth-token.service.js
-  Does NOT extend CrudService — the subcollection path includes a dynamic userId segment.
-  Accesses Firestore directly via the singleton firestoreClient.
-  • .read(userId)          — reads users/{userId}/auth/google; returns null if doc does not exist
-  • .write(userId, tokens) — set-with-merge on users/{userId}/auth/google; sets updatedAt Timestamp manually
 ```
 
 ---
@@ -425,7 +419,7 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 ### Auth — JWT, OAuth2, and redirect routes protected
 
 - **JWT**: `src/utils/auth/jwt.js` — `sign()` and `verify()` implemented. Config: `config.jwt.jwtSecret` / `config.jwt.jwtTtl`.
-- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email via `UserService.getByEmail()` (active users only), writes OAuth tokens to `users/{userId}/auth/google` via `AuthTokenService.write()`, calls `done(null, user)`. Returns 401 if email not found or user is soft-deleted.
+- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email via `UserService.getByEmail()` (active users only), calls `done(null, user)`. Returns 401 if email not found or user is soft-deleted. Google OAuth tokens are not stored — the server issues its own JWT immediately after authentication.
 - **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — Bearer token dispatcher. If the token starts with `sk_1kg_`, delegates to `authenticateApiKey` (SHA-256 hash lookup via `ApiKeyService.findByHash`, with a 30s node-cache TTL). Otherwise delegates to `authenticateJwt` (JWT verify). Both paths set `req.user`. For API Key auth, `req.user` additionally contains `apiKey: { id, scopes }`. Cache TTL means a revoked key remains valid for up to 30 seconds; the `DELETE /me/api-keys/:keyId` endpoint calls `nodeCache.del(keyHash)` for best-effort same-instance invalidation.
 - **`authorize` middleware**: `src/middleware/authorize.middleware.js` — factory `authorize(...roles)` that checks `req.user.role`.
 - **`authorizeApiKeyScope` middleware**: `src/middleware/authorize-api-key-scope.middleware.js` — factory `authorizeApiKeyScope(requiredScope)`. No-op for JWT requests (`req.user.apiKey === undefined`). For API Key requests, returns 403 if the required scope is not in `req.user.apiKey.scopes`. Applied per-route on the redirect router.
