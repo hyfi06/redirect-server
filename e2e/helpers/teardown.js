@@ -42,16 +42,6 @@ async function cleanAll() {
       batch.delete(keyDoc.ref);
     }
 
-    // auth subcollection (OAuth tokens)
-    const authSnap = await firestoreClient
-      .collection('users')
-      .doc(doc.id)
-      .collection('auth')
-      .get();
-    for (const authDoc of authSnap.docs) {
-      batch.delete(authDoc.ref);
-    }
-
     batch.delete(doc.ref);
   }
 

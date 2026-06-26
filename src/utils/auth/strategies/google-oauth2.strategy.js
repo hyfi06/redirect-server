@@ -1,7 +1,7 @@
 const passport = require('passport');
 const config = require('../../../config');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth2');
-const { userService, authTokenService } = require('../../../lib/services');
+const { userService } = require('../../../lib/services');
 
 passport.use(
   new GoogleStrategy(
@@ -24,10 +24,6 @@ passport.use(
           }
           throw error;
         }
-        await authTokenService.write(user.id, {
-          googleToken: accessToken,
-          googleRefreshToken: refreshToken,
-        });
         return done(null, user);
       } catch (error) {
         return done(error);

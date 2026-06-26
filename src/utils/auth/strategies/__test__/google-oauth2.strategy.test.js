@@ -4,9 +4,8 @@
  * Tests for src/utils/auth/strategies/google-oauth2.strategy.js
  *
  * The module registers a GoogleStrategy with passport at require-time and
- * instantiates UserService and AuthTokenService at module level. We use
- * jest.resetModules() before each group so that each require gets a fresh
- * module with fresh mocks.
+ * instantiates UserService at module level. We use jest.resetModules() before
+ * each group so that each require gets a fresh module with fresh mocks.
  *
  * Extraction pattern:
  *   passport.use is called with a GoogleStrategy instance.
@@ -16,7 +15,6 @@
 
 jest.mock('passport');
 jest.mock('../../../../api/users/services/user.service');
-jest.mock('../../../../api/users/services/auth-token.service');
 jest.mock('../../../../config', () => ({
   oauthGoogle: {
     clientId: 'test-client-id',
@@ -31,7 +29,6 @@ jest.mock('../../../../config', () => ({
 
 const passport = require('passport');
 const UserService = require('../../../../api/users/services/user.service');
-const AuthTokenService = require('../../../../api/users/services/auth-token.service');
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -64,7 +61,6 @@ function getVerifyCallback() {
 
 describe('google-oauth2 strategy verify callback', () => {
   let mockGetByEmail;
-  let mockWrite;
   let verify;
   let done;
 
@@ -72,16 +68,10 @@ describe('google-oauth2 strategy verify callback', () => {
     jest.resetModules();
 
     mockGetByEmail = jest.fn();
-    mockWrite = jest.fn();
 
     const UserServiceMock = require('../../../../api/users/services/user.service');
     UserServiceMock.mockImplementation(() => ({
       getByEmail: mockGetByEmail,
-    }));
-
-    const AuthTokenServiceMock = require('../../../../api/users/services/auth-token.service');
-    AuthTokenServiceMock.mockImplementation(() => ({
-      write: mockWrite,
     }));
 
     // Re-require passport so mock.calls is fresh.
@@ -113,49 +103,16 @@ describe('google-oauth2 strategy verify callback', () => {
     });
   });
 
-  it('does not call authTokenService.write when getByEmail throws a 404', async () => {
-    mockGetByEmail.mockRejectedValue({ output: { statusCode: 404 } });
-
-    await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
-
-    expect(mockWrite).not.toHaveBeenCalled();
-  });
-
   // ── 2. Successful login ───────────────────────────────────────────────────
 
   it('calls done(null, user) with the stored user on successful login', async () => {
     const storedUser = makeStoredUser();
     mockGetByEmail.mockResolvedValue(storedUser);
-    mockWrite.mockResolvedValue(undefined);
 
     await verify({}, 'new-token', 'new-refresh', makeProfile(), done);
 
     expect(done).toHaveBeenCalledTimes(1);
     expect(done).toHaveBeenCalledWith(null, storedUser);
-  });
-
-  it('calls authTokenService.write with googleToken and googleRefreshToken', async () => {
-    const storedUser = makeStoredUser();
-    mockGetByEmail.mockResolvedValue(storedUser);
-    mockWrite.mockResolvedValue(undefined);
-
-    await verify({}, 'new-access', 'new-refresh', makeProfile(), done);
-
-    expect(mockWrite).toHaveBeenCalledTimes(1);
-    expect(mockWrite).toHaveBeenCalledWith('user-001', {
-      googleToken: 'new-access',
-      googleRefreshToken: 'new-refresh',
-    });
-  });
-
-  it('calls authTokenService.write with the user id from getByEmail', async () => {
-    const storedUser = makeStoredUser({ id: 'uid-special' });
-    mockGetByEmail.mockResolvedValue(storedUser);
-    mockWrite.mockResolvedValue(undefined);
-
-    await verify({}, 'tok', 'ref', makeProfile(), done);
-
-    expect(mockWrite.mock.calls[0][0]).toBe('uid-special');
   });
 
   // ── 3. Non-404 error in getByEmail ────────────────────────────────────────
@@ -186,29 +143,5 @@ describe('google-oauth2 strategy verify callback', () => {
     await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
 
     expect(done).toHaveBeenCalledWith(bareError);
-  });
-
-  // ── 4. Error in authTokenService.write ───────────────────────────────────
-
-  it('calls done(error) when authTokenService.write throws after a successful getByEmail', async () => {
-    const writeError = new Error('Firestore write failed');
-    mockGetByEmail.mockResolvedValue(makeStoredUser());
-    mockWrite.mockRejectedValue(writeError);
-
-    await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
-
-    expect(done).toHaveBeenCalledTimes(1);
-    expect(done).toHaveBeenCalledWith(writeError);
-  });
-
-  it('does not call done(null, ...) when authTokenService.write throws', async () => {
-    mockGetByEmail.mockResolvedValue(makeStoredUser());
-    mockWrite.mockRejectedValue(new Error('write error'));
-
-    await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
-
-    expect(done.mock.calls[0][1]).not.toBeDefined();
-    // done is called with a single argument (the error)
-    expect(done.mock.calls[0].length).toBe(1);
   });
 });
