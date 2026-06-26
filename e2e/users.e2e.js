@@ -37,7 +37,7 @@ afterAll(async () => {
 test('admin creates user → 201 with public fields', async () => {
   const res = await request('POST', '/api/v1/users', {
     body: {
-      email: 'e2e-users-new@e2e.test',
+      email: 'e2e-users-new@e2e.example.com',
       firstName: 'E2E',
       lastName: 'UsersNew',
       role: 'user',
@@ -47,7 +47,7 @@ test('admin creates user → 201 with public fields', async () => {
   });
   expect(res.status).toBe(201);
   expect(res.data.data).toHaveProperty('id');
-  expect(res.data.data).toHaveProperty('email', 'e2e-users-new@e2e.test');
+  expect(res.data.data).toHaveProperty('email', 'e2e-users-new@e2e.example.com');
   // Auth tokens must never appear in the response (§3: moved to subcollection).
   expect(res.data.data).not.toHaveProperty('googleToken');
   expect(res.data.data).not.toHaveProperty('googleRefreshToken');

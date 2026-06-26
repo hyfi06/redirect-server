@@ -17,7 +17,7 @@ const ADMIN_USER_ID = 'e2e-admin-001';
  */
 async function createAdmin() {
   await firestoreClient.collection('users').doc(ADMIN_USER_ID).set({
-    email: 'e2e-admin@e2e.test',
+    email: 'e2e-admin@e2e.example.com',
     firstName: 'E2E',
     lastName: 'Admin',
     role: 'admin',

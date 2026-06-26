@@ -49,7 +49,7 @@ beforeAll(async () => {
   // Create the regular user and assign them to e2e-group.
   const userRes = await request('POST', '/api/v1/users', {
     body: {
-      email: 'e2e-redir-user@e2e.test',
+      email: 'e2e-redir-user@e2e.example.com',
       firstName: 'E2E',
       lastName: 'RedirUser',
       role: 'user',

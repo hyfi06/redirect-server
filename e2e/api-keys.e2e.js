@@ -31,7 +31,7 @@ beforeAll(async () => {
   // Create a regular user to own the API key.
   const userRes = await request('POST', '/api/v1/users', {
     body: {
-      email: 'e2e-apikey-user@e2e.test',
+      email: 'e2e-apikey-user@e2e.example.com',
       firstName: 'E2E',
       lastName: 'ApiKeyUser',
       role: 'user',

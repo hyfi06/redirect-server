@@ -17,7 +17,7 @@ const ADMIN_USER_ID = 'e2e-admin-001';
 function adminToken() {
   return sign({
     userId: ADMIN_USER_ID,
-    email: 'e2e-admin@e2e.test',
+    email: 'e2e-admin@e2e.example.com',
     role: 'admin',
     groups: [],
   });
@@ -31,7 +31,7 @@ function adminToken() {
 function userToken(userId, groups = []) {
   return sign({
     userId,
-    email: `${userId}@e2e.test`,
+    email: `${userId}@e2e.example.com`,
     role: 'user',
     groups,
   });

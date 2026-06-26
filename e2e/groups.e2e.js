@@ -49,7 +49,7 @@ test('admin adds user to group via PATCH → 200; User.groups updated', async ()
   // Create the user who will be added to the group.
   const userRes = await request('POST', '/api/v1/users', {
     body: {
-      email: 'e2e-grp-member@e2e.test',
+      email: 'e2e-grp-member@e2e.example.com',
       firstName: 'E2E',
       lastName: 'GrpMember',
       role: 'user',
