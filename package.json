@@ -11,7 +11,7 @@
     "test:e2e": "NODE_ENV=test npx jest --testMatch=\"**/e2e/**/*.e2e.js\" --runInBand --forceExit --no-coverage",
     "test:e2e:cleanup": "node e2e/helpers/teardown.js",
     "indexes": "node scripts/manage-indexes.js",
-    "deploy": "gcloud app deploy"
+    "deploy": "gcloud app deploy app.yaml"
   },
   "repository": {
     "type": "git",
