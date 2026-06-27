@@ -5,7 +5,7 @@
  * script via `npm run test:e2e:cleanup` when a test run is interrupted mid-suite.
  *
  * Prefix conventions that identify E2E resources:
- *   Users     — email starts with 'e2e' (covers e2e-admin@e2e.test, e2e-*@e2e.test)
+ *   Users     — email starts with 'e2e' (covers e2e-admin@e2e.example.com, e2e-*@e2e.example.com)
  *   Groups    — slug starts with 'e2e-'
  *   Redirects — path starts with '/e2e-'
  */
