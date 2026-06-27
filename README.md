@@ -6,14 +6,7 @@ Self-hosted URL shortener running on Google Cloud App Engine + Firestore. Users 
 
 ---
 
-## Changelog v3
-
-- JWT authentication (HS256, configurable TTL)
-- Google OAuth2 login flow
-- REST API v1: redirects, users, groups
-- Path namespace enforcement (group-scoped paths for regular users)
-- Structured JSON logging for Cloud Logging
-- `GET /_ah/health` health check endpoint with Firestore connectivity probe
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 
@@ -92,6 +85,16 @@ gcloud firestore indexes composite create \
 gcloud firestore indexes composite create \
   --collection-group=groups \
   --field-config=field-path=slug,order=ASCENDING \
+  --field-config=field-path=updated,order=DESCENDING
+
+gcloud firestore indexes composite create \
+  --collection-group=users \
+  --field-config=field-path=deletedAt,order=ASCENDING \
+  --field-config=field-path=updated,order=DESCENDING
+
+gcloud firestore indexes composite create \
+  --collection-group=groups \
+  --field-config=field-path=deletedAt,order=ASCENDING \
   --field-config=field-path=updated,order=DESCENDING
 ```
 

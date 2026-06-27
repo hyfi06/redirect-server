@@ -16,18 +16,32 @@
 # Node.js dependencies:
 node_modules/
 
-# Development files
-.env.example
-README.md
-.eslintrc
-.prettierrc.json
-coverage
+# Local environment — secrets must not be uploaded
+.env.*
 
-# Docs and dev guidance (not needed at runtime)
-docs/
+# Development config
+.eslintrc.json
+.prettierrc.json
+.nvmrc
+
+# CI / tooling
+README.md
+LICENSE
 CLAUDE.md
 .claude/
 
-# Test files and test configuration
+# Firestore index management (deploy-time only, not runtime)
+firestore.indexes.json
+
+# Test suites and test configuration
 jest.config.js
 src/**/__test__/
+e2e/
+
+# Migration and maintenance scripts (run locally, not at runtime)
+scripts/
+
+# Build artifacts and generated output
+coverage
+docs/
+CHANGELOG.md
