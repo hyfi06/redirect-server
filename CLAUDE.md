@@ -59,6 +59,21 @@ A redirect can be deleted by the owner, an admin, or a user whose group appears 
 - `main` — production. Only the public redirect catch-all is live. No API, no auth.
 - `dev` — active development. API v1 (`/api/v1/redirects`, `/api/v1/users`, `/api/v1/groups`) + auth complete. Not yet merged to main.
 
+### Versioning convention
+
+This project uses **GENERACIÓN.FEATURE.PATCH** (not strict SemVer):
+
+| Segment | When to increment |
+|---------|-------------------|
+| `GENERACIÓN` | Architectural redesign, breaking change, or major new product direction (e.g. v3→v4: added auth + REST API) |
+| `FEATURE` | New user-facing functionality, backward-compatible (e.g. v4.0→v4.1: soft-delete + API Keys) |
+| `PATCH` | Bug fixes, docs, tooling, refactors — no behavior change visible to users |
+
+**Tagging rules:**
+- One tag per release, on `main`, after the merge commit.
+- Format: `vMAJOR.MINOR.PATCH` — no suffixes (`-release`, `-hotfix`, etc.).
+- Pre-release tags (`-alpha`, `-beta`, `-rc.N`) are valid before a GENERACIÓN release.
+
 ---
 
 ## Development Flow

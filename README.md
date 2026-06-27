@@ -6,24 +6,7 @@ Self-hosted URL shortener running on Google Cloud App Engine + Firestore. Users 
 
 ---
 
-## Changelog v4.1.1
-
-- Soft-delete for users and groups (`deletedAt` field); soft-deleted users cannot log in
-- API Key authentication (`sk_1kg_` prefix, scoped, SHA-256 hash stored in Firestore)
-- Permission scopes on redirects: `read:{group}`, `edit:{group}`, `delete:{group}`
-- `GET /api/v1/users?inactive=true` and `GET /api/v1/groups?inactive=true` (admin only)
-- `GET /api/v1/users/me/api-keys` sub-resource for managing API keys
-- Redirect `owner` field changed from email string to Firestore document ID (userId)
-- Eliminated dead code: auth token subcollection removed; shared utilities extracted
-
-## Changelog v3
-
-- JWT authentication (HS256, configurable TTL)
-- Google OAuth2 login flow
-- REST API v1: redirects, users, groups
-- Path namespace enforcement (group-scoped paths for regular users)
-- Structured JSON logging for Cloud Logging
-- `GET /_ah/health` health check endpoint with Firestore connectivity probe
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 

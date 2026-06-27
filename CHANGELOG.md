@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.2] - 2026-06-27
+
+### Added
+
+- `CHANGELOG.md` — full version history following Keep a Changelog conventions.
+- Migration runbook `docs/runbooks/migrate-to-v4.1.1.md` — step-by-step guide for upgrading Firestore data from pre-v4.1 to v4.1.1.
+
+### Changed
+
+- `README.md` — inline changelogs removed; replaced with a link to `CHANGELOG.md`.
+- `docs/api/v1.md` — `owner` field in redirect response examples corrected to userId (was email); `deletedAt: null` added to all user response examples; PATCH/DELETE access descriptions updated to include group `edit`/`delete` scopes.
+- Deploy script corrected: `gcloud app deploy` → `gcloud app deploy app.yaml`.
+- `.gcloudignore` expanded: `e2e/`, `scripts/`, `firestore.indexes.json`, `CHANGELOG.md`, `LICENSE`, `.nvmrc`, `.env`/`.env.*` excluded from uploads; `.eslintrc` entry corrected to `.eslintrc.json`.
+
 ## [4.1.1] - 2026-06-27
 
 ### Added
@@ -131,12 +145,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/hyfi06/redirect-server/compare/v4.1.1...HEAD
+[Unreleased]: https://github.com/hyfi06/redirect-server/compare/v4.1.2...HEAD
+[4.1.2]: https://github.com/hyfi06/redirect-server/compare/v4.1.1...v4.1.2
 [4.1.1]: https://github.com/hyfi06/redirect-server/compare/v4.0.4...v4.1.1
 [4.0.4]: https://github.com/hyfi06/redirect-server/compare/v4.0.3...v4.0.4
 [4.0.3]: https://github.com/hyfi06/redirect-server/compare/v4.0.2...v4.0.3
 [4.0.2]: https://github.com/hyfi06/redirect-server/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/hyfi06/redirect-server/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/hyfi06/redirect-server/compare/v3.0.1...v4.0.0
-[3.0.1]: https://github.com/hyfi06/redirect-server/compare/v3.0.0...v3.0.1
-[3.0.0]: https://github.com/hyfi06/redirect-server/releases/tag/v3.0.0
+
+[3.0.1]: <https://github.com/hyfi06/redirect-server/compare/v3.0.0...v3.0.1[3.0.0>]: <https://github.com/hyfi06/redirect-server/releases/tag/v3.0.0>
