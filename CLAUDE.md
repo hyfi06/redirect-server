@@ -390,11 +390,15 @@ Each resource defines three parser functions:
 
 | Parser | Direction | Responsibility |
 |---|---|---|
-| `docParser` | `DocumentSnapshot → Model` | Reads from Firestore; converts Timestamps to Date |
+| `docParser` | `DocumentSnapshot → Model` | Reads from Firestore; converts Timestamps to Date using `parseTimestamp` / `parseOptionalTimestamp` from `src/utils/clean.data.utils.js` |
 | `createParser` | `Model → plain object` | Strips `id`; sets defaults (`permission: []`, `categories: []`) |
 | `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`/`path`); removes `undefined` keys via `cleanDocObject` |
 
 Parsers live alongside their resource: `src/api/{resource}/parsers/`.
+
+Timestamp utilities (`parseTimestamp`, `parseOptionalTimestamp`) and document utilities (`cleanDocObject`, `deleteRegData`) live in `src/utils/clean.data.utils.js`. All three docParsers import from this module.
+
+Shared Joi field definitions (`id`, `offset`, `limit`, `orderBy`, `inactive`) live in `src/api/schemas/common.schema.js`. The three resource schemas (`redirect.schema.js`, `user.schema.js`, `group.schema.js`) import common fields from this module rather than redefining them inline.
 
 ---
 
