@@ -3,6 +3,8 @@ const User = require('../models/user.model');
 const {
   cleanDocObject,
   deleteRegData,
+  parseTimestamp,
+  parseOptionalTimestamp,
 } = require('../../../utils/clean.data.utils');
 
 /**
@@ -16,9 +18,9 @@ function userParser(docSnap) {
   return new User({
     ...data,
     id,
-    created: new Date(data.created.toMillis()),
-    updated: new Date(data.updated.toMillis()),
-    deletedAt: data.deletedAt ? new Date(data.deletedAt.toMillis()) : null,
+    created: parseTimestamp(data.created),
+    updated: parseTimestamp(data.updated),
+    deletedAt: parseOptionalTimestamp(data.deletedAt),
   });
 }
 

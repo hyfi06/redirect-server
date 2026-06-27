@@ -1,6 +1,6 @@
 const Joi = require('joi');
+const common = require('../../schemas/common.schema');
 
-const id = Joi.string();
 const email = Joi.string().email();
 const name = Joi.string().max(70).min(1);
 // max(10) guards the array-contains-any Firestore limit of 10 values
@@ -8,9 +8,9 @@ const groups = Joi.array().items(Joi.string()).max(10);
 const role = Joi.string().valid('user', 'admin');
 
 const getUsersQuerySchema = Joi.object({
-  offset: Joi.number().integer().min(1),
-  limit: Joi.number().integer().min(1),
-  inactive: Joi.boolean(),
+  offset: common.offset,
+  limit: common.limit,
+  inactive: common.inactive,
 });
 
 const createUserSchema = Joi.object({
@@ -22,7 +22,7 @@ const createUserSchema = Joi.object({
 });
 
 const idSchema = Joi.object({
-  id: id.required(),
+  id: common.id.required(),
 });
 
 // Admin can change role and groups; regular users can only change their own name (D-B4-3)

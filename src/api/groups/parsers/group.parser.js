@@ -1,6 +1,6 @@
 const FireStore = require('@google-cloud/firestore');
 const { Group } = require('../models/group.model');
-const { cleanDocObject, deleteRegData } = require('../../../utils/clean.data.utils');
+const { cleanDocObject, deleteRegData, parseTimestamp, parseOptionalTimestamp } = require('../../../utils/clean.data.utils');
 
 /**
  * @param {FireStore.DocumentSnapshot} docSnap
@@ -12,9 +12,9 @@ function groupDocParser(docSnap) {
   return new Group({
     ...data,
     id,
-    created: new Date(data.created.toMillis()),
-    updated: new Date(data.updated.toMillis()),
-    deletedAt: data.deletedAt ? new Date(data.deletedAt.toMillis()) : null,
+    created: parseTimestamp(data.created),
+    updated: parseTimestamp(data.updated),
+    deletedAt: parseOptionalTimestamp(data.deletedAt),
   });
 }
 
