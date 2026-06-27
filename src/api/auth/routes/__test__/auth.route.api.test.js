@@ -113,6 +113,8 @@ function makeUser(overrides = {}) {
     lastName: 'Example',
     groups: ['fc'],
     role: 'user',
+    // deletedAt: null is part of the public user model (§2.3.4)
+    deletedAt: null,
     auth: {
       googleToken: 'gt',
       googleRefreshToken: 'grt',
@@ -121,6 +123,8 @@ function makeUser(overrides = {}) {
     },
     ...overrides,
   };
+  // Note: auth.route.api.js calls the imported toPublic(req.user), not this method.
+  // The method is kept for reference only.
   base.toPublic = () => ({
     id: base.id,
     email: base.email,
@@ -128,6 +132,7 @@ function makeUser(overrides = {}) {
     lastName: base.lastName,
     groups: base.groups,
     role: base.role,
+    deletedAt: base.deletedAt,
   });
   return base;
 }
@@ -233,6 +238,25 @@ describe('auth routes', () => {
         role: 'admin',
         groups: ['fc', 'cs'],
       });
+    });
+
+    it('includes deletedAt in the user field of the response (§2.3.4)', async () => {
+      // deletedAt is part of the public user contract. An active user has deletedAt: null.
+      const user = makeUser({ deletedAt: null });
+      sign.mockReturnValue('some.token');
+
+      callbackState.middleware = (req, res, next) => {
+        req.user = user;
+        next();
+      };
+
+      const app = buildApp();
+      const res = await request(app).get('/api/v1/auth/google/callback');
+
+      expect(res.status).toBe(200);
+      // deletedAt must be explicitly present with value null, not absent from the response
+      expect(Object.prototype.hasOwnProperty.call(res.body.data.user, 'deletedAt')).toBe(true);
+      expect(res.body.data.user.deletedAt).toBeNull();
     });
 
     it('excludes auth tokens from the user field in the response', async () => {

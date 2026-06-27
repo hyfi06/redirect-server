@@ -98,6 +98,8 @@ function mockUserWithPublic(overrides = {}) {
     lastName: overrides.lastName || 'User',
     groups: overrides.groups || [],
     role: overrides.role || 'user',
+    // deletedAt is part of the public user contract (§2.3.4); active users have null
+    deletedAt: overrides.deletedAt !== undefined ? overrides.deletedAt : null,
     created: overrides.created,
     updated: overrides.updated,
   };
@@ -215,6 +217,9 @@ describe('GET /api/v1/users', () => {
     expect(res.body.data).toHaveLength(2);
     expect(res.body.data[0].id).toBe('u1');
     expect(res.body.data[1].id).toBe('u2');
+    // §2.3.4 — deletedAt must be present on every item in the list (null for active users)
+    expect(Object.prototype.hasOwnProperty.call(res.body.data[0], 'deletedAt')).toBe(true);
+    expect(res.body.data[0].deletedAt).toBeNull();
   });
 
   it('does not include auth fields in any item of the response array', async () => {
@@ -306,6 +311,9 @@ describe('GET /api/v1/users/me', () => {
     expect(res.body.message).toBe('profile retrieved');
     expect(res.body.data.id).toBe('admin-1');
     expect(res.body.data.email).toBe('admin@example.com');
+    // §2.3.4 — deletedAt must be present in the public user object (null for active users)
+    expect(Object.prototype.hasOwnProperty.call(res.body.data, 'deletedAt')).toBe(true);
+    expect(res.body.data.deletedAt).toBeNull();
   });
 
   it('returns 200 with a regular user profile', async () => {
