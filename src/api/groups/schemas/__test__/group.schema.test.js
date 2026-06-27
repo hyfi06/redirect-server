@@ -207,4 +207,19 @@ describe('getGroupQuerySchema', () => {
     const { error } = validate(getGroupQuerySchema, { owner: 'admin@test.com' });
     expect(error).toBeDefined();
   });
+
+  it('accepts inactive: true', () => {
+    const { error } = validate(getGroupQuerySchema, { inactive: true });
+    expect(error).toBeUndefined();
+  });
+
+  it('accepts inactive: false', () => {
+    const { error } = validate(getGroupQuerySchema, { inactive: false });
+    expect(error).toBeUndefined();
+  });
+
+  it('rejects a non-boolean value for inactive', () => {
+    const { error } = validate(getGroupQuerySchema, { inactive: 'yes' });
+    expect(error).toBeDefined();
+  });
 });
