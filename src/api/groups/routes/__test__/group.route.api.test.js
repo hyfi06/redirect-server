@@ -183,28 +183,34 @@ describe('authenticate applied to all routes', () => {
 // GET /
 // ─────────────────────────────────────────────────────────────────────────────
 describe('GET /groups', () => {
-  it('admin: calls getAll and returns all groups with 200', async () => {
-    mockGroupMethods.getAll.mockResolvedValue([SAMPLE_GROUP]);
+  it('admin: calls find with deletedAt==null and returns active groups with 200', async () => {
+    mockGroupMethods.find.mockResolvedValue([SAMPLE_GROUP]);
     const res = await request(app)
       .get('/groups')
       .set('x-test-user', userHeader(ADMIN_USER));
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('groups retrieved');
     expect(res.body.data).toEqual([SAMPLE_GROUP]);
-    expect(mockGroupMethods.getAll).toHaveBeenCalledTimes(1);
-    expect(mockGroupMethods.find).not.toHaveBeenCalled();
+    expect(mockGroupMethods.find).toHaveBeenCalledWith(
+      ['deletedAt', '==', null],
+      expect.any(Object),
+    );
+    expect(mockGroupMethods.getAll).not.toHaveBeenCalled();
   });
 
-  it('regular user with groups: calls find with slug in user.groups', async () => {
+  it('regular user with groups: calls find with a compound Filter and returns 200', async () => {
     mockGroupMethods.find.mockResolvedValue([SAMPLE_GROUP]);
     const res = await request(app)
       .get('/groups')
       .set('x-test-user', userHeader(REGULAR_USER));
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('groups retrieved');
+    // Handler passes a Filter.and(slug-in, deletedAt==null) — the exact Filter object
+    // cannot be compared by value, so we verify find was called with a single-element
+    // array containing any object and an options object.
     expect(mockGroupMethods.find).toHaveBeenCalledWith(
-      ['slug', 'in', REGULAR_USER.groups],
-      expect.any(Object)
+      [expect.any(Object)],
+      expect.any(Object),
     );
     expect(mockGroupMethods.getAll).not.toHaveBeenCalled();
   });
@@ -221,7 +227,7 @@ describe('GET /groups', () => {
   });
 
   it('forwards service errors to the error handler', async () => {
-    mockGroupMethods.getAll.mockRejectedValue(new Error('Firestore down'));
+    mockGroupMethods.find.mockRejectedValue(new Error('Firestore down'));
     const res = await request(app)
       .get('/groups')
       .set('x-test-user', userHeader(ADMIN_USER));
@@ -235,13 +241,14 @@ describe('GET /groups', () => {
     expect(res.status).toBe(400);
   });
 
-  it('admin with offset and limit: calls getAll with parsed integers and returns 200', async () => {
-    mockGroupMethods.getAll.mockResolvedValue([]);
+  it('admin with offset and limit: calls find with parsed integers and returns 200', async () => {
+    mockGroupMethods.find.mockResolvedValue([]);
     const res = await request(app)
       .get('/groups?offset=5&limit=10')
       .set('x-test-user', userHeader(ADMIN_USER));
     expect(res.status).toBe(200);
-    expect(mockGroupMethods.getAll).toHaveBeenCalledWith(
+    expect(mockGroupMethods.find).toHaveBeenCalledWith(
+      ['deletedAt', '==', null],
       expect.objectContaining({ offset: 5, limit: 10 }),
     );
   });

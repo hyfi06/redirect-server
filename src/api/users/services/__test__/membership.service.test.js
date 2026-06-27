@@ -30,7 +30,10 @@ let mockGroupRef;
 beforeEach(() => {
   // Timestamp and FieldValue stubs — values are opaque in these tests; shape is all that matters.
   Firestore.Timestamp = { fromMillis: jest.fn().mockReturnValue({ _seconds: 0 }) };
-  Firestore.FieldValue = { arrayRemove: jest.fn().mockImplementation((v) => ({ _arrayRemove: v })) };
+  Firestore.FieldValue = {
+    arrayRemove: jest.fn().mockImplementation((v) => ({ _arrayRemove: v })),
+    arrayUnion: jest.fn().mockImplementation((v) => ({ _arrayUnion: v })),
+  };
 
   // Batch mock
   mockBatch = {
@@ -158,6 +161,99 @@ describe('MembershipService.removeUserFromAllGroups()', () => {
     }
 
     expect(err).toBe(notFoundErr);
+    expect(mockBatch.commit).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// addOpsToSyncUserGroups
+// ─────────────────────────────────────────────────────────────────────────────
+describe('MembershipService.addOpsToSyncUserGroups()', () => {
+  it('queues batch.update with arrayUnion for each slug that is newly added', async () => {
+    mockGroupService.getBySlug.mockImplementation((slug) =>
+      Promise.resolve({ id: `group-id-${slug}`, slug })
+    );
+
+    const service = new MembershipService({}, mockGroupService);
+    // 'old' is unchanged; 'new' is added
+    await service.addOpsToSyncUserGroups(mockBatch, 'user-1', ['old'], ['old', 'new']);
+
+    expect(mockBatch.update).toHaveBeenCalledTimes(1);
+    const [, payload] = mockBatch.update.mock.calls[0];
+    expect(payload.users).toEqual(Firestore.FieldValue.arrayUnion('user-1'));
+    expect(payload.updated).toBeDefined();
+  });
+
+  it('queues batch.update with arrayRemove for each slug that is removed', async () => {
+    mockGroupService.getBySlug.mockImplementation((slug) =>
+      Promise.resolve({ id: `group-id-${slug}`, slug })
+    );
+
+    const service = new MembershipService({}, mockGroupService);
+    // 'gone' is removed; 'old' is unchanged
+    await service.addOpsToSyncUserGroups(mockBatch, 'user-1', ['old', 'gone'], ['old']);
+
+    expect(mockBatch.update).toHaveBeenCalledTimes(1);
+    const [, payload] = mockBatch.update.mock.calls[0];
+    expect(payload.users).toEqual(Firestore.FieldValue.arrayRemove('user-1'));
+    expect(payload.updated).toBeDefined();
+  });
+
+  it('queues both arrayUnion and arrayRemove ops when some slugs are added and some removed', async () => {
+    mockGroupService.getBySlug.mockImplementation((slug) =>
+      Promise.resolve({ id: `group-id-${slug}`, slug })
+    );
+
+    const service = new MembershipService({}, mockGroupService);
+    // 'fc' removed, 'cs' added
+    await service.addOpsToSyncUserGroups(mockBatch, 'user-1', ['fc'], ['cs']);
+
+    expect(mockGroupService.getBySlug).toHaveBeenCalledTimes(2);
+    expect(mockBatch.update).toHaveBeenCalledTimes(2);
+  });
+
+  it('makes no batch.update calls when old and new slugs are identical', async () => {
+    const service = new MembershipService({}, mockGroupService);
+    await service.addOpsToSyncUserGroups(mockBatch, 'user-1', ['fc', 'cs'], ['fc', 'cs']);
+
+    expect(mockGroupService.getBySlug).not.toHaveBeenCalled();
+    expect(mockBatch.update).not.toHaveBeenCalled();
+  });
+
+  it('treats oldSlugs as [] when undefined — all newSlugs are treated as added', async () => {
+    mockGroupService.getBySlug.mockImplementation((slug) =>
+      Promise.resolve({ id: `group-id-${slug}`, slug })
+    );
+
+    const service = new MembershipService({}, mockGroupService);
+    await service.addOpsToSyncUserGroups(mockBatch, 'user-1', undefined, ['fc']);
+
+    expect(mockBatch.update).toHaveBeenCalledTimes(1);
+    const [, payload] = mockBatch.update.mock.calls[0];
+    expect(payload.users).toEqual(Firestore.FieldValue.arrayUnion('user-1'));
+  });
+
+  it('treats newSlugs as [] when undefined — all oldSlugs are treated as removed', async () => {
+    mockGroupService.getBySlug.mockImplementation((slug) =>
+      Promise.resolve({ id: `group-id-${slug}`, slug })
+    );
+
+    const service = new MembershipService({}, mockGroupService);
+    await service.addOpsToSyncUserGroups(mockBatch, 'user-1', ['fc'], undefined);
+
+    expect(mockBatch.update).toHaveBeenCalledTimes(1);
+    const [, payload] = mockBatch.update.mock.calls[0];
+    expect(payload.users).toEqual(Firestore.FieldValue.arrayRemove('user-1'));
+  });
+
+  it('does not call batch.commit() — caller is responsible for committing', async () => {
+    mockGroupService.getBySlug.mockImplementation((slug) =>
+      Promise.resolve({ id: `group-id-${slug}`, slug })
+    );
+
+    const service = new MembershipService({}, mockGroupService);
+    await service.addOpsToSyncUserGroups(mockBatch, 'user-1', [], ['fc']);
+
     expect(mockBatch.commit).not.toHaveBeenCalled();
   });
 });

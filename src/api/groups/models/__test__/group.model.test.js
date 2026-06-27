@@ -54,5 +54,16 @@ describe('Group model', () => {
       const group = new Group({ name: 'Test', slug: 'test', updated: now });
       expect(group.updated).toBe(now);
     });
+
+    it('defaults deletedAt to null when not provided', () => {
+      const group = new Group({ name: 'Test', slug: 'test' });
+      expect(group.deletedAt).toBeNull();
+    });
+
+    it('assigns deletedAt when provided as a Date', () => {
+      const date = new Date('2025-01-01T00:00:00.000Z');
+      const group = new Group({ name: 'Test', slug: 'test', deletedAt: date });
+      expect(group.deletedAt).toBe(date);
+    });
   });
 });

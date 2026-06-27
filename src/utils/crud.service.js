@@ -127,6 +127,26 @@ class CrudService {
     const deletedId = await this.db.delete(id);
     return deletedId;
   }
+
+  /**
+   * Returns all soft-deleted documents, ordered by deletedAt descending.
+   * Firestore requires ordering by the inequality field first.
+   * @param {object} [options]
+   * @param {number} [options.offset]
+   * @param {number} [options.limit]
+   * @returns {Promise<T[]>}
+   */
+  async findInactive(options = {}) {
+    const { offset, limit } = options;
+    let fsQuery = this.db.collection
+      .where('deletedAt', '!=', null)
+      .orderBy('deletedAt', 'desc');
+    if (offset) fsQuery = fsQuery.offset(offset);
+    if (limit) fsQuery = fsQuery.limit(limit);
+    const snap = await fsQuery.get();
+    if (snap.empty) return [];
+    return snap.docs.map((doc) => this.docParser(doc));
+  }
 }
 
 module.exports = CrudService;

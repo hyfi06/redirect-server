@@ -3,6 +3,8 @@ const User = require('../models/user.model');
 const {
   cleanDocObject,
   deleteRegData,
+  parseTimestamp,
+  parseOptionalTimestamp,
 } = require('../../../utils/clean.data.utils');
 
 /**
@@ -16,8 +18,9 @@ function userParser(docSnap) {
   return new User({
     ...data,
     id,
-    created: new Date(data.created.toMillis()),
-    updated: new Date(data.updated.toMillis()),
+    created: parseTimestamp(data.created),
+    updated: parseTimestamp(data.updated),
+    deletedAt: parseOptionalTimestamp(data.deletedAt),
   });
 }
 
@@ -34,7 +37,7 @@ function createUserParser(user) {
     lastName: user.lastName || '',
     groups: user.groups || [],
     role: user.role || 'user',
-    auth: cleanDocObject(user.auth),
+    deletedAt: null,
   };
 }
 
@@ -47,12 +50,7 @@ function updateUserParser(user) {
   const data = { ...user };
   deleteRegData(data);
   delete data.email;
-  if (data.auth) {
-    cleanDocObject(data.auth);
-    if (Object.keys(data.auth).length === 0) {
-      delete data.auth;
-    }
-  }
+  delete data.deletedAt; // immutable via API — managed only by delete()
   cleanDocObject(data);
   return data;
 }

@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const common = require('../../schemas/common.schema');
 
 const createGroupSchema = Joi.object({
   name: Joi.string().required(),
@@ -15,13 +16,14 @@ const updateGroupSchema = Joi.object({
 }).options({ allowUnknown: false });
 
 const idParamSchema = Joi.object({
-  id: Joi.string().required(),
+  id: common.id.required(),
 }).options({ allowUnknown: false });
 
 const getGroupQuerySchema = Joi.object({
-  orderBy: Joi.string(),
-  offset: Joi.number().integer().min(1),
-  limit: Joi.number().integer().min(1),
+  orderBy: common.orderBy,
+  offset: common.offset,
+  limit: common.limit,
+  inactive: common.inactive,
 }).options({ allowUnknown: false });
 
 module.exports = {

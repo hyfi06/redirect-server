@@ -12,6 +12,7 @@ const redirectRoute = require('./redirect/routes');
 const rootRouter = require('./routes/root');
 const healthRouter = require('./routes/health');
 const { apiV1 } = require('./api');
+const botReject = require('./middleware/bot-reject.middleware');
 
 const app = express();
 app.use(
@@ -28,6 +29,7 @@ rootRouter(app);
 app.use(passport.initialize());
 apiV1(app);
 healthRouter(app);
+app.use(botReject);
 redirectRoute(app);
 
 // Catch 404

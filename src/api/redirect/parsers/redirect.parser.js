@@ -3,6 +3,7 @@ const Redirect = require('../models/redirect.model');
 const {
   cleanDocObject,
   deleteRegData,
+  parseTimestamp,
 } = require('../../../utils/clean.data.utils');
 
 /**
@@ -17,8 +18,8 @@ function redirectParser(docSnap) {
   return new Redirect({
     ...data,
     id,
-    created: new Date(data.created.toMillis()),
-    updated: new Date(data.updated.toMillis()),
+    created: parseTimestamp(data.created),
+    updated: parseTimestamp(data.updated),
   });
 }
 

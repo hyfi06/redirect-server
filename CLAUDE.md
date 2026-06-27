@@ -180,6 +180,8 @@ Used agents: backend-engineer
 npm run dev         # Development with nodemon and DEBUG=app:* enabled
 npm test            # Run Jest with coverage (sets NODE_ENV=test)
 npm run test:watch
+npm run test:e2e        # E2E suite (requires running server + real Firestore)
+npm run test:e2e:cleanup # Hard-delete all E2E test data from Firestore
 npm run indexes     # Sync Firestore composite indexes from firestore.indexes.json to the active GCP project
 npm run deploy      # gcloud app deploy app.yaml
 ```
@@ -219,12 +221,14 @@ Google App Engine (Node.js 24). Config in `app.yaml`. Scales from 0 to 3 instanc
 
 ### Router mount order (`src/app.js`)
 
-Three surfaces registered in strict order — order matters because the redirect router is a catch-all:
+Four surfaces plus one middleware registered in strict order — order matters because the redirect router is a catch-all:
 
 ```
-rootRouter      →  GET /          Static HTML home page + public assets
-apiV1           →  /api/v1/**     CRUD REST API
-redirectRoute   →  GET /*         Catch-all: URL shortener redirect
+rootRouter      →  GET /           Static HTML home page + public assets
+apiV1           →  /api/v1/**      CRUD REST API
+healthRouter    →  GET /_ah/health App Engine health check (Firestore ping)
+botReject       →  (middleware)    Rejects known bot path patterns with 404 before Firestore
+redirectRoute   →  GET /*          Catch-all: URL shortener redirect
 ```
 
 ---
@@ -271,9 +275,9 @@ res.redirect(302, url)
 
 ---
 
-### `src/redirect/` imports directly from `src/api/redirect/`
+### `src/redirect/` imports from the singleton container
 
-`src/redirect/routes/redirect.router.js` imports the redirect service directly from `src/api/redirect/services/`. There are no re-export intermediaries. When modifying redirect logic, always edit under `src/api/redirect/`.
+`src/redirect/routes/redirect.router.js` imports `redirectService` from `src/lib/services`, which re-exports `redirectServiceApi` under that alias — both names refer to the same singleton instance. When modifying redirect logic, always edit under `src/api/redirect/`.
 
 ---
 
@@ -291,6 +295,9 @@ CrudService               src/utils/crud.service.js
   constructor(collection, docParser, createParser, updateParser)
   • Wraps FireStoreAdapter; applies parsers on every read/write
   • .find(query, options) supports orderBy (prefix "-" = desc), offset, limit
+  • .findInactive(options) — Firestore where('deletedAt', '!=', null), ordered by deletedAt desc.
+                            Inherited by all soft-deletable subclasses (UserService, GroupService).
+                            Resources that do not support soft-delete never call this method.
     ↑ (extends)
 RedirectServiceApi        src/api/redirect/services/redirect.service.js
   • .getByPath(path)  — Firestore where('path', '==', path)
@@ -298,35 +305,41 @@ RedirectServiceApi        src/api/redirect/services/redirect.service.js
                         (throws boom.badRequest if path already taken)
 
 UserService               src/api/users/services/user.service.js
-  • .getByEmail(email) — Firestore where('email', '==', email)
-  • .create()          — enforces email uniqueness before insert
-  • .delete(id)        — fetch-first (findOne) to capture user.groups before deletion.
-                         When membershipService is available and the user has groups: builds a
-                         single WriteBatch with the user doc delete and all group arrayRemove ops
-                         (via membershipService.addOpsToRemoveUserFromGroups), then commits
-                         atomically. Falls back to super.delete(id) when membershipService is
-                         absent or the user belongs to no groups (no group cleanup needed).
+  • .getByEmail(email)  — Firestore where('email', '==', email).where('deletedAt', '==', null).
+                          Only active users are returned — soft-deleted users receive 401 during OAuth2 login.
+  • .create()           — enforces email uniqueness before insert
+  • .update(user)       — if user.groups is defined and membershipService is available: fetch-first
+                          (findOne), builds a WriteBatch with the user doc update and group membership
+                          sync ops (via membershipService.addOpsToSyncUserGroups), commits atomically.
+                          Falls back to super.update(user) when groups is undefined or membershipService absent.
+  • .delete(id)         — soft-delete: fetch-first (findOne) to capture user.groups; builds a WriteBatch
+                          with { deletedAt: Timestamp.now() } on the user doc and FieldValue.arrayRemove(userId)
+                          on each group doc (via membershipService.addOpsToRemoveUserFromGroups); commits atomically.
+                          The user document is NOT deleted — redirects owned by the user remain intact.
+  • .findInactive(opts) — inherited from CrudService. Used by GET /api/v1/users?inactive=true (admin only).
   Note: User constructor accepts email as optional (guard: email ? ... : undefined).
         PATCH handlers do not supply email — it is immutable post-creation and
         discarded by updateParser before any Firestore write.
 
 GroupService              src/api/groups/services/group.service.js
-  • .getBySlug(slug)   — Firestore where('slug', '==', slug)
-                         Also called by the redirect router (POST /api/v1/redirects) to
-                         verify the group exists in Firestore before constructing the path.
-                         Admin users bypass this check (they can create root-level paths).
-  • .create()          — enforces slug uniqueness before insert
-  • .update(id, group) — fetch-first (findOne) unconditionally; throws 404 if the group does not exist,
-                         regardless of whether `users` is in the payload. If `users` is present,
-                         diffs old vs new membership (comparing user IDs — Firestore document IDs,
-                         not email strings) and builds a WriteBatch with one update per
-                         added/removed member plus the group itself; commits atomically.
-                         Does NOT call super.update() — bypasses FireStoreAdapter entirely;
-                         Timestamps are set manually.
-  • .delete(id)        — fetch-first (findOne) to read group.users (user IDs) and group.slug; builds a
-                         WriteBatch with FieldValue.arrayRemove(slug) on each member's
-                         User.groups field (no fetch per user — server-side op); adds the
-                         group delete to the batch; commits atomically. Timestamps set manually.
+  • .getBySlug(slug)    — Firestore where('slug', '==', slug).where('deletedAt', '==', null).
+                          Only active groups are returned — blocks redirect creation under inactive slugs.
+                          Also called by the redirect router (POST /api/v1/redirects) to verify the group
+                          exists before constructing the path. Admin users bypass this check.
+  • .create()           — enforces slug uniqueness globally (active and inactive docs); queries without a
+                          deletedAt filter so deleted slugs cannot be reused.
+  • .update(id, group)  — fetch-first (findOne) unconditionally; throws 404 if the group does not exist,
+                          regardless of whether `users` is in the payload. If `users` is present,
+                          diffs old vs new membership (comparing user IDs — Firestore document IDs,
+                          not email strings) and builds a WriteBatch with one update per
+                          added/removed member plus the group itself; commits atomically.
+                          Does NOT call super.update() — bypasses FireStoreAdapter entirely;
+                          Timestamps are set manually.
+  • .delete(id)         — soft-delete: fetch-first (findOne) to read group.users and group.slug; builds a
+                          WriteBatch with { deletedAt: Timestamp.now() } on the group doc and
+                          FieldValue.arrayRemove(slug) on each member's User.groups field; commits atomically.
+                          The group document is NOT deleted — slug is permanently reserved to prevent reuse.
+  • .findInactive(opts) — inherited from CrudService. Used by GET /api/v1/groups?inactive=true (admin only).
   Receives UserService via constructor injection (D12).
 
 MembershipService         src/api/users/services/membership.service.js
@@ -340,9 +353,13 @@ MembershipService         src/api/users/services/membership.service.js
     to addOpsToRemoveUserFromGroups, then commits atomically. Standalone use only;
     UserService.delete() calls addOpsToRemoveUserFromGroups directly to share the batch.
     No-op when userGroups is empty or absent.
-  Wired in src/api/users/routes/user.route.api.js: userServiceForGroup (bare, no membershipService)
-  → GroupService → MembershipService(userServiceForGroup, groupService) → UserService(membershipService).
-  userServiceForGroup must not carry a membershipService to avoid a circular dependency.
+  • .addOpsToSyncUserGroups(batch, userId, oldSlugs, newSlugs) — computes the diff between
+    oldSlugs and newSlugs; adds FieldValue.arrayUnion(userId) for added slugs and
+    FieldValue.arrayRemove(userId) for removed slugs. Does NOT commit — caller is responsible.
+    No-op when both arrays are empty. Called by UserService.update() when groups changes.
+  Wired in src/lib/services.js (singleton container). `userServiceForGroup` is an internal-only
+  bare UserService (no membershipService) used to break the UserService ↔ GroupService circular
+  dependency — it is not exported. All consumers import from src/lib/services.js.
 
 ApiKeyService             src/api/users/services/api-key.service.js
   Does NOT extend CrudService — the subcollection path includes a dynamic userId segment
@@ -361,17 +378,27 @@ ApiKeyService             src/api/users/services/api-key.service.js
 
 ---
 
+### Service singleton container (`src/lib/services.js`)
+
+All service instances are created once in `src/lib/services.js` and exported as named constants. Node.js module caching ensures every consumer — routes, middleware, and strategy — shares the same instance without additional infrastructure. The instantiation order respects the dependency chain: `userServiceForGroup` → `groupService` → `membershipService` → `userService`. `userServiceForGroup` is internal to this module (not exported) — a bare `UserService` with no `membershipService`, required to break the `UserService ↔ GroupService` circular dependency. The public catch-all router uses the alias `redirectService`, which re-exports the same `redirectServiceApi` instance.
+
+---
+
 ### Parser pattern (injected into CrudService)
 
 Each resource defines three parser functions:
 
 | Parser | Direction | Responsibility |
 |---|---|---|
-| `docParser` | `DocumentSnapshot → Model` | Reads from Firestore; converts Timestamps to Date |
+| `docParser` | `DocumentSnapshot → Model` | Reads from Firestore; converts Timestamps to Date using `parseTimestamp` / `parseOptionalTimestamp` from `src/utils/clean.data.utils.js` |
 | `createParser` | `Model → plain object` | Strips `id`; sets defaults (`permission: []`, `categories: []`) |
 | `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`/`path`); removes `undefined` keys via `cleanDocObject` |
 
 Parsers live alongside their resource: `src/api/{resource}/parsers/`.
+
+Timestamp utilities (`parseTimestamp`, `parseOptionalTimestamp`) and document utilities (`cleanDocObject`, `deleteRegData`) live in `src/utils/clean.data.utils.js`. All three docParsers import from this module.
+
+Shared Joi field definitions (`id`, `offset`, `limit`, `orderBy`, `inactive`) live in `src/api/schemas/common.schema.js`. The three resource schemas (`redirect.schema.js`, `user.schema.js`, `group.schema.js`) import common fields from this module rather than redefining them inline.
 
 ---
 
@@ -382,11 +409,11 @@ Parsers live alongside their resource: `src/api/{resource}/parsers/`.
 ```js
 // When user has at least one group:
 Filter.or(
-  Filter.where('owner', '==', email),
+  Filter.where('owner', '==', userId),
   Filter.where('permission', 'array-contains-any', ['read:fc', 'read:cs', ...])
 )
 // When user has no groups:
-Filter.where('owner', '==', email)
+Filter.where('owner', '==', userId)
 ```
 
 Groups are Firestore documents (collection `groups`) with a `users: string[]` array of user IDs (Firestore document IDs, not email strings).
@@ -397,16 +424,17 @@ Permission constants (`read`, `edit`, `delete`) and `OWNER_SCOPES` are in `src/m
 ### Auth — JWT, OAuth2, and redirect routes protected
 
 - **JWT**: `src/utils/auth/jwt.js` — `sign()` and `verify()` implemented. Config: `config.jwt.jwtSecret` / `config.jwt.jwtTtl`.
-- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email, updates tokens, calls `done(null, savedUser)`. Returns 401 if email not in Firestore.
+- **Google OAuth2**: strategy complete in `src/utils/auth/strategies/google-oauth2.strategy.js`. Callback looks up user by email via `UserService.getByEmail()` (active users only), calls `done(null, user)`. Returns 401 if email not found or user is soft-deleted. Google OAuth tokens are not stored — the server issues its own JWT immediately after authentication.
 - **`authenticate` middleware**: `src/middleware/authenticate.middleware.js` — Bearer token dispatcher. If the token starts with `sk_1kg_`, delegates to `authenticateApiKey` (SHA-256 hash lookup via `ApiKeyService.findByHash`, with a 30s node-cache TTL). Otherwise delegates to `authenticateJwt` (JWT verify). Both paths set `req.user`. For API Key auth, `req.user` additionally contains `apiKey: { id, scopes }`. Cache TTL means a revoked key remains valid for up to 30 seconds; the `DELETE /me/api-keys/:keyId` endpoint calls `nodeCache.del(keyHash)` for best-effort same-instance invalidation.
 - **`authorize` middleware**: `src/middleware/authorize.middleware.js` — factory `authorize(...roles)` that checks `req.user.role`.
 - **`authorizeApiKeyScope` middleware**: `src/middleware/authorize-api-key-scope.middleware.js` — factory `authorizeApiKeyScope(requiredScope)`. No-op for JWT requests (`req.user.apiKey === undefined`). For API Key requests, returns 403 if the required scope is not in `req.user.apiKey.scopes`. Applied per-route on the redirect router.
-- **Auth routes**: `src/api/auth/routes/auth.route.api.js` — mounted at `/api/v1/auth/`. Two routes: `GET /google` (initiates OAuth2 flow) and `GET /google/callback` (exchanges code, returns JWT). Auth routes are under `/api/v1/auth/` and never at root level — the catch-all `GET /*` would intercept them otherwise (D4).
+- **Auth routes**: `src/api/auth/routes/auth.route.api.js` — mounted at `/api/v1/auth/`. Two routes: `GET /google` (initiates OAuth2 flow) and `GET /google/callback` (exchanges code, returns `{ token, user }`). The `user` object is built by `toPublic()` from `src/api/users/utils/user-public.js` — includes `deletedAt`, consistent with `GET /me`. Auth routes are under `/api/v1/auth/` and never at root level — the catch-all `GET /*` would intercept them otherwise (D4).
 - **`passport.initialize()`** mounted in `src/app.js` before `apiV1`.
 - **`/api/v1/redirects` is fully protected**: `authenticate` is applied at router level (`redirectRouterApi.use(authenticate)`). All five routes require a valid JWT.
-- **`GET /api/v1/redirects` admin bypass**: if `req.user.role === 'admin'`, the handler calls `redirectServicieApi.getAll(options)` and returns before building the Firestore filter. Non-admin users see only redirects they own or have `read:{group}` permission on.
-- **`GET /api/v1/redirects/:id` access control**: after fetching the document, the handler checks that the requester is admin, or is the owner, or belongs to a group whose `read:{slug}` entry appears in `redirect.permission`. Returns 403 if none of the conditions are met (D3).
-- **`/api/v1/users` is fully protected**: `authenticate` is applied at router level. Both the users and groups routers reject API Key requests entirely with 403 — a `router.use()` middleware checks `req.user.apiKey !== undefined` immediately after `authenticate`. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated (JWT) user. `PATCH /:id` is accessible to admins or to the user editing their own profile.
+- **`GET /api/v1/redirects` admin bypass**: if `req.user.role === 'admin'`, the handler calls `redirectServiceApi.getAll(options)` and returns before building the Firestore filter. Non-admin users see only redirects they own or have `read:{group}` permission on.
+- **`GET /api/v1/redirects/:id` access control**: after fetching the document, access is verified by the local helper `canAccess(user, resource, scope)` — returns true if the requester is admin, or is the owner, or has a `{scope}:{group}` entry in `redirect.permission`. Returns 403 if none of the conditions are met (D3). The same helper is reused in `PATCH /:id` (scope `edit`) and `DELETE /:id` (scope `delete`).
+- **`requireJwt` middleware**: `src/middleware/require-jwt.middleware.js` — rejects requests authenticated with an API Key (`boom.forbidden`). Mounted via `router.use(requireJwt)` on both the users and groups routers immediately after `authenticate`. Centralises the rejection logic that was previously duplicated as inline anonymous middleware in each router.
+- **`/api/v1/users` is fully protected**: `authenticate` then `requireJwt` are applied at router level — API Key requests are rejected entirely with 403. `GET /`, `GET /:id`, `POST /`, and `DELETE /:id` additionally require `authorize('admin')`. `GET /me` is accessible to any authenticated (JWT) user. `PATCH /:id` is accessible to admins or to the user editing their own profile.
 - **`/api/v1/users/me/api-keys`**: sub-router (`src/api/users/routes/api-key.route.js`) mounted inside the user router at `/me/api-keys`, after `GET /me` and before `GET /:id` (Express declaration order). The API key rejection middleware applies to this path as well — managing API keys requires a full JWT session; API Key bearer tokens cannot be used to create or revoke other API keys. `POST /` returns the plaintext token only once; only `keyHash` is stored. Non-admin users cannot request admin-only scopes (`read:users`, `write:users`, `read:groups`, `write:groups`).
 - **`/api/v1/redirects` accepts API Keys**: `authorizeApiKeyScope` is applied per-route. `GET /` and `GET /:id` require scope `read:redirects`; `POST /`, `PATCH /:id`, and `DELETE /:id` require scope `write:redirects`. JWT requests pass through the scope middleware unconditionally.
 

@@ -1,6 +1,8 @@
 'use strict';
 
+const User = require('../../models/user.model');
 const {
+  userParser,
   createUserParser,
   updateUserParser,
 } = require('../user.parser');
@@ -10,9 +12,27 @@ const {
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Returns a plain object shaped like a User instance with all auth tokens
- * set to undefined — which is exactly what `new User({ firstName: 'Juan', ... })`
- * produces when no token fields are provided.
+ * Builds a minimal mock DocumentSnapshot for userParser tests.
+ */
+function makeDocSnap({ id = 'user-1', overrideData = {} } = {}) {
+  return {
+    ref: { id },
+    data: () => ({
+      email: 'test@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      groups: [],
+      role: 'user',
+      created: { toMillis: () => 1_000_000 },
+      updated: { toMillis: () => 2_000_000 },
+      ...overrideData,
+    }),
+  };
+}
+
+/**
+ * Returns a plain object shaped like a User instance — matching what
+ * `new User({ firstName: 'Juan', ... })` produces.
  */
 function makeUserWithNoTokens(overrides = {}) {
   return {
@@ -24,15 +44,35 @@ function makeUserWithNoTokens(overrides = {}) {
     role: 'user',
     created: new Date('2024-01-01'),
     updated: new Date('2024-01-02'),
-    auth: {
-      googleToken: undefined,
-      googleRefreshToken: undefined,
-      refreshToken: undefined,
-      apiToken: undefined,
-    },
     ...overrides,
   };
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// userParser (docParser)
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('userParser', () => {
+  it('returns a User instance with the correct id from docSnap.ref.id', () => {
+    const snap = makeDocSnap({ id: 'user-42' });
+    const result = userParser(snap);
+    expect(result).toBeInstanceOf(User);
+    expect(result.id).toBe('user-42');
+  });
+
+  it('assigns null to deletedAt when the field is absent from the document', () => {
+    const snap = makeDocSnap(); // no deletedAt in default data
+    const result = userParser(snap);
+    expect(result.deletedAt).toBeNull();
+  });
+
+  it('converts deletedAt Timestamp to a Date when present in the document', () => {
+    const snap = makeDocSnap({ overrideData: { deletedAt: { toMillis: () => 9_000_000 } } });
+    const result = userParser(snap);
+    expect(result.deletedAt).toBeInstanceOf(Date);
+    expect(result.deletedAt.getTime()).toBe(9_000_000);
+  });
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // updateUserParser — spec task 0.3
@@ -40,41 +80,6 @@ function makeUserWithNoTokens(overrides = {}) {
 
 describe('updateUserParser', () => {
   // ── spec case 1 ────────────────────────────────────────────────────────────
-  it('omits auth when all token fields are undefined (PATCH with only firstName)', () => {
-    const user = makeUserWithNoTokens({ firstName: 'Juan' });
-
-    const data = updateUserParser(user);
-
-    expect(data).not.toHaveProperty('auth');
-  });
-
-  // ── spec case 2 ────────────────────────────────────────────────────────────
-  it('preserves auth when at least one token has a real value (PATCH with apiToken)', () => {
-    const user = makeUserWithNoTokens({
-      auth: {
-        apiToken: 'xyz',
-        googleToken: undefined,
-        googleRefreshToken: undefined,
-        refreshToken: undefined,
-      },
-    });
-
-    const data = updateUserParser(user);
-
-    expect(data.auth).toEqual({ apiToken: 'xyz' });
-  });
-
-  // ── spec case 3 ────────────────────────────────────────────────────────────
-  it('omits auth when auth is completely absent from the input object', () => {
-    const user = makeUserWithNoTokens();
-    delete user.auth;
-
-    const data = updateUserParser(user);
-
-    expect(data).not.toHaveProperty('auth');
-  });
-
-  // ── spec case 4 ────────────────────────────────────────────────────────────
   it('always excludes id from the returned object', () => {
     const user = makeUserWithNoTokens();
 
@@ -194,21 +199,6 @@ describe('updateUserParser', () => {
     expect(data.lastName).toBe('Torres');
   });
 
-  it('keeps only defined token fields when auth has a mix of defined and undefined values', () => {
-    const user = makeUserWithNoTokens({
-      auth: {
-        googleToken: 'gtoken',
-        googleRefreshToken: undefined,
-        refreshToken: 'rtoken',
-        apiToken: undefined,
-      },
-    });
-
-    const data = updateUserParser(user);
-
-    expect(data.auth).toEqual({ googleToken: 'gtoken', refreshToken: 'rtoken' });
-  });
-
   it('does not mutate the caller-visible fields of the original user object', () => {
     const user = makeUserWithNoTokens({ firstName: 'Carlos' });
 
@@ -220,20 +210,14 @@ describe('updateUserParser', () => {
     expect(user.email).toBe('test@example.com');
   });
 
-  it('mutates user.auth in place because the shallow copy shares the same reference', () => {
-    // The shallow spread `{ ...user }` does not deep-clone auth.
-    // cleanDocObject(data.auth) therefore also modifies user.auth.
-    // This test documents that known side-effect so callers are aware.
-    const user = makeUserWithNoTokens();
-    const originalAuthRef = user.auth;
+  it('excludes deletedAt — soft-delete is managed only by UserService.delete()', () => {
+    const user = makeUserWithNoTokens({ deletedAt: new Date('2025-01-01T00:00:00.000Z') });
 
-    updateUserParser(user);
+    const data = updateUserParser(user);
 
-    // The reference is still the same object, but undefined keys were removed.
-    expect(user.auth).toBe(originalAuthRef);
-    expect(user.auth).not.toHaveProperty('googleToken');
-    expect(user.auth).not.toHaveProperty('apiToken');
+    expect(data).not.toHaveProperty('deletedAt');
   });
+
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -318,30 +302,6 @@ describe('createUserParser', () => {
     expect(data.lastName).toBe('');
   });
 
-  it('returns auth as an empty object when all token fields are undefined', () => {
-    const user = makeUserWithNoTokens();
-
-    const data = createUserParser(user);
-
-    // cleanDocObject removes all undefined keys, leaving {}
-    expect(data.auth).toEqual({});
-  });
-
-  it('returns auth with only the defined tokens', () => {
-    const user = makeUserWithNoTokens({
-      auth: {
-        googleToken: 'gtoken',
-        googleRefreshToken: undefined,
-        refreshToken: undefined,
-        apiToken: 'api',
-      },
-    });
-
-    const data = createUserParser(user);
-
-    expect(data.auth).toEqual({ googleToken: 'gtoken', apiToken: 'api' });
-  });
-
   it('does not include id in the returned object', () => {
     const user = makeUserWithNoTokens();
 
@@ -356,5 +316,13 @@ describe('createUserParser', () => {
     const data = createUserParser(user);
 
     expect(data).not.toHaveProperty('created');
+  });
+
+  it('includes deletedAt: null — new users are always active', () => {
+    const user = makeUserWithNoTokens();
+
+    const data = createUserParser(user);
+
+    expect(data.deletedAt).toBeNull();
   });
 });

@@ -48,6 +48,38 @@ class MembershipService {
     await this.addOpsToRemoveUserFromGroups(batch, userId, userGroups);
     await batch.commit();
   }
+
+  /**
+   * Adds batch operations to sync userId into the groups defined by the slug diff.
+   * Slugs added get `FieldValue.arrayUnion`; slugs removed get `FieldValue.arrayRemove`.
+   * Does NOT commit the batch — caller is responsible for committing.
+   * No-op when both oldSlugs and newSlugs are empty.
+   * @param {FirebaseFirestore.WriteBatch} batch
+   * @param {string} userId
+   * @param {string[]} oldSlugs - slugs the user previously belonged to
+   * @param {string[]} newSlugs - slugs the user should belong to after the update
+   * @returns {Promise<void>}
+   */
+  async addOpsToSyncUserGroups(batch, userId, oldSlugs, newSlugs) {
+    const oldArr = oldSlugs ?? [];
+    const newArr = newSlugs ?? [];
+    const addedSlugs = newArr.filter(s => !oldArr.includes(s));
+    const removedSlugs = oldArr.filter(s => !newArr.includes(s));
+
+    const now = Firestore.Timestamp.fromMillis(Date.now());
+
+    for (const slug of addedSlugs) {
+      const group = await this.groupService.getBySlug(slug);
+      const groupRef = firestoreClient.collection(this.groupsCollection).doc(group.id);
+      batch.update(groupRef, { users: Firestore.FieldValue.arrayUnion(userId), updated: now });
+    }
+
+    for (const slug of removedSlugs) {
+      const group = await this.groupService.getBySlug(slug);
+      const groupRef = firestoreClient.collection(this.groupsCollection).doc(group.id);
+      batch.update(groupRef, { users: Firestore.FieldValue.arrayRemove(userId), updated: now });
+    }
+  }
 }
 
 module.exports = MembershipService;

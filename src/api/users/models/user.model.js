@@ -1,34 +1,18 @@
 class User {
   /**
-   * User model
    * @param {Object} data
-   * @param {string} data.email
+   * @param {string} [data.id]
+   * @param {string} [data.email]
    * @param {string} [data.firstName] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
    * @param {string} [data.lastName] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
    * @param {string[]} [data.groups] — undefined when omitted; omitted fields are stripped by cleanDocObject on PATCH (D20)
-   * @param {string} data.role
-   * @param {string} data.googleToken
-   * @param {string} data.googleRefreshToken
-   * @param {string} data.refreshToken
-   * @param {string} data.apiToken
-   * @param {Date} data.created
-   * @param {Date} data.updated
+   * @param {string} [data.role]
+   * @param {Date | null} [data.deletedAt] — null means active; Date means soft-deleted
+   * @param {Date} [data.created]
+   * @param {Date} [data.updated]
    */
   constructor(data) {
-    const {
-      id,
-      email,
-      firstName,
-      lastName,
-      groups,
-      role,
-      googleToken,
-      googleRefreshToken,
-      refreshToken,
-      apiToken,
-      created,
-      updated,
-    } = data;
+    const { id, email, firstName, lastName, groups, role, deletedAt, created, updated } = data;
     this.id = id || null;
     this.email = email ? email.toLowerCase().trim() : undefined;
     // No default — undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
@@ -39,12 +23,7 @@ class User {
     this.groups = groups;
     // No default — role: undefined in a PATCH body must remain undefined so cleanDocObject omits it (D20)
     this.role = role;
-    this.auth = {
-      googleToken: googleToken,
-      googleRefreshToken,
-      refreshToken,
-      apiToken,
-    };
+    this.deletedAt = deletedAt ?? null;
     if (created) this.created = created;
     if (updated) this.updated = updated;
   }
@@ -69,22 +48,6 @@ class User {
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
-  }
-  /**
-   * Returns a plain object safe for JSON responses (no auth tokens).
-   * @returns {Object}
-   */
-  toPublic() {
-    return {
-      id: this.id,
-      email: this.email,
-      firstName: this.firstName,
-      lastName: this.lastName,
-      groups: this.groups,
-      role: this.role,
-      created: this.created,
-      updated: this.updated,
-    };
   }
 }
 

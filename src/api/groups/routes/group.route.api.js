@@ -1,11 +1,12 @@
 const express = require('express');
 const boom = require('@hapi/boom');
+const { Filter } = require('@google-cloud/firestore');
 const validatorHandler = require('../../../middleware/validator.handler');
 const { authenticate } = require('../../../middleware/authenticate.middleware');
 const { authorize } = require('../../../middleware/authorize.middleware');
+const { requireJwt } = require('../../../middleware/require-jwt.middleware');
 const { Group } = require('../models/group.model');
-const GroupService = require('../services/group.service');
-const UserService = require('../../users/services/user.service');
+const { groupService } = require('../../../lib/services');
 const {
   createGroupSchema,
   updateGroupSchema,
@@ -13,39 +14,43 @@ const {
   getGroupQuerySchema,
 } = require('../schemas/group.schema');
 
-const userService = new UserService();
-const groupService = new GroupService(userService);
-
 const groupRouterApi = express.Router();
 
 groupRouterApi.use(authenticate);
 
 // API Keys are scoped to redirects only — group management requires a full JWT session
-groupRouterApi.use((req, res, next) => {
-  if (req.user.apiKey !== undefined) return next(boom.forbidden('API Keys cannot be used on this resource'));
-  next();
-});
+groupRouterApi.use(requireJwt);
 
 groupRouterApi.get(
   '/',
   validatorHandler(getGroupQuerySchema, 'query'),
   async (req, res, next) => {
-    const { orderBy, offset, limit } = req.query;
+    const { orderBy, offset, limit, inactive } = req.query;
     const options = { orderBy, offset: offset ? parseInt(offset) : undefined, limit: limit ? parseInt(limit) : undefined };
 
     try {
-      if (req.user.role === 'admin') {
-        // admin: all groups
-        const data = await groupService.getAll(options);
+      if (inactive) {
+        if (req.user.role !== 'admin') return next(boom.forbidden('Insufficient permissions'));
+        const data = await groupService.findInactive(options);
         return res.status(200).json({ message: 'groups retrieved', data });
       }
 
-      // user: own groups only
+      if (req.user.role === 'admin') {
+        // admin: all active groups
+        const data = await groupService.find(['deletedAt', '==', null], options);
+        return res.status(200).json({ message: 'groups retrieved', data });
+      }
+
+      // user: own active groups only
       if (!Array.isArray(req.user.groups) || req.user.groups.length === 0) {
         return res.status(200).json({ message: 'groups retrieved', data: [] });
       }
 
-      const data = await groupService.find(['slug', 'in', req.user.groups], options);
+      const filter = Filter.and(
+        Filter.where('slug', 'in', req.user.groups),
+        Filter.where('deletedAt', '==', null),
+      );
+      const data = await groupService.find([filter], options);
       return res.status(200).json({ message: 'groups retrieved', data });
     } catch (error) {
       next(error);

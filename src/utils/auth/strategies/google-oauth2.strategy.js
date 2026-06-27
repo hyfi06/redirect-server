@@ -1,10 +1,7 @@
 const passport = require('passport');
 const config = require('../../../config');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth2');
-const UserService = require('../../../api/users/services/user.service');
-const User = require('../../../api/users/models/user.model');
-
-const userService = new UserService();
+const { userService } = require('../../../lib/services');
 
 passport.use(
   new GoogleStrategy(
@@ -27,14 +24,7 @@ passport.use(
           }
           throw error;
         }
-        const updatedUser = new User({
-          ...user,
-          ...user.auth,
-          googleToken: accessToken,
-          googleRefreshToken: refreshToken,
-        });
-        const saved = await userService.update(updatedUser);
-        return done(null, saved);
+        return done(null, user);
       } catch (error) {
         return done(error);
       }

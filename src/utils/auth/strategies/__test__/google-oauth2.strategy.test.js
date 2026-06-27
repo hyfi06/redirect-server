@@ -4,8 +4,8 @@
  * Tests for src/utils/auth/strategies/google-oauth2.strategy.js
  *
  * The module registers a GoogleStrategy with passport at require-time and
- * instantiates UserService at module level. We use jest.resetModules()
- * before each group so that each require gets a fresh module with fresh mocks.
+ * instantiates UserService at module level. We use jest.resetModules() before
+ * each group so that each require gets a fresh module with fresh mocks.
  *
  * Extraction pattern:
  *   passport.use is called with a GoogleStrategy instance.
@@ -21,7 +21,10 @@ jest.mock('../../../../config', () => ({
     clientSecret: 'test-client-secret',
     oauthRedirect: 'http://localhost/callback',
   },
-  firestore: { collections: { users: 'users' } },
+  // groups and redirects are required because loading google-oauth2.strategy.js now
+  // triggers src/lib/services.js, which instantiates GroupService and RedirectServiceApi.
+  // Both call firestoreClient.collection() with these names — undefined would throw.
+  firestore: { collections: { users: 'users', groups: 'groups', redirects: 'redirects' } },
 }));
 
 const passport = require('passport');
@@ -36,7 +39,6 @@ function makeProfile(email = 'test@example.com') {
 
 /**
  * Build a User-like object as returned by userService.getByEmail().
- * The real docParser returns a User instance, so auth is nested.
  */
 function makeStoredUser(overrides = {}) {
   return {
@@ -46,20 +48,12 @@ function makeStoredUser(overrides = {}) {
     lastName: 'User',
     groups: ['g1'],
     role: 'user',
-    auth: {
-      googleToken: 'old-google-token',
-      googleRefreshToken: 'old-google-refresh',
-      refreshToken: 'old-refresh-token',
-      apiToken: 'old-api-token',
-    },
     ...overrides,
   };
 }
 
 /** Extract the verify callback from passport.use mock. */
 function getVerifyCallback() {
-  // passport.use is called with a GoogleStrategy instance whose _verify
-  // property holds the async callback passed as the second argument.
   return passport.use.mock.calls[0][0]._verify;
 }
 
@@ -67,7 +61,6 @@ function getVerifyCallback() {
 
 describe('google-oauth2 strategy verify callback', () => {
   let mockGetByEmail;
-  let mockUpdate;
   let verify;
   let done;
 
@@ -75,14 +68,10 @@ describe('google-oauth2 strategy verify callback', () => {
     jest.resetModules();
 
     mockGetByEmail = jest.fn();
-    mockUpdate = jest.fn();
 
-    // UserService is mocked at the top of the file.
-    // After resetModules we re-require it and set the prototype mock impl.
     const UserServiceMock = require('../../../../api/users/services/user.service');
     UserServiceMock.mockImplementation(() => ({
       getByEmail: mockGetByEmail,
-      update: mockUpdate,
     }));
 
     // Re-require passport so mock.calls is fresh.
@@ -114,40 +103,16 @@ describe('google-oauth2 strategy verify callback', () => {
     });
   });
 
-  it('does not call update when getByEmail throws a 404', async () => {
-    mockGetByEmail.mockRejectedValue({ output: { statusCode: 404 } });
-
-    await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
-
-    expect(mockUpdate).not.toHaveBeenCalled();
-  });
-
   // ── 2. Successful login ───────────────────────────────────────────────────
 
-  it('calls done(null, savedUser) on successful login', async () => {
+  it('calls done(null, user) with the stored user on successful login', async () => {
     const storedUser = makeStoredUser();
-    const savedUser = { ...storedUser, auth: { googleToken: 'new-token' } };
-
     mockGetByEmail.mockResolvedValue(storedUser);
-    mockUpdate.mockResolvedValue(savedUser);
 
     await verify({}, 'new-token', 'new-refresh', makeProfile(), done);
 
     expect(done).toHaveBeenCalledTimes(1);
-    expect(done).toHaveBeenCalledWith(null, savedUser);
-  });
-
-  it('calls update with a User containing the new googleToken and googleRefreshToken', async () => {
-    const storedUser = makeStoredUser();
-    mockGetByEmail.mockResolvedValue(storedUser);
-    mockUpdate.mockResolvedValue(storedUser);
-
-    await verify({}, 'new-access', 'new-refresh', makeProfile(), done);
-
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
-    const updatedUser = mockUpdate.mock.calls[0][0];
-    expect(updatedUser.auth.googleToken).toBe('new-access');
-    expect(updatedUser.auth.googleRefreshToken).toBe('new-refresh');
+    expect(done).toHaveBeenCalledWith(null, storedUser);
   });
 
   // ── 3. Non-404 error in getByEmail ────────────────────────────────────────
@@ -168,7 +133,6 @@ describe('google-oauth2 strategy verify callback', () => {
 
     await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
 
-    // done must have been called with the error, not (null, false, ...)
     expect(done.mock.calls[0][1]).not.toBe(false);
   });
 
@@ -179,72 +143,5 @@ describe('google-oauth2 strategy verify callback', () => {
     await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
 
     expect(done).toHaveBeenCalledWith(bareError);
-  });
-
-  // ── 4. Error in update ────────────────────────────────────────────────────
-
-  it('calls done(error) when update throws after a successful getByEmail', async () => {
-    const updateError = new Error('Firestore write failed');
-    mockGetByEmail.mockResolvedValue(makeStoredUser());
-    mockUpdate.mockRejectedValue(updateError);
-
-    await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
-
-    expect(done).toHaveBeenCalledTimes(1);
-    expect(done).toHaveBeenCalledWith(updateError);
-  });
-
-  it('does not call done(null, ...) when update throws', async () => {
-    mockGetByEmail.mockResolvedValue(makeStoredUser());
-    mockUpdate.mockRejectedValue(new Error('write error'));
-
-    await verify({}, 'access-token', 'refresh-token', makeProfile(), done);
-
-    expect(done.mock.calls[0][1]).not.toBeDefined();
-    // done is called with a single argument (the error)
-    expect(done.mock.calls[0].length).toBe(1);
-  });
-
-  // ── 5. Preservation of existing tokens ───────────────────────────────────
-
-  it('preserves existing refreshToken and apiToken in the User passed to update', async () => {
-    const storedUser = makeStoredUser({
-      auth: {
-        googleToken: 'old-google',
-        googleRefreshToken: 'old-google-refresh',
-        refreshToken: 'keep-this-refresh',
-        apiToken: 'keep-this-api',
-      },
-    });
-    mockGetByEmail.mockResolvedValue(storedUser);
-    mockUpdate.mockResolvedValue(storedUser);
-
-    await verify({}, 'brand-new-access', 'brand-new-refresh', makeProfile(), done);
-
-    const updatedUser = mockUpdate.mock.calls[0][0];
-    // The internal JWT refresh token and API token must survive the update
-    expect(updatedUser.auth.refreshToken).toBe('keep-this-refresh');
-    expect(updatedUser.auth.apiToken).toBe('keep-this-api');
-  });
-
-  it('overwrites googleToken and googleRefreshToken while preserving other tokens', async () => {
-    const storedUser = makeStoredUser({
-      auth: {
-        googleToken: 'stale-google',
-        googleRefreshToken: 'stale-google-refresh',
-        refreshToken: 'my-refresh',
-        apiToken: 'my-api',
-      },
-    });
-    mockGetByEmail.mockResolvedValue(storedUser);
-    mockUpdate.mockResolvedValue(storedUser);
-
-    await verify({}, 'fresh-google', 'fresh-google-refresh', makeProfile(), done);
-
-    const updatedUser = mockUpdate.mock.calls[0][0];
-    expect(updatedUser.auth.googleToken).toBe('fresh-google');
-    expect(updatedUser.auth.googleRefreshToken).toBe('fresh-google-refresh');
-    expect(updatedUser.auth.refreshToken).toBe('my-refresh');
-    expect(updatedUser.auth.apiToken).toBe('my-api');
   });
 });

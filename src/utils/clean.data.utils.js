@@ -34,4 +34,20 @@ function deleteRegData(data) {
   return data;
 }
 
-module.exports = { deleteRegData, cleanDocObject };
+/**
+ * @param {import('@google-cloud/firestore').Timestamp} ts
+ * @returns {Date}
+ */
+function parseTimestamp(ts) {
+  return new Date(ts.toMillis());
+}
+
+/**
+ * @param {import('@google-cloud/firestore').Timestamp|null|undefined} ts
+ * @returns {Date|null}
+ */
+function parseOptionalTimestamp(ts) {
+  return ts ? new Date(ts.toMillis()) : null;
+}
+
+module.exports = { deleteRegData, cleanDocObject, parseTimestamp, parseOptionalTimestamp };

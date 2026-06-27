@@ -19,11 +19,12 @@ const UserService = require('../../api/users/services/user.service');
 const { nodeCache } = require('../../utils/cache');
 const { authenticate } = require('../authenticate.middleware');
 
-// Capture the service instances that authenticate.middleware.js created at
-// require()-time. These are the exact objects that authenticate() calls at
-// runtime. Must be captured once, before any afterEach clearAllMocks() runs.
+// Capture the service instances created by src/lib/services.js at require()-time.
+// services.js creates two UserService instances: userServiceForGroup (index 0, internal)
+// and userService (index 1, the one authenticate.middleware.js actually calls).
+// Must be captured once, before any afterEach clearAllMocks() runs.
 const apiKeyServiceInstance = ApiKeyService.mock.instances[0];
-const userServiceInstance = UserService.mock.instances[0];
+const userServiceInstance = UserService.mock.instances[1];
 
 describe('authenticate middleware', () => {
   let mockNext;

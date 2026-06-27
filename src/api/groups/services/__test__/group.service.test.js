@@ -149,6 +149,16 @@ describe('GroupService.getBySlug()', () => {
     expect(err).toBeDefined();
     expect(err.output.statusCode).toBe(404);
   });
+
+  it('queries Firestore with where("deletedAt", "==", null) — only active groups are returned', async () => {
+    const docSnap = makeDocSnap({ slug: 'fc' });
+    mockDb.collection.get.mockResolvedValue(makeQuerySnap([docSnap]));
+
+    const service = new GroupService(mockUserService);
+    await service.getBySlug('fc');
+
+    expect(mockDb.collection.where).toHaveBeenCalledWith('deletedAt', '==', null);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -224,6 +234,21 @@ describe('GroupService.create()', () => {
       err = e;
     }
     expect(err).toBe(unexpectedErr);
+  });
+
+  it('checks slug uniqueness with a global query — no deletedAt filter prevents reuse of soft-deleted slugs', async () => {
+    mockDb.collection.get.mockResolvedValue(makeQuerySnap([]));
+    const createdSnap = makeDocSnap({ slug: 'cs' });
+    mockDb.create.mockResolvedValue(createdSnap);
+
+    const service = new GroupService(mockUserService);
+    const group = new Group({ name: 'Ciencias', slug: 'cs' });
+    await service.create(group);
+
+    // The uniqueness query contains only the slug filter — no deletedAt filter
+    const whereCalls = mockDb.collection.where.mock.calls;
+    expect(whereCalls).toHaveLength(1);
+    expect(whereCalls[0]).toEqual(['slug', '==', 'cs']);
   });
 });
 
@@ -650,7 +675,7 @@ describe('GroupService.delete()', () => {
     mockDb.get.mockResolvedValue(snap);
   }
 
-  it('deletes the group and removes slug from each member\'s groups', async () => {
+  it('soft-deletes the group and removes slug from each member\'s groups', async () => {
     // findOne returns a group with two members
     const currentSnap = makeDocSnap({ id: 'group-1', slug: 'fc', users: ['user-1', 'user-2'] });
     setupFindOne(currentSnap);
@@ -658,8 +683,8 @@ describe('GroupService.delete()', () => {
     const service = new GroupService(mockUserService);
     const result = await service.delete('group-1');
 
-    // batch.update called once per member with arrayRemove of the slug
-    expect(mockBatch.update).toHaveBeenCalledTimes(2);
+    // batch.update: once per member (arrayRemove slug) + once for the group soft-delete
+    expect(mockBatch.update).toHaveBeenCalledTimes(3);
     const [, payload1] = mockBatch.update.mock.calls[0];
     const [, payload2] = mockBatch.update.mock.calls[1];
     expect(payload1.groups).toEqual(Firestore.FieldValue.arrayRemove('fc'));
@@ -667,32 +692,35 @@ describe('GroupService.delete()', () => {
     expect(payload2.groups).toEqual(Firestore.FieldValue.arrayRemove('fc'));
     expect(payload2.updated).toBeDefined();
 
-    // batch.delete called once for the group document ref
-    expect(mockBatch.delete).toHaveBeenCalledTimes(1);
+    // Soft-delete: batch.update used for the group doc — no hard batch.delete
+    expect(mockBatch.delete).not.toHaveBeenCalled();
 
     // batch.commit called once after all entries are queued
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
 
-    // returns the deleted document id
+    // returns the soft-deleted document id
     expect(result).toBe('group-1');
   });
 
-  it('deletes the group when it has no members', async () => {
+  it('soft-deletes the group when it has no members', async () => {
     const currentSnap = makeDocSnap({ id: 'group-1', slug: 'fc', users: [] });
     setupFindOne(currentSnap);
 
     const service = new GroupService(mockUserService);
     await service.delete('group-1');
 
-    // No member updates — users array is empty
-    expect(mockBatch.update).not.toHaveBeenCalled();
+    // Only the group soft-delete update — no member entries
+    expect(mockBatch.update).toHaveBeenCalledTimes(1);
+    const [, groupPayload] = mockBatch.update.mock.calls[0];
+    expect(groupPayload.deletedAt).toBeDefined();
+    expect(groupPayload.updated).toBeDefined();
 
-    // Group document is still deleted
-    expect(mockBatch.delete).toHaveBeenCalledTimes(1);
+    // Soft-delete: batch.update used — no hard batch.delete
+    expect(mockBatch.delete).not.toHaveBeenCalled();
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
   });
 
-  it('deletes the group when users field is absent', async () => {
+  it('soft-deletes the group when users field is absent', async () => {
     // makeDocSnap without users — docParser receives users: [] but here we test
     // the raw ?? [] guard by stubbing findOne directly to return an object with no users key.
     mockDb.get.mockResolvedValue({
@@ -709,11 +737,13 @@ describe('GroupService.delete()', () => {
     const service = new GroupService(mockUserService);
     await service.delete('group-1');
 
-    // No member updates — users is undefined, ?? [] guard applies
-    expect(mockBatch.update).not.toHaveBeenCalled();
+    // Only the group soft-delete update — no member entries (users is undefined → ?? [] guard)
+    expect(mockBatch.update).toHaveBeenCalledTimes(1);
+    const [, groupPayload] = mockBatch.update.mock.calls[0];
+    expect(groupPayload.deletedAt).toBeDefined();
 
-    // Group document is still deleted
-    expect(mockBatch.delete).toHaveBeenCalledTimes(1);
+    // Soft-delete: batch.update used — no hard batch.delete
+    expect(mockBatch.delete).not.toHaveBeenCalled();
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
   });
 

@@ -23,6 +23,22 @@
         { "fieldPath": "slug", "order": "ASCENDING" },
         { "fieldPath": "updated", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deletedAt", "order": "ASCENDING" },
+        { "fieldPath": "updated", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "groups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deletedAt", "order": "ASCENDING" },
+        { "fieldPath": "updated", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

@@ -3,9 +3,9 @@ const express = require('express');
 const boom = require('@hapi/boom');
 const validatorHandler = require('../../../middleware/validator.handler');
 const ApiKey = require('../models/api-key.model');
-const ApiKeyService = require('../services/api-key.service');
 const { createApiKeySchema, deleteApiKeySchema } = require('../schemas/api-key.schema');
 const { nodeCache } = require('../../../utils/cache');
+const { apiKeyService } = require('../../../lib/services');
 
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 // Scopes that require admin role — Joi accepts them for all users; the role check
@@ -30,8 +30,6 @@ function randomBase62(length) {
   }
   return result;
 }
-
-const apiKeyService = new ApiKeyService();
 
 const apiKeyRouter = express.Router();
 

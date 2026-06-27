@@ -172,3 +172,52 @@ describe('deleteRegData', () => {
     expect(input).toEqual({ name: 'test' });
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// parseTimestamp and parseOptionalTimestamp
+// ──────────────────────────────────────────────────────────────────────────────
+
+const { parseTimestamp, parseOptionalTimestamp } = require('../clean.data.utils');
+
+const MILLIS = 1234567890000;
+const mockTimestamp = { toMillis: () => MILLIS };
+
+describe('parseTimestamp', () => {
+  it('returns a Date instance', () => {
+    const result = parseTimestamp(mockTimestamp);
+
+    expect(result).toBeInstanceOf(Date);
+  });
+
+  it('the returned Date has the correct millisecond value', () => {
+    const result = parseTimestamp(mockTimestamp);
+
+    expect(result.getTime()).toBe(MILLIS);
+  });
+});
+
+describe('parseOptionalTimestamp', () => {
+  it('returns null when ts is null', () => {
+    const result = parseOptionalTimestamp(null);
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null when ts is undefined', () => {
+    const result = parseOptionalTimestamp(undefined);
+
+    expect(result).toBeNull();
+  });
+
+  it('converts a valid Timestamp to a Date', () => {
+    const result = parseOptionalTimestamp(mockTimestamp);
+
+    expect(result).toBeInstanceOf(Date);
+  });
+
+  it('the resulting Date has the correct millisecond value', () => {
+    const result = parseOptionalTimestamp(mockTimestamp);
+
+    expect(result.getTime()).toBe(MILLIS);
+  });
+});
