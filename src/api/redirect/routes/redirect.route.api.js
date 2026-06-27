@@ -13,6 +13,20 @@ const {
   updateRedirectSchema,
   deleteRedirectSchema,
 } = require('../schemas/redirect.schema');
+/**
+ * @param {Object} user - req.user from verified JWT
+ * @param {Object} resource - Redirect document from Firestore
+ * @param {string} scope - 'read' | 'edit' | 'delete'
+ * @returns {boolean}
+ */
+function canAccess(user, resource, scope) {
+  return (
+    user.role === 'admin' ||
+    resource.owner === user.userId ||
+    (resource.permission || []).some(p => user.groups.map(g => `${scope}:${g}`).includes(p))
+  );
+}
+
 const redirectRouterApi = express.Router();
 
 // All redirect routes require a valid JWT — owner and group membership are derived
@@ -66,14 +80,8 @@ redirectRouterApi.get(
     const { id } = req.params;
     try {
       const data = await redirectServiceApi.findOne(id);
-      // Access check mirrors the filter used in GET / but applied to a single doc.
-      // Inline following the same pattern as PATCH and DELETE (D3).
-      const readPermissions = req.user.groups.map(g => `read:${g}`);
-      const canRead =
-        req.user.role === 'admin' ||
-        data.owner === req.user.userId ||
-        (data.permission || []).some(p => readPermissions.includes(p));
-      if (!canRead) return next(boom.forbidden('Insufficient permissions'));
+      // Access check mirrors the filter used in GET / but applied to a single doc (D3).
+      if (!canAccess(req.user, data, 'read')) return next(boom.forbidden('Insufficient permissions'));
       res.status(200).json({ message: 'redirect retrieved', data });
     } catch (error) {
       next(error);
@@ -133,12 +141,7 @@ redirectRouterApi.patch(
       // Fetch first: owner and permission come from the stored document, never from
       // the request body — the body cannot be trusted to assert its own access rights.
       const existing = await redirectServiceApi.findOne(id);
-      const editPermissions = req.user.groups.map(g => `edit:${g}`);
-      const canEdit =
-        req.user.role === 'admin' ||
-        existing.owner === req.user.userId ||
-        (existing.permission || []).some(p => editPermissions.includes(p));
-      if (!canEdit) return next(boom.forbidden('Insufficient permissions'));
+      if (!canAccess(req.user, existing, 'edit')) return next(boom.forbidden('Insufficient permissions'));
       const redirect = new Redirect({ id, ...req.body });
       const doc = await redirectServiceApi.update(redirect);
       res.status(200).json({
@@ -161,12 +164,7 @@ redirectRouterApi.delete(
       // Fetch first: same reason as PATCH — access check requires the stored owner
       // and permission fields, which cannot be supplied by the requester.
       const existing = await redirectServiceApi.findOne(id);
-      const deletePermissions = req.user.groups.map(g => `delete:${g}`);
-      const canDelete =
-        req.user.role === 'admin' ||
-        existing.owner === req.user.userId ||
-        (existing.permission || []).some(p => deletePermissions.includes(p));
-      if (!canDelete) return next(boom.forbidden('Insufficient permissions'));
+      if (!canAccess(req.user, existing, 'delete')) return next(boom.forbidden('Insufficient permissions'));
       const deletedId = await redirectServiceApi.delete(id);
       res.status(200).json({
         message: 'redirect deleted',

@@ -2,6 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const boom = require('@hapi/boom');
 const { sign } = require('../../../utils/auth/jwt');
+const { toPublic } = require('../../users/utils/user-public');
 
 require('../../../utils/auth/strategies/google-oauth2.strategy');
 
@@ -20,13 +21,12 @@ authRouterApi.get(
     if (!req.user) {
       return next(boom.unauthorized('User not registered'));
     }
-    const { id, email, firstName, lastName, groups, role, created, updated } = req.user;
-    const token = sign({ userId: id, email, role, groups });
+    const token = sign({ userId: req.user.id, email: req.user.email, role: req.user.role, groups: req.user.groups });
     res.status(200).json({
       message: 'login successful',
       data: {
         token,
-        user: { id, email, firstName, lastName, groups, role, created, updated },
+        user: toPublic(req.user),
       },
     });
   },
