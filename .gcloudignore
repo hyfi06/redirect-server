@@ -17,7 +17,6 @@
 node_modules/
 
 # Local environment — secrets must not be uploaded
-.env
 .env.*
 
 # Development config
@@ -45,3 +44,4 @@ scripts/
 # Build artifacts and generated output
 coverage
 docs/
+CHANGELOG.md
