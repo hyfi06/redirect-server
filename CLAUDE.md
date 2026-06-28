@@ -414,7 +414,7 @@ Each resource defines three parser functions:
 |---|---|---|
 | `docParser` | `DocumentSnapshot → Model` | Reads from Firestore; converts Timestamps to Date using `parseTimestamp` / `parseOptionalTimestamp` from `src/utils/clean.data.utils.js` |
 | `createParser` | `Model → plain object` | Strips `id`; sets defaults (`permission: []`, `categories: []`) |
-| `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`/`path`); removes `undefined` keys via `cleanDocObject` |
+| `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`/`path`), and system-managed fields (`clickCount`); removes `undefined` keys via `cleanDocObject` |
 
 Parsers live alongside their resource: `src/api/{resource}/parsers/`.
 

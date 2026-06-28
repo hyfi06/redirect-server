@@ -39,7 +39,7 @@ function createRedirectParser(redirect) {
 }
 
 /**
- * Prepares a Redirect for Firestore update — strips id, owner, path, created, updated and removes undefined keys.
+ * Prepares a Redirect for Firestore update — strips id, owner, path, clickCount, created, updated and removes undefined keys.
  * @param {Redirect} redirect
  * @returns {Object}
  */
