@@ -198,6 +198,8 @@ npm run test:watch
 npm run test:e2e        # E2E suite (requires running server + real Firestore)
 npm run test:e2e:cleanup # Hard-delete all E2E test data from Firestore
 npm run indexes     # Sync Firestore composite indexes from firestore.indexes.json to the active GCP project
+npm run logs        # Read last 100 ERROR+ log entries from GCP Cloud Logging (requires gcloud)
+npm run logs:all    # Read last 100 log entries from GCP Cloud Logging (all severities)
 npm run deploy      # gcloud app deploy app.yaml
 ```
 
@@ -278,6 +280,8 @@ Handles any `GET /*` not matched above. This is the public-facing URL shortener:
 
 ```
 GET /some/path
+  ↓
+[rate limiter]    per-IP, 60 req/min, in-memory (express-rate-limit); skipped in test env
   ↓
 nodeCache.has(path)?
   ├── HIT  → url = cache.get(path)

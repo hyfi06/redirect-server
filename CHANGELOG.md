@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.3] - 2026-06-28
+
+### Added
+
+- Per-IP rate limiting on the public redirect catch-all (`GET /*`): 60 requests/minute per IP, in-memory store. Requests that exceed the limit receive `429 Too Many Requests` with a JSON body consistent with the Boom error format.
+- `npm run logs` — queries GCP Cloud Logging for the last 100 `ERROR`-or-above entries from the App Engine service.
+- `npm run logs:all` — same query, all severity levels.
+
 ## [4.1.2] - 2026-06-27
 
 ### Added
@@ -145,7 +153,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/hyfi06/redirect-server/compare/v4.1.2...HEAD
+[Unreleased]: https://github.com/hyfi06/redirect-server/compare/v4.1.3...HEAD
+[4.1.3]: https://github.com/hyfi06/redirect-server/compare/v4.1.2...v4.1.3
 [4.1.2]: https://github.com/hyfi06/redirect-server/compare/v4.1.1...v4.1.2
 [4.1.1]: https://github.com/hyfi06/redirect-server/compare/v4.0.4...v4.1.1
 [4.0.4]: https://github.com/hyfi06/redirect-server/compare/v4.0.3...v4.0.4

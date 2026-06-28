@@ -52,7 +52,19 @@ npm run dev
 ## Tests
 
 ```bash
-npm test
+npm test          # unit + integration (Jest)
+npm run test:e2e  # end-to-end (requires running server + real Firestore)
+```
+
+---
+
+## Logs
+
+Query GCP Cloud Logging for the active project (requires `gcloud` CLI authenticated):
+
+```bash
+npm run logs      # last 100 ERROR-level entries
+npm run logs:all  # last 100 entries (all severities)
 ```
 
 ---
