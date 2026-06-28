@@ -8,11 +8,12 @@ class Redirect {
    * @param {string} data.owner — Firestore document ID of the owning User (userId, not email)
    * @param {string[]} [data.permission]
    * @param {string[]} [data.categories]
+   * @param {number} [data.clickCount] — read-only; set by the click counter, never by callers
    * @param {Date} [data.created]
    * @param {Date} [data.updated]
    */
   constructor(data) {
-    const { id, path, url, owner, permission, categories, created, updated } =
+    const { id, path, url, owner, permission, categories, clickCount, created, updated } =
       data;
     this.id = id || null;
     this.path = path;
@@ -20,6 +21,7 @@ class Redirect {
     this.owner = owner;
     if (permission) this.permission = permission;
     if (categories) this.categories = categories;
+    if (clickCount !== undefined) this.clickCount = clickCount;
     if (created) this.created = created;
     if (updated) this.updated = updated;
   }
