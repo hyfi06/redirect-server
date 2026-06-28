@@ -20,20 +20,23 @@ function makeDocSnap({
   owner = 'user@test.com',
   permission = ['read:fc'],
   categories = ['events'],
+  clickCount = undefined,
   createdMillis = 1000000,
   updatedMillis = 2000000,
 } = {}) {
+  const data = {
+    path,
+    url,
+    owner,
+    permission,
+    categories,
+    created: { toMillis: () => createdMillis },
+    updated: { toMillis: () => updatedMillis },
+  };
+  if (clickCount !== undefined) data.clickCount = clickCount;
   return {
     ref: { id },
-    data: () => ({
-      path,
-      url,
-      owner,
-      permission,
-      categories,
-      created: { toMillis: () => createdMillis },
-      updated: { toMillis: () => updatedMillis },
-    }),
+    data: () => data,
   };
 }
 
@@ -96,6 +99,18 @@ describe('redirectParser', () => {
     const snap = makeDocSnap({ categories: ['conf', 'seminar'] });
     const result = redirectParser(snap);
     expect(result.categories).toEqual(['conf', 'seminar']);
+  });
+
+  it('propagates clickCount when present in the document', () => {
+    const snap = makeDocSnap({ clickCount: 42 });
+    const result = redirectParser(snap);
+    expect(result.clickCount).toBe(42);
+  });
+
+  it('leaves clickCount undefined when absent from the document', () => {
+    const snap = makeDocSnap();
+    const result = redirectParser(snap);
+    expect(result.clickCount).toBeUndefined();
   });
 });
 
@@ -245,5 +260,11 @@ describe('updateRedirectParser', () => {
     updateRedirectParser(redirect);
     expect(redirect.id).toBe('r-1');
     expect(redirect.owner).toBe('a@test.com');
+  });
+
+  it('discards clickCount — read-only field managed by the click counter', () => {
+    const redirect = new Redirect({ path: '/fc/test', url: 'https://example.com', owner: 'a@test.com', clickCount: 99 });
+    const result = updateRedirectParser(redirect);
+    expect(result).not.toHaveProperty('clickCount');
   });
 });
