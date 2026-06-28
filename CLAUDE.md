@@ -284,9 +284,12 @@ GET /some/path
 [rate limiter]    per-IP, 60 req/min, in-memory (express-rate-limit); skipped in test env
   ↓
 nodeCache.has(path)?
-  ├── HIT  → url = cache.get(path)
+  ├── HIT  → { id, url } = cache.get(path)
   └── MISS → RedirectServiceApi.getByPath(path) → Firestore query where('path', '==', path)
-              nodeCache.set(path, url, 5min TTL)
+              nodeCache.set(path, { id, url }, 5min TTL)
+              (id stored alongside url so clickCounter.increment can run without a second Firestore read)
+  ↓
+clickCounter.increment(id)   fire-and-forget — 302 does not wait for Firestore
   ↓
 Cache-Control: public, max-age=300  (production only)
 res.redirect(302, url)
@@ -411,7 +414,7 @@ Each resource defines three parser functions:
 |---|---|---|
 | `docParser` | `DocumentSnapshot → Model` | Reads from Firestore; converts Timestamps to Date using `parseTimestamp` / `parseOptionalTimestamp` from `src/utils/clean.data.utils.js` |
 | `createParser` | `Model → plain object` | Strips `id`; sets defaults (`permission: []`, `categories: []`) |
-| `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`/`path`); removes `undefined` keys via `cleanDocObject` |
+| `updateParser` | `Model → plain object` | Strips `id`, `created`, immutable fields (`owner`/`email`/`path`), and system-managed fields (`clickCount`); removes `undefined` keys via `cleanDocObject` |
 
 Parsers live alongside their resource: `src/api/{resource}/parsers/`.
 
@@ -478,8 +481,9 @@ errorHandler:
 ### Caching
 
 - **Server-side**: singleton `node-cache` instance (`src/utils/cache.js`). Two keying schemes:
-  - Redirect path → destination URL. Key = path string, TTL = 5 minutes (300s). Used by the public catch-all router.
+  - Redirect path → `{ id, url }`. Key = path string, TTL = 5 minutes (300s). Stores `id` alongside `url` so `clickCounter.increment(id)` can run on cache hits without a Firestore read. Used by the public catch-all router.
   - API Key hash → `req.user` object. Key = SHA-256 hex of the token, TTL = 30 seconds. Used by `authenticate` to avoid one Firestore read per API Key request. Entries are deleted by `apiKeyService.revoke()` callers for best-effort same-instance invalidation.
+- **Click counter** (`src/utils/click-counter.js`): singleton `Map<redirectId, number>` that accumulates hits in memory and flushes to Firestore with `FieldValue.increment(N)` when a counter reaches the threshold (N = 10). Flush is fire-and-forget — errors are logged, never propagated. `flushAll()` is called on SIGTERM from `src/app.js` to drain pending counts before shutdown.
 - **Client-side**: `Cache-Control: public, max-age=300` header set only in production.
 - The home page sets a 30-minute client cache.
 

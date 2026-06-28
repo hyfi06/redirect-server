@@ -13,6 +13,7 @@ jest.mock('../../../utils/cache', () => ({
   },
   setClientCache: jest.fn(),
 }));
+jest.mock('../../../utils/click-counter', () => ({ increment: jest.fn() }));
 
 describe('redirectRoute', () => {
   let app;
@@ -31,7 +32,7 @@ describe('redirectRoute', () => {
     const mockPath = '/testPath';
     const mockUrl = 'https://example.com';
     nodeCache.has.mockReturnValue(true);
-    nodeCache.get.mockReturnValue(mockUrl);
+    nodeCache.get.mockReturnValue({ id: 'mockId', url: mockUrl });
 
     const response = await request(app).get(mockPath);
 
@@ -45,7 +46,7 @@ describe('redirectRoute', () => {
     const mockPath = '/testPath';
     const mockUrl = 'https://example.com';
     nodeCache.has.mockReturnValue(false);
-    RedirectService.prototype.getByPath.mockResolvedValue({ url: mockUrl });
+    RedirectService.prototype.getByPath.mockResolvedValue({ id: 'mockId', url: mockUrl });
 
     const response = await request(app).get(mockPath);
 
@@ -55,7 +56,7 @@ describe('redirectRoute', () => {
     expect(RedirectService.prototype.getByPath).toHaveBeenCalledWith(mockPath);
     expect(nodeCache.set).toHaveBeenCalledWith(
       mockPath,
-      mockUrl,
+      { id: 'mockId', url: mockUrl },
       expect.any(Number)
     );
   });
@@ -91,6 +92,7 @@ describe('redirectRoute', () => {
         jest.doMock('../../../lib/services', () => ({
           redirectService: { getByPath: jest.fn() },
         }));
+        jest.doMock('../../../utils/click-counter', () => ({ increment: jest.fn() }));
         const redirectRouter = require('../redirect.router');
         app = express();
         app.use('/', redirectRouter);
@@ -107,7 +109,7 @@ describe('redirectRoute', () => {
     });
 
     it('passes the request through to the redirect handler when within the rate limit', async () => {
-      const mockGetByPath = jest.fn().mockResolvedValue({ url: 'https://example.com' });
+      const mockGetByPath = jest.fn().mockResolvedValue({ id: 'mockId', url: 'https://example.com' });
       let app;
       jest.isolateModules(() => {
         jest.doMock('express-rate-limit', () => (_options) => {
@@ -120,6 +122,7 @@ describe('redirectRoute', () => {
         jest.doMock('../../../lib/services', () => ({
           redirectService: { getByPath: mockGetByPath },
         }));
+        jest.doMock('../../../utils/click-counter', () => ({ increment: jest.fn() }));
         const redirectRouter = require('../redirect.router');
         app = express();
         app.use('/', redirectRouter);

@@ -5,6 +5,7 @@ const passport = require('passport');
 const config = require('./config');
 
 const { log } = require('./utils/logger');
+const clickCounter = require('./utils/click-counter');
 const notFoundHandler = require('./middleware/notFound.handler');
 const { wrapErrors, errorHandler } = require('./middleware/error.handler');
 
@@ -38,6 +39,20 @@ app.use(notFoundHandler);
 // error middleware
 app.use(wrapErrors);
 app.use(errorHandler);
+
+// App Engine sends SIGTERM before terminating an instance; flush pending click counters before exit.
+process.on('SIGTERM', async () => {
+  log('INFO', 'SIGTERM received — flushing click counters before shutdown');
+  // 10s budget: App Engine allows ~30s between SIGTERM and SIGKILL; Firestore writes are fast.
+  const timeout = setTimeout(() => {
+    log('WARNING', 'click-counter flush timed out — forcing exit');
+    process.exit(1);
+  }, 10000);
+  await clickCounter.flushAll();
+  clearTimeout(timeout);
+  // Explicit exit required — open handles (timers, keep-alives) would otherwise prevent termination.
+  process.exit(0);
+});
 
 app.listen(config.port, function () {
   log('INFO', `Server listening on port ${config.port}`);

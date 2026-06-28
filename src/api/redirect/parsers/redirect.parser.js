@@ -39,7 +39,7 @@ function createRedirectParser(redirect) {
 }
 
 /**
- * Prepares a Redirect for Firestore update — strips id, owner, path, created, updated and removes undefined keys.
+ * Prepares a Redirect for Firestore update — strips id, owner, path, clickCount, created, updated and removes undefined keys.
  * @param {Redirect} redirect
  * @returns {Object}
  */
@@ -50,6 +50,8 @@ function updateRedirectParser(redirect) {
   // path is immutable post-creation — strip here regardless of schema to prevent
   // privilege escalation and uniqueness bypass if schema changes in the future
   delete docData.path;
+  // clickCount is managed exclusively by the click counter — callers cannot set it
+  delete docData.clickCount;
   cleanDocObject(docData);
   return docData;
 }

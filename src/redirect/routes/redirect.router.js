@@ -4,6 +4,7 @@ const config = require('../../config');
 const { nodeCache, setClientCache } = require('../../utils/cache');
 const { FIVE_MINUTES_IN_SECONDS } = require('../../utils/timeConst');
 const { redirectService } = require('../../lib/services');
+const clickCounter = require('../../utils/click-counter');
 
 const redirectRouter = express.Router({
   caseSensitive: true,
@@ -28,15 +29,18 @@ redirectRouter.use(limiter);
 // pattern or stripping the slash before validation.
 redirectRouter.get('/*', async function (req, res, next) {
   const path = req.path.replace(/\/$/,'');
-  let url;
+  let id, url;
   try {
     if (nodeCache.has(path)) {
-      url = nodeCache.get(path);
+      ({ id, url } = nodeCache.get(path));
     } else {
       const redirectData = await redirectService.getByPath(path);
+      id = redirectData.id;
       url = redirectData.url;
-      nodeCache.set(path, url, FIVE_MINUTES_IN_SECONDS);
+      // Cache stores {id, url} — id is needed by clickCounter.increment without a second Firestore read.
+      nodeCache.set(path, { id, url }, FIVE_MINUTES_IN_SECONDS);
     }
+    clickCounter.increment(id);
     setClientCache(res, FIVE_MINUTES_IN_SECONDS);
     res.redirect(url);
   } catch (err) {
