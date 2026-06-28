@@ -32,5 +32,9 @@ module.exports = {
   jwt: {
     jwtSecret: process.env.JWT_SECRET,
     jwtTtl: process.env.JWT_TTL || '2h',
-  }
+  },
+  rateLimit: {
+    windowMs: 60000,
+    limit: 60,
+  },
 };
