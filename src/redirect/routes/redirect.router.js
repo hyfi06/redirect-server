@@ -12,6 +12,7 @@ const redirectRouter = express.Router({
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   limit: config.rateLimit.limit,
+  // RateLimit-* headers suppressed — browsers following redirects cannot act on quota info.
   standardHeaders: false,
   legacyHeaders: false,
   skip: () => process.env.NODE_ENV === 'test',
