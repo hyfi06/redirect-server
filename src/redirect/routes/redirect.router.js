@@ -37,6 +37,7 @@ redirectRouter.get('/*', async function (req, res, next) {
       const redirectData = await redirectService.getByPath(path);
       id = redirectData.id;
       url = redirectData.url;
+      // Cache stores {id, url} — id is needed by clickCounter.increment without a second Firestore read.
       nodeCache.set(path, { id, url }, FIVE_MINUTES_IN_SECONDS);
     }
     clickCounter.increment(id);

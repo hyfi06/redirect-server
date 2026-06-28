@@ -3,6 +3,7 @@ const firestoreClient = require('../lib/firestore-client');
 const config = require('../config');
 const { log } = require('./logger');
 
+// N=10: ≤9 clicks lost on crash (acceptable for personal analytics) and 10× fewer writes than N=1.
 const FLUSH_THRESHOLD = 10;
 
 /** @type {Map<string, number>} */
