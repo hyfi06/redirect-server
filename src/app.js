@@ -16,6 +16,7 @@ const { apiV1 } = require('./api');
 const botReject = require('./middleware/bot-reject.middleware');
 
 const app = express();
+app.set('trust proxy', config.trustProxy);
 app.use(
   cors({
     origin: config.cors,

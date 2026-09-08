@@ -14,6 +14,12 @@ if (process.env.NODE_ENV !== 'test') {
 
 module.exports = {
   dev: process.env.NODE_ENV != 'production',
+  // App Engine standard puts exactly one reverse proxy (the GFE) in front of the
+  // instance — `1` trusts that single hop so Express resolves req.ip from
+  // X-Forwarded-For/Forwarded. `true` is deliberately avoided: it trusts an
+  // arbitrary proxy chain, letting a client spoof its IP. No real proxy sits in
+  // front of the process outside production, so trust proxy is `false` there.
+  trustProxy: process.env.NODE_ENV === 'production' ? 1 : false,
   port: process.env.PORT || 3000,
   cors: process.env.CORS && process.env.CORS !== '*' ? process.env.CORS.split(',') : true,
   version: process.env.npm_package_version,
