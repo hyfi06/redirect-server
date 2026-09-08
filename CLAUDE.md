@@ -236,6 +236,10 @@ Google App Engine (Node.js 24). Config in `app.yaml`. Scales from 0 to 3 instanc
 
 ## Architecture
 
+### Bootstrap order (`src/app.js`)
+
+Before any router is mounted: `app.set('trust proxy', config.trustProxy)` runs first, ahead of `cors()`/`helmet()`. `config.trustProxy` (`src/config/index.js`) is `1` in production, `false` otherwise — App Engine standard puts exactly one reverse proxy (the GFE) in front of the instance, so trusting a single hop lets Express resolve `req.ip` from `X-Forwarded-For` correctly (and avoids `express-rate-limit`'s `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` / `ERR_ERL_FORWARDED_HEADER` validation errors). `true` is deliberately avoided — it trusts an arbitrary proxy chain and trips `express-rate-limit`'s own `ERR_ERL_PERMISSIVE_TRUST_PROXY` guard.
+
 ### Router mount order (`src/app.js`)
 
 Four surfaces plus one middleware registered in strict order — order matters because the redirect router is a catch-all:
@@ -282,6 +286,8 @@ Handles any `GET /*` not matched above. This is the public-facing URL shortener:
 GET /some/path
   ↓
 [rate limiter]    per-IP, 60 req/min, in-memory (express-rate-limit); skipped in test env
+                  keyGenerator defaults to req.ip, resolved from X-Forwarded-For thanks to
+                  `trust proxy` (see "Bootstrap order" above) — one bucket per real client
   ↓
 nodeCache.has(path)?
   ├── HIT  → { id, url } = cache.get(path)

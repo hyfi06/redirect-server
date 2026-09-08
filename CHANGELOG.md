@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-09-07
+
+### Fixed
+
+- `trust proxy` configured in `src/app.js` (`1` in production, `false` in development/test — `src/config/index.js`). App Engine standard puts exactly one reverse proxy (the GFE) in front of the instance; without this, Express resolved `req.ip` from the internal GFE address for every request, so the public redirect catch-all's rate limiter (`60 req/min`) effectively shared one bucket across all real clients instead of limiting per IP. Also eliminates the `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` / `ERR_ERL_FORWARDED_HEADER` errors that were dominating production error logs.
+
 ## [4.2.0] - 2026-06-28
 
 ### Added
@@ -166,7 +172,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/hyfi06/redirect-server/compare/v4.2.0...HEAD
+[Unreleased]: https://github.com/hyfi06/redirect-server/compare/v4.2.1...HEAD
+[4.2.1]: https://github.com/hyfi06/redirect-server/compare/v4.2.0...v4.2.1
 [4.2.0]: https://github.com/hyfi06/redirect-server/compare/v4.1.3...v4.2.0
 [4.1.3]: https://github.com/hyfi06/redirect-server/compare/v4.1.2...v4.1.3
 [4.1.2]: https://github.com/hyfi06/redirect-server/compare/v4.1.1...v4.1.2
