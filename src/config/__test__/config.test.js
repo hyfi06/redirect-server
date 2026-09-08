@@ -164,6 +164,43 @@ describe('config exported values', () => {
     expect(config.dev).toBe(true);
   });
 
+  it('sets trustProxy=1 when NODE_ENV is production', () => {
+    setRequiredVars();
+    process.env.NODE_ENV = 'production';
+
+    let config;
+    jest.isolateModules(() => {
+      jest.mock('dotenv', () => ({ config: jest.fn() }));
+      config = require('../index');
+    });
+
+    expect(config.trustProxy).toBe(1);
+  });
+
+  it('sets trustProxy=false when NODE_ENV is development', () => {
+    process.env.NODE_ENV = 'development';
+
+    let config;
+    jest.isolateModules(() => {
+      jest.mock('dotenv', () => ({ config: jest.fn() }));
+      config = require('../index');
+    });
+
+    expect(config.trustProxy).toBe(false);
+  });
+
+  it('sets trustProxy=false when NODE_ENV is test', () => {
+    process.env.NODE_ENV = 'test';
+
+    let config;
+    jest.isolateModules(() => {
+      jest.mock('dotenv', () => ({ config: jest.fn() }));
+      config = require('../index');
+    });
+
+    expect(config.trustProxy).toBe(false);
+  });
+
   it('uses PORT env var when set', () => {
     process.env.PORT = '4000';
     process.env.NODE_ENV = 'test';

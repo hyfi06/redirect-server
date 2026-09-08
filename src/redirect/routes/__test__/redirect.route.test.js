@@ -134,4 +134,61 @@ describe('redirectRoute', () => {
       expect(response.headers.location).toBe('https://example.com');
     });
   });
+
+  describe('trust proxy — real client IP resolution', () => {
+    // src/app.js calls app.set('trust proxy', config.trustProxy) before mounting any
+    // router; config.trustProxy is 1 only in production (see src/config/__test__/config.test.js).
+    // These tests apply that same production value (1) directly to a local app instance —
+    // app.js itself is never imported (it calls app.listen()) — to verify the effect on the
+    // catch-all's request pipeline, which is what the default express-rate-limit keyGenerator
+    // (req.ip) relies on to distinguish real clients.
+    //
+    // Before the fix (trust proxy left at its Express default, `false`): req.ip resolved to
+    // request.socket.remoteAddress regardless of X-Forwarded-For — the internal GFE address,
+    // identical for every request reaching the instance — so the rate limiter effectively
+    // shared one bucket across all real clients. Not re-tested here since it exercises no
+    // code introduced by this hotfix; see docs/diag/2026-09-07_01_trust-proxy-rate-limit-misconfig.md.
+    //
+    // App Engine's GFE is a single hop connected directly by TCP, so it never appears inside
+    // X-Forwarded-For itself — the header it forwards carries exactly one IP, the real client's.
+
+    function buildTrustedApp(onRequest) {
+      const trustedApp = express();
+      trustedApp.set('trust proxy', 1);
+      trustedApp.use((req, res, next) => {
+        onRequest(req.ip);
+        next();
+      });
+      redirectRoute(trustedApp);
+      return trustedApp;
+    }
+
+    beforeEach(() => {
+      nodeCache.has.mockReturnValue(false);
+      RedirectService.prototype.getByPath.mockResolvedValue({ id: 'mockId', url: 'https://example.com' });
+    });
+
+    it('resolves req.ip to the client IP carried by a single-entry X-Forwarded-For header', async () => {
+      let capturedIp;
+      const trustedApp = buildTrustedApp(ip => {
+        capturedIp = ip;
+      });
+
+      await request(trustedApp).get('/testPath').set('X-Forwarded-For', '203.0.113.5');
+
+      expect(capturedIp).toBe('203.0.113.5');
+    });
+
+    it('resolves a different req.ip per request, distinguishing real clients for the rate limiter', async () => {
+      const capturedIps = [];
+      const trustedApp = buildTrustedApp(ip => {
+        capturedIps.push(ip);
+      });
+
+      await request(trustedApp).get('/testPath').set('X-Forwarded-For', '203.0.113.5');
+      await request(trustedApp).get('/testPath').set('X-Forwarded-For', '198.51.100.9');
+
+      expect(capturedIps).toEqual(['203.0.113.5', '198.51.100.9']);
+    });
+  });
 });
