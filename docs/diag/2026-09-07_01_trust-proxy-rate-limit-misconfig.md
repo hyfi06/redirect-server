@@ -1,7 +1,7 @@
 # Diagnóstico — `trust proxy` sin configurar rompe el rate limiter del catch-all
 
 **Fecha:** 2026-09-07
-**Estado:** ABIERTO
+**Estado:** RESUELTO
 **Severidad:** Media — no hay explotación confirmada, pero el rate limiting de la ruta pública (`GET /*`) probablemente no está identificando IPs reales; genera 100% de ruido en los logs de error
 **Rama:** `hotfix-trust-proxy-rate-limit` (desde `main`)
 
@@ -119,3 +119,15 @@ Justificación de `1` sobre las alternativas:
 - Express docs: `trust proxy` setting — valor numérico = "trust the nth hop from the front-facing proxy server as the client"
 - `app.yaml` (este repo) — confirma ausencia de LB/CDN adicional delante de App Engine estándar
 - CLAUDE.md — sección "Surface 3 — Redirect catch-all" (rate limiter existente) y "Environment Variables" (patrón de configuración por entorno)
+
+---
+
+## 7. Resolución
+
+**Estado:** RESUELTO
+
+Fix aplicado en commit `e9eaed3` ([fix] configure trust proxy for App Engine single-hop topology) — `trustProxy` añadido a `src/config/index.js` (`1` en producción, `false` en desarrollo/test) y `app.set('trust proxy', config.trustProxy)` añadido en `src/app.js`, antes de montar cualquier router.
+
+Tests de regresión añadidos en commit `0a2af72` ([test] cover trust proxy config and real-IP resolution in rate limiter) — cobertura del valor de `config.trustProxy` por entorno y de la resolución de `req.ip` desde `X-Forwarded-For` en el catch-all.
+
+Documentación cerrada en el commit `[docs]` de §3 de `docs/plan/2026-09-07_01_hotfix-trust-proxy-rate-limit.md`.

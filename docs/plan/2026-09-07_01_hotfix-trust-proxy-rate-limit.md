@@ -1,7 +1,7 @@
 # Plan — Hotfix: configurar `trust proxy` para el rate limiter del catch-all
 
 **Fecha:** 2026-09-07
-**Estado:** ABIERTO
+**Estado:** CERRADO
 **Rama:** `hotfix-trust-proxy-rate-limit`
 **Diagnóstico de referencia:** `docs/diag/2026-09-07_01_trust-proxy-rate-limit-misconfig.md`
 
@@ -31,7 +31,7 @@ Express no tiene configurado `trust proxy` (`src/app.js`). App Engine estándar 
 
 ---
 
-## §1 — Fix: configurar `trust proxy` en el bootstrap de Express
+## §1 ✅ — Fix: configurar `trust proxy` en el bootstrap de Express
 
 **Archivos:** `src/app.js`, `src/config/index.js`
 
@@ -61,16 +61,18 @@ Used agents: backend-engineer
 
 ---
 
-## §2 — Tests: cubrir la configuración de `trust proxy` y el rate limiter con IP real
+## §2 ✅ — Tests: cubrir la configuración de `trust proxy` y el rate limiter con IP real
 
 **Archivos:** `src/config/__test__/` (o ubicación equivalente si `config/index.js` no tiene aún carpeta `__test__` — el test-engineer debe verificar la convención existente antes de crear una nueva), `src/redirect/routes/__test__/redirect.route.test.js`
 
 El test-engineer debe:
 
 - Verificar que `config` expone el valor correcto de `trust proxy` bajo `NODE_ENV=production` (`1`) y bajo cualquier otro valor de `NODE_ENV` (`false`). Si `config/index.js` no tiene tests previos por depender de variables de entorno leídas al importar el módulo, seguir el patrón que ya use el repo para testear módulos de config sensibles a `NODE_ENV` (revisar tests existentes antes de inventar uno nuevo).
-- Añadir un caso al suite del catch-all (`src/redirect/routes/__test__/redirect.route.test.js`) que confirme que, con `trust proxy` configurado a `1` y una request simulando `X-Forwarded-For` con dos IPs (formato `"<ip-cliente>, <ip-gfe>"`), `req.ip` resuelto por Express corresponde a la IP del cliente real y no a la del proxy — esto es lo que garantiza que el rate limiter identifica clientes distintos correctamente.
+- Añadir un caso al suite del catch-all (`src/redirect/routes/__test__/redirect.route.test.js`) que confirme que, con `trust proxy` configurado a `1`, `req.ip` resuelto por Express corresponde a la IP del cliente real llevada en `X-Forwarded-For` — esto es lo que garantiza que el rate limiter identifica clientes distintos correctamente.
 - No es necesario un test end-to-end contra Firestore real para este caso — puede cubrirse a nivel de request/response simulada (supertest), consistente con el resto de `redirect.route.test.js`.
 - Mantener los tests existentes; no eliminar cobertura previa del catch-all.
+
+> **Corrección post-implementación (ver commit `0a2af72`):** este apartado pedía originalmente un escenario con dos IPs en `X-Forwarded-For` (formato `"<ip-cliente>, <ip-gfe>"`), asertando que `req.ip` resolvía a la primera. Al implementarlo se verificó empíricamente (Express + supertest reales, con `trust proxy: 1`) que ese header de dos IPs resuelve `req.ip` a la **segunda** IP, no a la primera — y que además no representa la topología real de App Engine: el GFE conecta por TCP directo y nunca se antepone a sí mismo dentro de `X-Forwarded-For`, así que el header real que llega a la instancia trae una única IP, la del cliente. El escenario se corrigió a una sola IP en `X-Forwarded-For`, consistente con la topología real, y así quedó implementado.
 
 **Commit esperado:**
 
@@ -86,7 +88,7 @@ Used agents: test-engineer
 
 ---
 
-## §3 — Docs: cerrar diagnóstico y plan, actualizar CLAUDE.md, bump de versión
+## §3 ✅ — Docs: cerrar diagnóstico y plan, actualizar CLAUDE.md, bump de versión
 
 **Archivos:**
 
