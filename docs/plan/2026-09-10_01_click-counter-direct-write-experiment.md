@@ -3,7 +3,7 @@
 **Spec:** `docs/spec/2026-09-10_01_click-counter-direct-write-experiment.md`
 **Fecha:** 2026-09-10
 **Rama:** `dev`
-**Estado:** ABIERTO
+**Estado:** EN PRUEBA
 
 ---
 
@@ -32,7 +32,7 @@ plan: 2026-09-10_01_click-counter-direct-write-experiment §0
 
 ---
 
-## §1 — Feat: escritura directa por click en `src/utils/click-counter.js` + retiro del `SIGTERM` handler
+## §1 ✅ — Feat: escritura directa por click en `src/utils/click-counter.js` + retiro del `SIGTERM` handler
 
 **Archivos:** `src/utils/click-counter.js`, `src/app.js`
 
@@ -61,7 +61,7 @@ Used agents: backend-engineer
 
 ---
 
-## §2 — Test: cobertura del nuevo comportamiento de `click-counter.js`
+## §2 ✅ — Test: cobertura del nuevo comportamiento de `click-counter.js`
 
 **Archivos:** `src/utils/__test__/click-counter.test.js`
 
