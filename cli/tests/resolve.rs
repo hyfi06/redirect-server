@@ -105,3 +105,16 @@ fn empty_argument_fails_without_any_request() {
     assert!(format!("{err:#}").contains("indica el id o el path"));
     assert_eq!(server.request_count(), 0);
 }
+
+#[test]
+fn dot_segments_are_rejected_as_ids_without_any_request() {
+    let server = list_server();
+    for arg in [".", ".."] {
+        let err = resolve_target(&client(&server), arg).unwrap_err();
+        assert!(
+            format!("{err:#}").contains("no es un id válido"),
+            "{arg}: {err:#}"
+        );
+    }
+    assert_eq!(server.request_count(), 0);
+}
