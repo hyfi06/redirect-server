@@ -242,3 +242,53 @@ pub fn write_config(xdg: &Path, api_url: &str, with_key: bool) {
     };
     config::save_to(&config_file(xdg), &cfg).unwrap();
 }
+
+/// A JWT-shaped string (three base64url parts, no whitespace) used as the pasted token.
+pub const JWT: &str = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLTEifQ.c2lnbmF0dXJl";
+
+/// An API Key as `GET /users/me/api-keys` serializes it (`toPublic()`: no hash, no token).
+pub fn api_key_json(id: &str, name: &str, active: bool) -> Value {
+    json!({
+        "id": id,
+        "name": name,
+        "prefix": "sk_1kg_x",
+        "scopes": ["read:redirects", "write:redirects"],
+        "active": active,
+        "createdAt": "2026-11-01T00:00:00.000Z",
+        "expiresAt": null
+    })
+}
+
+/// Mock of `/api/v1/users/me/api-keys`, routed by method and path:
+/// `GET` lists `keys`; `DELETE /{id}` answers `delete_reply(id)`; `POST` answers `post_reply`.
+/// Anything else is a JSON 404, so an unexpected route shows up as a failure.
+pub fn api_keys_server(
+    keys: Value,
+    delete_reply: impl Fn(&str) -> Reply + Send + Sync + 'static,
+    post_reply: Reply,
+) -> MockServer {
+    const BASE: &str = "/api/v1/users/me/api-keys";
+    MockServer::start(move |req| match (req.method.as_str(), req.path()) {
+        ("GET", BASE) => Reply::data(keys.clone()),
+        ("POST", BASE) => post_reply.clone(),
+        ("DELETE", path) if path.starts_with(&format!("{BASE}/")) => {
+            delete_reply(&path[BASE.len() + 1..])
+        }
+        _ => Reply::error(404, "unexpected route in mock"),
+    })
+}
+
+/// `201` with the created key and its one-time plaintext `token`, as `POST /users/me/api-keys` answers.
+pub fn created_key_reply(id: &str, name: &str, token: &str) -> Reply {
+    let mut data = api_key_json(id, name, true);
+    data["token"] = json!(token);
+    Reply::json(201, json!({ "message": "api key created", "data": data }))
+}
+
+/// `200 { id }`, as `DELETE /users/me/api-keys/:keyId` answers.
+pub fn revoked_reply(id: &str) -> Reply {
+    Reply::json(
+        200,
+        json!({ "message": "api key revoked", "data": { "id": id } }),
+    )
+}
