@@ -57,6 +57,7 @@ pub fn run(cli: Cli, stdout: &mut dyn Write, stderr: &mut dyn Write) -> Result<(
         Command::Search(args) => {
             commands::search::run(&configured_client()?, &args, cli.json, stdout, stderr)
         }
+        Command::Completions(args) => commands::completions::run(args.shell, stdout),
     }
 }
 

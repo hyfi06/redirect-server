@@ -1,4 +1,4 @@
-use clap::{ArgGroup, Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -35,6 +35,8 @@ pub enum Command {
     Delete(DeleteArgs),
     /// Busca entre todos los redirects visibles; varios filtros se combinan (AND)
     Search(SearchArgs),
+    /// Imprime en stdout el script de autocompletado para la shell indicada
+    Completions(CompletionsArgs),
 }
 
 #[derive(Debug, Args)]
@@ -149,4 +151,17 @@ pub struct SearchArgs {
     /// Categoría exacta (distingue mayúsculas)
     #[arg(long, value_name = "CATEGORIA")]
     pub category: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct CompletionsArgs {
+    /// Shell de destino
+    #[arg(value_enum, value_name = "SHELL")]
+    pub shell: CompletionShell,
+}
+
+/// Only bash is supported (the spec leaves other shells out of scope).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum CompletionShell {
+    Bash,
 }

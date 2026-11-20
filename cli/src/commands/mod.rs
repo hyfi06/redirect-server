@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod completions;
 pub mod create;
 pub mod delete;
 pub mod edit;

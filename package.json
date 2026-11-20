@@ -13,7 +13,8 @@
     "indexes": "node scripts/manage-indexes.js",
     "logs": "node scripts/logs.js",
     "logs:all": "node scripts/logs.js --all",
-    "deploy": "gcloud app deploy app.yaml"
+    "deploy": "gcloud app deploy app.yaml",
+    "install:cli": "bash scripts/install-cli.sh"
   },
   "repository": {
     "type": "git",
