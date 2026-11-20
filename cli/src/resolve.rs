@@ -14,6 +14,11 @@ pub fn resolve_target(client: &ApiClient, arg: &str) -> Result<Redirect> {
             .find(|redirect| redirect.path == arg)
             .ok_or_else(|| anyhow!("no se encontró un redirect con path `{arg}`"));
     }
+    // `.` and `..` are never valid Firestore ids, and the URL builder would collapse them into
+    // `GET /redirects` (the list), producing a misleading "not the API v1" error.
+    if arg == "." || arg == ".." {
+        bail!("`{arg}` no es un id válido; si es un path, debe empezar con `/`");
+    }
     client.get_redirect(arg).map_err(|err| match err {
         ApiError::NotFound(_) => anyhow!(
             "no se encontró un redirect con id `{arg}`; si es un path, debe empezar con `/` (p. ej. `/{arg}`)"
