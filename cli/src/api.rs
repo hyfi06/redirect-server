@@ -101,7 +101,8 @@ struct ErrorBody {
     message: String,
 }
 
-/// Blocking client for `{api_url}/api/v1`. Every request sends `Authorization: Bearer <token>`.
+/// Blocking client for `{api_url}/api/v1`. Every request sends `Authorization: Bearer <token>`;
+/// without a token every method fails with [`ApiError::MissingApiKey`] before touching the network.
 pub struct ApiClient {
     api_url: String,
     token: Option<String>,
