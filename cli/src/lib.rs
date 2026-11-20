@@ -8,6 +8,7 @@ use anyhow::Result;
 
 use cli::{Cli, Command};
 
+/// `stderr` is injected so tests can capture messages and warnings.
 pub fn run(cli: Cli, stderr: &mut dyn Write) -> Result<()> {
     match cli.command {
         Command::Set(args) => commands::set::run(&config::path()?, &args.api_url, stderr),

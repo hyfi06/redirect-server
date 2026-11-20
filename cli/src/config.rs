@@ -14,10 +14,12 @@ const FILE_MODE: u32 = 0o600;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
     pub api_url: String,
+    /// `None` until `rserver login` runs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_key: Option<ApiKeyConfig>,
 }
 
+/// `id` is kept so `rserver logout` can revoke the key server-side.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApiKeyConfig {
     pub id: String,
@@ -35,14 +37,17 @@ pub fn path() -> Result<PathBuf> {
     Ok(base.join(DIR_NAME).join(FILE_NAME))
 }
 
+/// Fails with an install hint when the file does not exist yet.
 pub fn load() -> Result<Config> {
     load_from(&path()?)
 }
 
+/// Creates the directory if missing; file mode `0o600`, directory mode `0o700`.
 pub fn save(config: &Config) -> Result<()> {
     save_to(&path()?, config)
 }
 
+/// [`load`] with an explicit path, so tests never touch the real config.
 pub fn load_from(path: &Path) -> Result<Config> {
     let content = match fs::read_to_string(path) {
         Ok(content) => content,
@@ -62,7 +67,7 @@ pub fn load_from(path: &Path) -> Result<Config> {
     })
 }
 
-/// Writes through a temp file + rename so a failed write never leaves a truncated config behind.
+/// [`save`] with an explicit path. Writes through a temp file + rename so a failed write never leaves a truncated config behind.
 pub fn save_to(path: &Path, config: &Config) -> Result<()> {
     let dir = path
         .parent()
