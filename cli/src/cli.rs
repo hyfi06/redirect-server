@@ -17,6 +17,10 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Inicia sesión con Google y guarda una API Key de 90 días para esta máquina
+    Login,
+    /// Revoca la API Key de esta máquina en el servidor y la borra de la configuración
+    Logout,
     /// Cambia la configuración local
     Set(SetArgs),
     /// Lista los redirects visibles, una página a la vez

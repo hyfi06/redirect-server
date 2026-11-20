@@ -6,15 +6,34 @@ pub mod output;
 pub mod resolve;
 
 use std::io::Write;
+use std::time::SystemTime;
 
 use anyhow::Result;
 
 use api::ApiClient;
 use cli::{Cli, Command};
+use commands::auth::{AuthIo, StdinLineReader, SystemBrowser};
 
 /// `stdout` and `stderr` are injected so tests can capture output, messages and warnings.
 pub fn run(cli: Cli, stdout: &mut dyn Write, stderr: &mut dyn Write) -> Result<()> {
     match cli.command {
+        Command::Login => {
+            let hostname = commands::auth::hostname()?;
+            let mut io = AuthIo {
+                browser: &mut SystemBrowser,
+                input: &mut StdinLineReader,
+                stderr,
+            };
+            commands::auth::login(&config::path()?, &mut io, &hostname, SystemTime::now())
+        }
+        Command::Logout => {
+            let mut io = AuthIo {
+                browser: &mut SystemBrowser,
+                input: &mut StdinLineReader,
+                stderr,
+            };
+            commands::auth::logout(&config::path()?, &mut io)
+        }
         Command::Set(args) => commands::set::run(&config::path()?, &args.api_url, stderr),
         Command::List(args) => commands::list::run(&configured_client()?, &args, cli.json, stdout),
         Command::View(args) => {
