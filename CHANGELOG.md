@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.3] - 2026-11-20
+
+### Security
+
+- Node.js runtime floor raised to `>=24.22.1` (`engines.node`), the October 2026 security release that fixes CVE-2026-111497 (Brotli decoder out-of-bounds write in `node:zlib`).
+- `@google-cloud/firestore` upgraded from `^7.11.1` to `^9.4.1`, removing the vulnerable `uuid` chain pulled in by `google-gax`, `teeny-request` and `retry-request`. Remaining `npm audit` findings are dev-only (`minimatch` via `nodemon`).
+- Transitive dependencies refreshed with `npm update` / `npm audit fix`.
+
 ## [4.2.1] - 2026-09-07
 
 ### Fixed
