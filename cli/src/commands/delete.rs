@@ -24,6 +24,8 @@ pub fn is_confirmation(answer: &str) -> bool {
 
 /// Resolves the target, asks for confirmation unless `--yes`, then `DELETE /redirects/:id`.
 /// Declining is not an error: nothing is deleted and nothing is printed on `stdout`.
+/// `stdout` only receives the deleted id (the API's `data`) with `--json`; otherwise the
+/// confirmation message goes to `stderr`.
 pub fn run(
     client: &ApiClient,
     args: &DeleteArgs,
