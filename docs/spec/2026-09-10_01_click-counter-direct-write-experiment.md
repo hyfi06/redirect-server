@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-09-10
 **Rama:** `dev` (divergente de `main` desde `v4.2.1` / commit `acfc463`)
-**Estado:** EN EXPERIMENTACIÓN
+**Estado:** EXPERIMENTO EXITOSO — mergeado a `main` como `v4.2.2` (2026-11-20)
 **Precedente:** `docs/spec/2026-06-28_01_v4.2.0.md` (diseño original del conteo de clicks — batching en memoria)
 
 ---
@@ -108,7 +108,11 @@ Este cambio es **PATCH**, no FEATURE ni GENERACIÓN:
 - Precedente de versionado PATCH para cambio de configuración interna: `docs/plan/2026-09-07_01_hotfix-trust-proxy-rate-limit.md`
 - Commit que introdujo `min_instances: 1`: `591b7cf`
 
+## Resultado del experimento (2026-11-20)
+
+La factura de GCP del período de prueba confirmó que el gasto **disminuyó** con la arquitectura de `dev` (escritura directa por click + `min_instances: 0`) respecto a la de `main` (batching en memoria + `min_instances: 1`). Se cumple el criterio de éxito: el experimento se mergea a `main` y se publica como `v4.2.2` (PATCH; ver "Impacto en versión"). Ningún otro PATCH se intercaló antes del cierre, así que la versión objetivo se mantiene.
+
 ## Open questions
 
-- [ ] ¿Cuál es la duración exacta del período de prueba antes de tomar la decisión de merge/descarte? Este spec sugiere 2-4 semanas pero la decisión final depende de quién revisa el billing de GCP.
-- [ ] ¿Quién es responsable de revisar Cloud Billing al cierre del período de prueba y documentar el resultado (éxito/fracaso) en este spec?
+- [x] ¿Cuál es la duración exacta del período de prueba antes de tomar la decisión de merge/descarte? Este spec sugiere 2-4 semanas pero la decisión final depende de quién revisa el billing de GCP. **Resuelto:** se evaluó con la factura completa del período, ya disponible al 2026-11-20.
+- [x] ¿Quién es responsable de revisar Cloud Billing al cierre del período de prueba y documentar el resultado (éxito/fracaso) en este spec? **Resuelto:** el dueño del producto revisó la factura y reportó el resultado (ver "Resultado del experimento").

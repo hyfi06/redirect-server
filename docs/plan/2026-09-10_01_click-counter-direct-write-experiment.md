@@ -3,7 +3,7 @@
 **Spec:** `docs/spec/2026-09-10_01_click-counter-direct-write-experiment.md`
 **Fecha:** 2026-09-10
 **Rama:** `dev`
-**Estado:** EN PRUEBA
+**Estado:** CERRADO — experimento exitoso, mergeado a `main` como `v4.2.2` (2026-11-20)
 
 ---
 
