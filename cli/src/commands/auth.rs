@@ -65,6 +65,7 @@ impl Browser for SystemBrowser {
     }
 }
 
+/// Reads from the process stdin; the pasted JWT is echoed by the terminal, not hidden.
 pub struct StdinLineReader;
 
 impl LineReader for StdinLineReader {
@@ -86,7 +87,7 @@ pub struct AuthIo<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Revocation {
     Revoked,
-    /// The API answered 404: the key no longer exists server-side.
+    /// The API answered its own "API key not found" 404: the key no longer exists server-side.
     AlreadyGone,
 }
 
@@ -148,7 +149,8 @@ pub fn hostname() -> Result<String> {
 }
 
 /// Revokes the active keys named `rserver@<hostname>`, then creates a new one with that name.
-/// `jwt` authenticates every request; it is never stored.
+/// `jwt` authenticates every request; it is never stored. Revocation runs before creation, so a
+/// failed `POST` leaves this machine without a key: repeating `rserver login` is the recovery.
 pub fn login_with_jwt(
     api_url: &str,
     jwt: &str,
@@ -229,7 +231,7 @@ pub fn login(config_path: &Path, io: &mut AuthIo, hostname: &str, now: SystemTim
 }
 
 /// `rserver logout`: browser → pasted JWT → revoke the stored key, then drop it from the config.
-/// The config is left untouched unless the server confirms the revocation (or answers 404).
+/// The config is left untouched unless the server confirms the revocation (or answers "API key not found").
 pub fn logout(config_path: &Path, io: &mut AuthIo) -> Result<()> {
     let mut config = config::load_from(config_path)?;
     let Some(key_id) = config.api_key.as_ref().map(|key| key.id.clone()) else {
