@@ -292,3 +292,45 @@ pub fn revoked_reply(id: &str) -> Reply {
         json!({ "message": "api key revoked", "data": { "id": id } }),
     )
 }
+
+/// Collection path of the redirects API.
+pub const REDIRECTS_PATH: &str = "/api/v1/redirects";
+
+/// A redirect with an explicit `url` and `categories` (other fields as in [`redirect_json`]).
+pub fn redirect_with(id: &str, path: &str, url: &str, categories: &[&str]) -> Value {
+    let mut redirect = redirect_json(id, path);
+    redirect["url"] = json!(url);
+    redirect["categories"] = json!(categories);
+    redirect
+}
+
+/// Mock of `/api/v1/redirects`, routed by method and path: `GET /redirects` lists `items`
+/// (a single page, enough for `fetch_all`); `GET /redirects/{id}` answers the item with that id
+/// or a JSON 404 `redirect not found`; every other request (`POST`, `PATCH`, `DELETE`, …)
+/// answers `mutate(request)`.
+pub fn redirects_server(
+    items: Value,
+    mutate: impl Fn(&Recorded) -> Reply + Send + Sync + 'static,
+) -> MockServer {
+    MockServer::start(move |req| match (req.method.as_str(), req.path()) {
+        ("GET", REDIRECTS_PATH) => Reply::data(items.clone()),
+        ("GET", path) if path.starts_with(&format!("{REDIRECTS_PATH}/")) => {
+            let id = &path[REDIRECTS_PATH.len() + 1..];
+            items
+                .as_array()
+                .and_then(|all| all.iter().find(|r| r["id"] == id))
+                .map(|r| Reply::data(r.clone()))
+                .unwrap_or_else(|| Reply::error(404, "redirect not found"))
+        }
+        _ => mutate(req),
+    })
+}
+
+/// Requests other than `GET` received by the mock (the mutations).
+pub fn mutations(server: &MockServer) -> Vec<Recorded> {
+    server
+        .requests()
+        .into_iter()
+        .filter(|req| req.method != "GET")
+        .collect()
+}
