@@ -5,7 +5,7 @@ pub mod config;
 pub mod output;
 pub mod resolve;
 
-use std::io::Write;
+use std::io::{IsTerminal, Write};
 use std::time::SystemTime;
 
 use anyhow::Result;
@@ -13,6 +13,7 @@ use anyhow::Result;
 use api::ApiClient;
 use cli::{Cli, Command};
 use commands::auth::{AuthIo, StdinLineReader, SystemBrowser};
+use commands::delete::ConfirmIo;
 
 /// `stdout` and `stderr` are injected so tests can capture output, messages and warnings.
 pub fn run(cli: Cli, stdout: &mut dyn Write, stderr: &mut dyn Write) -> Result<()> {
@@ -38,6 +39,20 @@ pub fn run(cli: Cli, stdout: &mut dyn Write, stderr: &mut dyn Write) -> Result<(
         Command::List(args) => commands::list::run(&configured_client()?, &args, cli.json, stdout),
         Command::View(args) => {
             commands::view::run(&configured_client()?, &args.target, cli.json, stdout)
+        }
+        Command::Create(args) => {
+            commands::create::run(&configured_client()?, &args, cli.json, stdout)
+        }
+        Command::Edit(args) => {
+            commands::edit::run(&configured_client()?, &args, cli.json, stdout, stderr)
+        }
+        Command::Delete(args) => {
+            let mut io = ConfirmIo {
+                stdin_is_terminal: std::io::stdin().is_terminal(),
+                input: &mut StdinLineReader,
+                stderr,
+            };
+            commands::delete::run(&configured_client()?, &args, cli.json, &mut io, stdout)
         }
     }
 }

@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -27,6 +27,12 @@ pub enum Command {
     List(ListArgs),
     /// Muestra todos los campos de un redirect
     View(ViewArgs),
+    /// Crea un redirect
+    Create(CreateArgs),
+    /// Cambia la URL de destino o las categorías de un redirect
+    Edit(EditArgs),
+    /// Borra un redirect de forma definitiva
+    Delete(DeleteArgs),
 }
 
 #[derive(Debug, Args)]
@@ -61,4 +67,63 @@ pub struct ViewArgs {
     /// Id del redirect, o su path completo empezando con `/` (p. ej. /fc/seminar)
     #[arg(value_name = "ID|PATH")]
     pub target: String,
+}
+
+#[derive(Debug, Args)]
+pub struct CreateArgs {
+    /// Path sin `/` inicial; con --group, sin el prefijo del grupo (p. ej. seminar)
+    #[arg(value_name = "PATH")]
+    pub path: String,
+
+    /// URL de destino
+    #[arg(value_name = "URL")]
+    pub url: String,
+
+    /// Slug del grupo; la API construye /{grupo}/{path}
+    #[arg(long, value_name = "SLUG")]
+    pub group: Option<String>,
+
+    /// Categoría (repetible)
+    #[arg(long = "category", value_name = "CATEGORIA")]
+    pub categories: Vec<String>,
+
+    /// Permiso `read|edit|delete:<grupo>` (repetible)
+    #[arg(long = "perm", value_name = "SCOPE:GRUPO")]
+    pub permissions: Vec<String>,
+}
+
+#[derive(Debug, Args)]
+#[command(group(
+    ArgGroup::new("changes")
+        .required(true)
+        .multiple(true)
+        .args(["url", "add_categories", "remove_categories"])
+))]
+pub struct EditArgs {
+    /// Id del redirect, o su path completo empezando con `/` (p. ej. /fc/seminar)
+    #[arg(value_name = "ID|PATH")]
+    pub target: String,
+
+    /// Nueva URL de destino
+    #[arg(long, value_name = "URL")]
+    pub url: Option<String>,
+
+    /// Categoría a agregar (repetible)
+    #[arg(long = "add-category", value_name = "CATEGORIA")]
+    pub add_categories: Vec<String>,
+
+    /// Categoría a quitar (repetible); quitar una que no existe no es error
+    #[arg(long = "remove-category", value_name = "CATEGORIA")]
+    pub remove_categories: Vec<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct DeleteArgs {
+    /// Id del redirect, o su path completo empezando con `/` (p. ej. /fc/seminar)
+    #[arg(value_name = "ID|PATH")]
+    pub target: String,
+
+    /// Borra sin pedir confirmación (obligatorio si stdin no es una terminal)
+    #[arg(long)]
+    pub yes: bool,
 }
