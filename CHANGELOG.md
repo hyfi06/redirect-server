@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-11-20
+
+### Added
+
+- `rserver`: Rust CLI (`cli/`) to manage redirects through API v1 — never writes to Firestore directly. Commands: `login`, `logout`, `set --api-url`, `list` (paginated), `view <id|path>`, `search` (client-side filtering by path/url/category), `create`, `edit` (url and categories), `delete` (with confirmation), `completions bash`. Human-readable tables by default, `--json` for pipes.
+- `rserver login` opens the Google OAuth flow, takes the pasted JWT and creates a 90-day API Key (`read:redirects`, `write:redirects`) named `rserver@<hostname>`, stored in `${XDG_CONFIG_HOME:-~/.config}/rserver/config.toml` (mode 600). The JWT is never persisted. `rserver logout` revokes the key server-side.
+- `npm run install:cli`: builds the CLI in release mode, installs it to `~/.local/bin/rserver`, creates the default config (`https://1kg.me`) when missing and installs bash completion.
+
+### Changed
+
+- `cli/` excluded from App Engine deploys in `.gcloudignore`.
+
 ## [4.2.1] - 2026-09-07
 
 ### Fixed
