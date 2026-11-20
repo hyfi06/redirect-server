@@ -201,6 +201,7 @@ npm run indexes     # Sync Firestore composite indexes from firestore.indexes.js
 npm run logs        # Read last 100 ERROR+ log entries from GCP Cloud Logging (requires gcloud)
 npm run logs:all    # Read last 100 log entries from GCP Cloud Logging (all severities)
 npm run deploy      # gcloud app deploy app.yaml
+npm run install:cli   # Build rserver CLI (cargo --release), install to ~/.local/bin, default config and bash completion
 ```
 
 Run a single test file:
@@ -300,6 +301,18 @@ clickCounter.increment(id)   fire-and-forget — 302 does not wait for Firestore
 Cache-Control: public, max-age=300  (production only)
 res.redirect(302, url)
 ```
+
+---
+
+### CLI — `rserver` (`cli/`)
+
+Independent Rust crate (own `Cargo.toml`, not part of `npm test`) for managing redirects from the terminal. It only talks to `/api/v1` — never to Firestore — so every write goes through the same Joi validation and permission checks as any other client.
+
+- **Config**: `${XDG_CONFIG_HOME:-~/.config}/rserver/config.toml`, mode `600`, holding `api_url` and the API Key (`id` + `token`). The JWT is never persisted.
+- **`login`**: opens `{api_url}/api/v1/auth/google` in the browser; the user pastes the JWT from the callback JSON; the CLI calls `POST /users/me/api-keys` with name `rserver@<hostname>`, scopes `read:redirects`/`write:redirects`, 90-day expiry. Active keys with the same name are revoked first, so re-logins do not accumulate toward the 10-key limit.
+- **`logout`**: asks for a JWT again — `/users/**` is behind `requireJwt`, so an API Key cannot revoke itself — then `DELETE /users/me/api-keys/:id`. Only a 404 `API key not found` counts as already revoked; any other failure leaves the local config intact.
+- **Search and `<id|path>` resolution are client-side**: the API has no search, so `search` and path arguments (starting with `/`) walk every page of `GET /redirects` (`fetch_all`, pages of 100).
+- **Tests**: `cd cli && cargo test`, against a local mock HTTP server in `cli/tests/common/`. Usage examples in `cli/README.md`.
 
 ---
 

@@ -41,6 +41,9 @@ e2e/
 # Migration and maintenance scripts (run locally, not at runtime)
 scripts/
 
+# rserver CLI — local admin tool, includes cli/target/ build output
+cli/
+
 # Build artifacts and generated output
 coverage
 docs/
