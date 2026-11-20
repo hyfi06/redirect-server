@@ -56,8 +56,8 @@ A redirect can be deleted by the owner, an admin, or a user whose group appears 
 
 ### Branch strategy
 
-- `main` — production. Only the public redirect catch-all is live. No API, no auth.
-- `dev` — active development. API v1 (`/api/v1/redirects`, `/api/v1/users`, `/api/v1/groups`) + auth complete. Not yet merged to main.
+- `main` — production. Public redirect catch-all, API v1 (`/api/v1/auth`, `/api/v1/redirects`, `/api/v1/users`, `/api/v1/groups`, API Keys) and auth are live. Latest release: `v4.3.0` (adds the `rserver` CLI).
+- `dev` — active development, branched from `main` after each release. Merged to `main` through a `release-x.y.z` branch (version bump + CHANGELOG), tagged on the merge commit.
 
 ### Versioning convention
 
@@ -195,7 +195,7 @@ Used agents: backend-engineer
 npm run dev         # Development with nodemon and DEBUG=app:* enabled
 npm test            # Run Jest with coverage (sets NODE_ENV=test)
 npm run test:watch
-npm run test:e2e        # E2E suite (requires running server + real Firestore)
+npm run test:e2e        # E2E suite (requires running server + real Firestore; runs with --experimental-vm-modules because gaxios 8 uses dynamic import())
 npm run test:e2e:cleanup # Hard-delete all E2E test data from Firestore
 npm run indexes     # Sync Firestore composite indexes from firestore.indexes.json to the active GCP project
 npm run logs        # Read last 100 ERROR+ log entries from GCP Cloud Logging (requires gcloud)
@@ -502,7 +502,7 @@ errorHandler:
 - **Server-side**: singleton `node-cache` instance (`src/utils/cache.js`). Two keying schemes:
   - Redirect path → `{ id, url }`. Key = path string, TTL = 5 minutes (300s). Stores `id` alongside `url` so `clickCounter.increment(id)` can run on cache hits without a Firestore read. Used by the public catch-all router.
   - API Key hash → `req.user` object. Key = SHA-256 hex of the token, TTL = 30 seconds. Used by `authenticate` to avoid one Firestore read per API Key request. Entries are deleted by `apiKeyService.revoke()` callers for best-effort same-instance invalidation.
-- **Click counter** (`src/utils/click-counter.js`): `increment(redirectId)` writes `FieldValue.increment(1)` directly to Firestore on every call — no in-memory accumulation, no flush threshold. Fire-and-forget — errors are logged, never propagated. No dependency on `min_instances: 1` to preserve state between requests (experiment, see `docs/spec/2026-09-10_01_click-counter-direct-write-experiment.md`).
+- **Click counter** (`src/utils/click-counter.js`): `increment(redirectId)` writes `FieldValue.increment(1)` directly to Firestore on every call — no in-memory accumulation, no flush threshold. Fire-and-forget — errors are logged, never propagated. No dependency on `min_instances: 1` to preserve state between requests; `app.yaml` runs with `min_instances: 0`. Adopted in `v4.2.2` after the GCP bill confirmed lower cost than batching + always-on instance (see `docs/spec/2026-09-10_01_click-counter-direct-write-experiment.md`).
 - **Client-side**: `Cache-Control: public, max-age=300` header set only in production.
 - The home page sets a 30-minute client cache.
 
