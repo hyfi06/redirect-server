@@ -489,7 +489,7 @@ errorHandler:
 - **Server-side**: singleton `node-cache` instance (`src/utils/cache.js`). Two keying schemes:
   - Redirect path → `{ id, url }`. Key = path string, TTL = 5 minutes (300s). Stores `id` alongside `url` so `clickCounter.increment(id)` can run on cache hits without a Firestore read. Used by the public catch-all router.
   - API Key hash → `req.user` object. Key = SHA-256 hex of the token, TTL = 30 seconds. Used by `authenticate` to avoid one Firestore read per API Key request. Entries are deleted by `apiKeyService.revoke()` callers for best-effort same-instance invalidation.
-- **Click counter** (`src/utils/click-counter.js`): singleton `Map<redirectId, number>` that accumulates hits in memory and flushes to Firestore with `FieldValue.increment(N)` when a counter reaches the threshold (N = 10). Flush is fire-and-forget — errors are logged, never propagated. `flushAll()` is called on SIGTERM from `src/app.js` to drain pending counts before shutdown.
+- **Click counter** (`src/utils/click-counter.js`): `increment(redirectId)` writes `FieldValue.increment(1)` directly to Firestore on every call — no in-memory accumulation, no flush threshold. Fire-and-forget — errors are logged, never propagated. No dependency on `min_instances: 1` to preserve state between requests (experiment, see `docs/spec/2026-09-10_01_click-counter-direct-write-experiment.md`).
 - **Client-side**: `Cache-Control: public, max-age=300` header set only in production.
 - The home page sets a 30-minute client cache.
 

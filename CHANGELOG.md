@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.2] - 2026-11-20
+
+### Changed
+
+- Click counter writes directly to Firestore on every redirect hit (`FieldValue.increment(1)`, fire-and-forget — the 302 does not wait). The in-memory batching (`Map`, flush every 10 clicks, `flushAll()`) is gone, so no clicks are lost to instance recycling.
+- `app.yaml`: `min_instances` back from 1 to 0 — the counter no longer needs an always-on instance. Validated against the GCP bill: total cost decreased compared to batching + `min_instances: 1`.
+
+### Removed
+
+- SIGTERM handler in `src/app.js` that flushed pending click counters — there is no in-memory state left to flush.
+
 ## [4.2.1] - 2026-09-07
 
 ### Fixed
