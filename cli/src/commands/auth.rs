@@ -183,12 +183,28 @@ pub fn login_with_jwt(
     })
 }
 
-/// `DELETE /users/me/api-keys/{key_id}` authenticated with `jwt`. A 404 is not an error.
+/// Message the API returns when the key id does not exist for the user.
+const API_KEY_NOT_FOUND: &str = "API key not found";
+
+/// `DELETE /users/me/api-keys/{key_id}` authenticated with `jwt`. The API's own
+/// "API key not found" 404 is not an error ([`Revocation::AlreadyGone`]).
 pub fn logout_with_jwt(api_url: &str, jwt: &str, key_id: &str) -> Result<Revocation> {
     let client = ApiClient::new(api_url, Some(jwt.to_string()));
     match client.delete::<IgnoredAny>(&key_segments(key_id)) {
         Ok(_) => Ok(Revocation::Revoked),
-        Err(ApiError::NotFound(_)) => Ok(Revocation::AlreadyGone),
+        // Only the API's own "API key not found" means the key is gone; any other 404 (e.g. the
+        // catch-all of a server without API v1) must not clear the local key unrevoked.
+        Err(ApiError::NotFound(message)) if message == API_KEY_NOT_FOUND => {
+            Ok(Revocation::AlreadyGone)
+        }
+        Err(ApiError::NotFound(_)) => Err(jwt_request_error(
+            &client,
+            ApiError::NotApi {
+                api_url: client.api_url().to_string(),
+                status: 404,
+            },
+            "logout",
+        )),
         Err(err) => Err(jwt_request_error(&client, err, "logout")),
     }
 }
