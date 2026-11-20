@@ -905,3 +905,18 @@ fn binary_logout_500_exits_non_zero_and_keeps_the_config() {
     assert_eq!(fs::read(&path).unwrap(), before);
     assert!(fs::read_to_string(&path).unwrap().contains(TOKEN));
 }
+
+#[test]
+fn logout_with_catch_all_404_is_not_api_and_keeps_the_config() {
+    let server = MockServer::always(Reply::error(404, "Resource not found"));
+    let (_dir, path) = setup(&server.url, true);
+    let before = fs::read(&path).unwrap();
+    let flow = flow(Cmd::Logout, &path, &[&jwt_line()], true);
+
+    assert!(
+        flow.error().contains("rserver set --api-url"),
+        "{}",
+        flow.error()
+    );
+    assert_eq!(fs::read(&path).unwrap(), before);
+}
