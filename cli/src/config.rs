@@ -54,8 +54,12 @@ pub fn load_from(path: &Path) -> Result<Config> {
             return Err(err).with_context(|| format!("no se pudo leer {}", path.display()))
         }
     };
-    toml::from_str(&content)
-        .with_context(|| format!("el archivo de configuración {} no es válido", path.display()))
+    toml::from_str(&content).with_context(|| {
+        format!(
+            "el archivo de configuración {} no es válido",
+            path.display()
+        )
+    })
 }
 
 /// Writes through a temp file + rename so a failed write never leaves a truncated config behind.

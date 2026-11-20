@@ -1,7 +1,11 @@
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(name = "rserver", version, about = "Administra los redirects de 1kg.me a través de la API v1")]
+#[command(
+    name = "rserver",
+    version,
+    about = "Administra los redirects de 1kg.me a través de la API v1"
+)]
 pub struct Cli {
     /// Emite solo el `data` de la respuesta como JSON en stdout
     #[arg(long, global = true)]
