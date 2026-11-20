@@ -54,6 +54,9 @@ pub fn run(cli: Cli, stdout: &mut dyn Write, stderr: &mut dyn Write) -> Result<(
             };
             commands::delete::run(&configured_client()?, &args, cli.json, &mut io, stdout)
         }
+        Command::Search(args) => {
+            commands::search::run(&configured_client()?, &args, cli.json, stdout, stderr)
+        }
     }
 }
 

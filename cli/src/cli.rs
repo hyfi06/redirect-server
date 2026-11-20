@@ -33,6 +33,8 @@ pub enum Command {
     Edit(EditArgs),
     /// Borra un redirect de forma definitiva
     Delete(DeleteArgs),
+    /// Busca entre todos los redirects visibles; varios filtros se combinan (AND)
+    Search(SearchArgs),
 }
 
 #[derive(Debug, Args)]
@@ -126,4 +128,25 @@ pub struct DeleteArgs {
     /// Borra sin pedir confirmación (obligatorio si stdin no es una terminal)
     #[arg(long)]
     pub yes: bool,
+}
+
+#[derive(Debug, Args)]
+#[command(group(
+    ArgGroup::new("filters")
+        .required(true)
+        .multiple(true)
+        .args(["path", "url", "category"])
+))]
+pub struct SearchArgs {
+    /// Fragmento del path, sin distinguir mayúsculas
+    #[arg(long, value_name = "TEXTO")]
+    pub path: Option<String>,
+
+    /// Fragmento de la URL de destino, sin distinguir mayúsculas
+    #[arg(long, value_name = "TEXTO")]
+    pub url: Option<String>,
+
+    /// Categoría exacta (distingue mayúsculas)
+    #[arg(long, value_name = "CATEGORIA")]
+    pub category: Option<String>,
 }
