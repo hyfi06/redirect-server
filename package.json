@@ -1,6 +1,6 @@
 {
   "name": "redirect-server",
-  "version": "4.2.2",
+  "version": "4.2.3",
   "description": "Express redirect server",
   "main": "src/app.js",
   "scripts": {
@@ -30,10 +30,10 @@
   },
   "homepage": "https://github.com/hyfi06/redirect-server#readme",
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24.22.1"
   },
   "dependencies": {
-    "@google-cloud/firestore": "^7.11.1",
+    "@google-cloud/firestore": "^9.4.1",
     "@hapi/boom": "^10.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
